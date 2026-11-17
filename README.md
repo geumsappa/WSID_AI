@@ -1,5 +1,9 @@
 # WSID_AI (어떡하지 AI 서버, FastAPI)
 
+AI-02(`POST /internal/ai/ocr/extract`)는 이 FastAPI 앱의 훈련용 OCR API예요. Tesseract와 한국어·영어 언어 데이터를 설치하고, Spring과 같은 `AI_API_KEY`를 설정해 `X-Internal-Api-Key` 헤더로 호출해요.
+
+요청은 multipart `images`이며 PNG/JPEG 최대 3장, 장당 5MB까지 받을 수 있어요. 원본은 별도로 저장하지 않아요. 성공 응답은 `{"success":true,"data":{"recognizedText":"...","usable":true}}`예요. 읽은 문자에 민감정보나 연락처·링크 패턴이 있으면 원문 없이 `usable:false`를 반환해요.
+
 훈련(시뮬레이션) 흐름 5단계 중 지금 들어있는 것:
 
 | 단계 | 기능 | API | 상태 |

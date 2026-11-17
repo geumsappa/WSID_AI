@@ -56,6 +56,14 @@ python try_rag.py --money YES --type SECONDHAND_TRADE --debug
 
 `try_rag.py`는 Spring이 AI-07에 보낼 요청과 AI가 돌려줄 응답을 그대로 보여줍니다.
 
+### 질문하고 답 받기 (데모)
+
+```bash
+python ask.py
+```
+상황을 문장으로 입력하면 사실 추출(AI-06 데모, `rag/extract.py`) → 긴급 카드 → 근거 검색 → 질문 답변(`rag/qa.py`) 순서로 진행돼요.
+**AI-07 계약은 사용자 원문을 받지 않기 때문에** 질문 답변은 체험용이에요. 실제 서비스에 넣으려면 질문 필드 추가나 별도 API를 백엔드와 합의해야 해요.
+
 ## 폴더
 
 | 경로 | 내용 |

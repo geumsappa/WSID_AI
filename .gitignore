@@ -1,7 +1,20 @@
+# 비밀값
 .env
-.venv/
-venv/
+*.key
+
+# 자동 생성물
+data/index/
+hana_pdfs/
+rag_out/
+
+# 파이썬
 __pycache__/
 *.pyc
+.venv/
+venv/
 .pytest_cache/
+
+# 에디터
+.vscode/
+.idea/
 .DS_Store

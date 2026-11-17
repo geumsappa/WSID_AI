@@ -1,6 +1,15 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.5
+python-dotenv>=1.0
+pyyaml>=6.0
+openai>=1.30
+anthropic>=0.30
+pytest>=8.0
+
+# 피해 대응 RAG
 google-genai>=1.0
 numpy>=1.26
-python-dotenv>=1.0
 # PDF 수집·파싱 (scripts/)
 requests>=2.31
 beautifulsoup4>=4.12

@@ -1,0 +1,33 @@
+"""시뮬레이션 내부 API. 노션의 success/data 계약을 사용한다."""
+from fastapi import APIRouter
+
+from app.schemas.discovery import DiscoveryRequest, DiscoveryResult
+from app.schemas.internal import Success
+from app.schemas.training_api import (
+    EvaluationRequest, EvaluationResult, ScenarioRequest, ScenarioResult,
+    SimulationRequest, SimulationResult,
+)
+from app.services.discovery import discover
+from app.services.training_api import evaluate, scenario, simulation
+
+router = APIRouter(prefix="/internal/ai", tags=["내부 AI · 훈련 시뮬레이션"])
+
+
+@router.post("/discovery/next", response_model=Success[DiscoveryResult])
+def context_turn(request: DiscoveryRequest):
+    return Success(data=discover(request))
+
+
+@router.post("/scenarios/generate", response_model=Success[ScenarioResult])
+def generate_scenario(request: ScenarioRequest):
+    return Success(data=scenario(request))
+
+
+@router.post("/simulation/reply", response_model=Success[SimulationResult])
+def reply(request: SimulationRequest):
+    return Success(data=simulation(request))
+
+
+@router.post("/training/evaluate", response_model=Success[EvaluationResult])
+def report(request: EvaluationRequest):
+    return Success(data=evaluate(request))

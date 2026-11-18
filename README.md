@@ -578,6 +578,7 @@ Spring이 할 일
 | `NEED_USER_INPUT` | 답에 꼭 필요한 사실이 UNKNOWN (예: 송금 여부를 모르는데 환급을 물음) | `questionId`를 만들고 `clarifyQuestion`을 `nextQuestion.content`로. 사용자가 답하면 사실을 고친 뒤 **원래 질문으로 다시 호출** |
 | `UNABLE_TO_ANSWER` | 범위 밖(투자·코인 추천 등)이거나 맞는 근거가 없음 | 답변 불가 안내 + 대응 카드 |
 
+- `history`(선택): 최근 대화 최대 10개 `[{"role": "USER"|"AI", "content": "..."}]`(오래된 것부터). "둘 다 알려줘"처럼 앞 대화를 가리키는 질문을 이해하는 데 써요. 개인정보는 AI 서버에서 한 번 더 가려요.
 - `verifiedReferences`를 보내면 그 근거 안에서만 답하고, `null`이면 AI 서버가 `references.jsonl`에서 찾아요(확정된 사실이 없으면 질문 문장으로 검색).
 - 응답의 `references`는 AI에 넘긴 근거 전체예요. `referenceCodes`가 이 안에 있는지 Spring이 확인할 수 있어요.
 - 이름(`/answer`)과 필드는 가안이라 백엔드와 확정이 필요해요.

@@ -70,6 +70,11 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
                     "비밀번호", "인증정보", "민감정보")
     provided += [label for label in marker_types
                  if f"[{label}]" in history[-1]["text"] and label not in provided]
+    # These are app-generated events. No image, base64, file name or user URL is passed to the model.
+    photo_markers = {"[가상 신분증 사진 제공]": "신분증 사진",
+                     "[가상 통장 사진 제공]": "통장 사진", "[가상 사진 제공]": "사진"}
+    provided += [label for marker, label in photo_markers.items()
+                 if marker in history[-1]["text"] and label not in provided]
 
     # 3) LLM 호출
     used_fallback = False
@@ -117,16 +122,27 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
 
     # 4-a) "알려드릴게요"라고만 하고 실제 값을 안 썼다면 → 직접 적으라고 한 번 더 요구
     last_persona = next((m["text"] for m in reversed(history) if m["role"] == "persona"), "")
+    text_info = [info for info in asked_info if not _is_photo_info(info)]
     type_it = (
-        scene_now.get("request") == INFO_REQUEST and asked_info
+        scene_now.get("request") == INFO_REQUEST and text_info
         and judgment["outcome"] == "risky" and not provided
         and TYPE_IT_MARK not in last_persona
     )
     if type_it:
         next_scene = current_scene
         request_type = INFO_REQUEST
-        persona_message = fallback.TRAINING_TYPE_IT_LINE.replace("{info}", ", ".join(asked_info))
+        persona_message = fallback.TRAINING_TYPE_IT_LINE.replace("{info}", ", ".join(text_info))
         choices = list(fallback.TRAINING_TYPE_IT_CHOICES)
+
+    # Agreeing to send a photo is not the app's submission event. Keep the photo
+    # request visible so the next turn still offers the fixed virtual material.
+    photo_info = [info for info in asked_info if _is_photo_info(info)]
+    if photo_info and judgment["outcome"] == "risky" and not any(_is_photo_info(info) for info in provided):
+        next_scene = current_scene
+        request_type = INFO_REQUEST
+        persona_message = f"확인을 위해 {', '.join(photo_info)} 보내 주세요."
+        choices = list(fallback.TRAINING_TYPE_IT_CHOICES)
+        type_it = True
 
     scene_next = _scene(scenes, next_scene)
     if request_type not in ALLOWED_REQUESTS:
@@ -145,7 +161,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     if scene_next.get("request") == INFO_REQUEST and next_info and not type_it:
         asked_before = any(m["role"] == "persona" and _mentions(m["text"], next_info) for m in history)
         if not asked_before and not _mentions(persona_message, next_info):
-            persona_message = f"{persona_message.rstrip()} {', '.join(next_info)} {TYPE_IT_MARK}."
+            persona_message = f"{persona_message.rstrip()} {_request_info_line(next_info)}"
         request_type = INFO_REQUEST
 
     if len(choices) < 2:
@@ -259,7 +275,24 @@ def _clean_choices(raw) -> list[str]:
     return out
 
 
+def _is_photo_info(info: str) -> bool:
+    return any(word in info for word in ("사진", "이미지", "캡처", "스크린샷", "신분증", "주민등록증", "운전면허", "여권", "통장"))
+
+
+def _request_info_line(info: list[str]) -> str:
+    photos = [item for item in info if _is_photo_info(item)]
+    text = [item for item in info if not _is_photo_info(item)]
+    parts = []
+    if text:
+        parts.append(f"{', '.join(text)} {TYPE_IT_MARK}.")
+    if photos:
+        parts.append(f"{', '.join(photos)} 보내 주세요.")
+    return " ".join(parts)
+
+
 def _fallback_line(scene: dict, request_type: str) -> str:
+    if request_type == INFO_REQUEST and any(_is_photo_info(info) for info in _requested(scene)):
+        return "확인을 위해 " + _request_info_line(_requested(scene))
     line = fallback.TRAINING_PERSONA_LINES.get(request_type, fallback.TRAINING_PERSONA_LINES["대화 지속"])
     info = ", ".join(_requested(scene)) or fallback.TRAINING_DEFAULT_INFO
     return line.replace("{info}", info)

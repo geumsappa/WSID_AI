@@ -13,7 +13,7 @@ from pathlib import Path
 
 from app.case_db import cases_for_prompt
 from app.config import settings
-from app.guard.scenario_guard import validate_and_normalize
+from app.guard.scenario_guard import mentioned_organizations, validate_and_normalize
 from app.guard.sensitive import mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
 from app.scenario_data import (
@@ -40,7 +40,10 @@ def run_scenario(session_id: str, facts: list[dict]) -> dict:
         logger.info("session=%s 사실 없음 → 기본 시나리오", session_id)
         return _fallback(facts)
 
+    allowed = mentioned_organizations(facts)
     system_prompt = _build_prompt()
+    system_prompt += "\n사용자가 언급해 재사용할 수 있는 기관명: " + ", ".join(allowed or ["없음"])
+    system_prompt += "\n목록에 있는 기관은 사용자 맥락에 맞는 경우 그 이름을 유지하세요. 그 밖의 기관은 가상 이름을 쓰세요."
     user_content = "사용자가 앞선 대화에서 말한 사실 목록입니다.\n\n" + "\n".join(
         _fact_line(f) for f in facts
     ) + "\n\n규칙에 따라 JSON 으로만 응답하세요."
@@ -53,7 +56,7 @@ def run_scenario(session_id: str, facts: list[dict]) -> dict:
             logger.warning("session=%s 시나리오 LLM 실패 (시도 %d)", session_id, attempt)
             continue
 
-        result, errors = validate_and_normalize(data)
+        result, errors = validate_and_normalize(data, allowed)
         if result:
             result["scenario"]["maxTurns"] = settings.training_max_turns
             result["fallback_used"] = False
@@ -125,7 +128,8 @@ def _fallback(facts: list[dict]) -> dict:
         f["detail"] for f in facts
         if pick_subtype([f]) == subtype
     ][:3]
-    result, errors = validate_and_normalize(raw)  # 기본 시나리오도 같은 검증을 거침
+    allowed = mentioned_organizations(facts)
+    result, errors = validate_and_normalize(raw, allowed)  # 기본 시나리오도 같은 검증을 거침
     if result is None:
         raise RuntimeError(f"기본 시나리오 '{subtype}' 가 검증을 통과하지 못함: {errors}")
     result["scenario"]["maxTurns"] = settings.training_max_turns

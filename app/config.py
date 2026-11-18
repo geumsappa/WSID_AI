@@ -9,6 +9,9 @@ load_dotenv()  # 같은 폴더의 .env 파일을 읽어서 환경변수로 등�
 
 @dataclass(frozen=True)
 class Settings:
+    internal_api_key: str = os.getenv("AI_API_KEY", "").strip()
+    ocr_executable: str = os.getenv("OCR_EXECUTABLE", "tesseract").strip()
+    ocr_languages: str = os.getenv("OCR_LANGUAGES", "kor+eng").strip()
     llm_provider: str = os.getenv("LLM_PROVIDER", "mock").strip().lower()
     llm_api_key: str = os.getenv("LLM_API_KEY", "").strip()
     llm_model: str = os.getenv("LLM_MODEL", "").strip()

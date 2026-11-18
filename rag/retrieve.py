@@ -70,3 +70,31 @@ def find_references(facts: dict, fraud_type: str | None = None, k: int = 5, debu
             item["_reviewed"] = r.get("reviewed", False)
         out.append(item)
     return out
+
+
+def find_by_question(question: str, fraud_type: str | None = None, k: int = 5) -> list[dict]:
+    """확정된 피해 사실이 없을 때(전부 NO/UNKNOWN) 질문 문장으로 근거를 찾는다. (질문 답변 API 전용)
+    중고거래 등 환급법 대상이 아닌 유형이면 지급정지·환급 절차 문단은 빼요."""
+    k = min(k, MAX_REFERENCES)
+    vecs, refs, _ = load()
+    text = f"{question}. 사기 유형 {fraud_type}" if fraud_type else question
+    q = np.array(embed([text], task="RETRIEVAL_QUERY")[0], dtype=np.float32)
+    q /= np.linalg.norm(q) + 1e-12
+    sims = vecs @ q
+    scored = []
+    for i, r in enumerate(refs):
+        if fraud_type in NON_TELECOM_TYPES and r["code"].startswith(REFUND_ONLY_PREFIXES):
+            continue
+        bonus = KIND_BONUS.get(r.get("content_kind") or "general", 0)
+        if fraud_type and fraud_type in r.get("fraud_types", []):
+            bonus += 0.04  # 질문 검색은 '무엇을 묻는지'가 우선이라 유형 가산점은 작게
+        scored.append((float(sims[i]) + bonus, r))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [{"code": r["code"], "title": r["title"], "excerpt": r["excerpt"]} for _, r in scored[:k]]
+
+
+def references_by_code(codes: list[str]) -> list[dict]:
+    """정해진 code 의 근거 문단을 그대로 꺼낸다 (질문 주제별로 꼭 넣을 근거용)."""
+    _, refs, _ = load()
+    by_code = {r["code"]: r for r in refs}
+    return [{"code": c, "title": by_code[c]["title"], "excerpt": by_code[c]["excerpt"]} for c in codes if c in by_code]

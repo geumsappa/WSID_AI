@@ -6,13 +6,14 @@ from fastapi.exceptions import RequestValidationError
 
 from app.api_errors import AiApiError, handle_ai_error, handle_validation
 from app.config import settings
-from app.routers import ocr, sim
+from app.routers import ocr, sim, solutions
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(title="sim-ai-server (어떡하지 AI 서버)", version="0.1.0")
 app.include_router(sim.router)
 app.include_router(ocr.router)
+app.include_router(solutions.router)
 app.add_exception_handler(AiApiError, handle_ai_error)
 app.add_exception_handler(RequestValidationError, handle_validation)
 

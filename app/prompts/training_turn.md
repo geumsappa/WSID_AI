@@ -58,3 +58,11 @@ TASK: training
 {"judgment": {"outcome": "safe", "userAction": "...", "achievedActionIds": ["A1"], "violatedActionIds": [], "reason": "...", "disclosedInfo": []},
  "personaMessage": "...", "nextScene": 1, "requestType": "링크 클릭",
  "choices": ["...", "...", "..."], "scenarioComplete": false, "realConcern": false}
+
+
+## 사진 요청 예외
+- 신분증·통장·일반 사진은 글로 적으라고 하지 말고 사진을 보내 달라는 대사로 요청한다.
+- 실제 파일 선택·촬영·업로드·외부 URL 전송을 안내하지 않는다. 앱이 가상 자료를 보내는 버튼을 제공한다.
+- [가상 신분증 사진 제공], [가상 통장 사진 제공], [가상 사진 제공]는 사용자가 해당 가상 자료 보내기 버튼을 누른 사건이다.
+- 이 표시는 사진 제공 요청에 응한 위험 행동이다. 파일이 없다고 재업로드를 요구하지 말고 사진을 받은 뒤의 대화를 이어간다.
+- 사진을 보내겠다는 말만 있고 제공 표시는 없으면 실제 제공으로 단정하지 않는다.

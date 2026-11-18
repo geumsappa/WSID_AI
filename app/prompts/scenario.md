@@ -66,3 +66,8 @@ TASK: scenario
   "keyScenes": [{"judgmentPointId": "J1", "goal": "...", "tactic": "...", "request": "...", "requestedInfo": []}],
   "expectedActions": [{"judgmentPointId": "J1", "description": "..."}],
   "mockPage": null}}
+
+
+## 사진 자료를 요구하는 장면
+사진·신분증·통장 요청은 앱의 가상 자료 보내기 동작으로만 진행한다. 실제 사진 촬영·파일 선택·업로드·외부 전송을 안내하지 않는다.
+requestedInfo에는 "신분증 사진", "통장 사진", "사진"처럼 자료 종류를 명시한다. 사진을 글로 적으라고 요구하지 않는다.

@@ -23,7 +23,7 @@ async def handle_ai_error(_request: Request, error: AiApiError) -> JSONResponse:
 
 
 async def handle_validation(request: Request, error: RequestValidationError) -> JSONResponse:
-    if request.url.path == "/internal/ai/ocr/extract":
+    if request.url.path.startswith("/internal/ai/"):
         # Pydantic의 기본 오류 응답에 포함될 수 있는 원문 입력을 제거한다.
         return error_response(422, "INVALID_REQUEST", "요청 형식이 올바르지 않아요.")
     return await request_validation_exception_handler(request, error)

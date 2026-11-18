@@ -61,11 +61,16 @@ def run_explain(facts, verified_references: list[dict]) -> dict:
 
 
 def _references(facts: dict, question: str, fraud_type: str | None) -> list[dict]:
+    # 사실로 찾은 근거(상황에 맞는 대응)와 질문으로 찾은 근거(묻는 내용: 신고 후 절차, 배상명령 등)를 섞어요.
     try:
-        refs = find_references(facts, fraud_type, k=5)
-        if not refs:  # 확정된 피해 사실이 없으면 질문 문장으로 찾음
-            refs = find_by_question(question, fraud_type, k=5)
-        return refs
+        by_facts = find_references(facts, fraud_type, k=4)
+        by_question = find_by_question(question, fraud_type, k=4)
+        refs, seen = [], set()
+        for r in by_question[:3] + by_facts + by_question[3:]:
+            if r["code"] not in seen:
+                seen.add(r["code"])
+                refs.append(r)
+        return refs[:6]
     except SystemExit as e:  # rag.index.load: 인덱스 없음·임베딩 설정 불일치
         raise AiUnavailable(str(e)) from e
     except Exception as e:  # noqa: BLE001  임베딩 호출 실패

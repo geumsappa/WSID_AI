@@ -1,0 +1,13 @@
+{
+  "phase": "PLAN",
+  "question": null,
+  "questionIntent": "DEVICE_SAFETY",
+  "facts": {
+    "transferredMoney": "YES",
+    "sharedInformation": "NO",
+    "installedApp": "YES",
+    "contactContinues": "UNKNOWN"
+  },
+  "askedFactKeys": ["installedApp"],
+  "remainingClarifications": 2
+}

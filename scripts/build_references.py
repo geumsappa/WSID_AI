@@ -50,6 +50,7 @@ def main():
             refs.append({
                 # ---- AI-07 요청에 그대로 들어가는 3개 필드
                 "code": to_code(c["chunk_id"], a.version),
+                "version": str(a.version),  # assist PLAN 후보 식별자 (AI-07에는 보내지 않음)
                 "title": title,
                 "excerpt": excerpt[:MAX_EXCERPT],
                 # ---- 검색·관리용 (AI-07 요청에는 안 보냄)

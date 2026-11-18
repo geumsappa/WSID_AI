@@ -1,5 +1,23 @@
 # WSID_AI (어떡하지 AI 서버, FastAPI)
 
+## AI-01 Spring 연동 계약
+
+상황 파악 API는 노션 명세의 요청 필드인 `conversation`, `knownFacts`, `currentInput`을 받습니다. conversation의 각 항목은 `sender`, `content`를 사용하고 `phase`는 선택입니다.
+응답은 `{"success":true,"data":{"facts":{},"nextQuestion":"...","canGenerateScenario":false}}` 형식입니다.
+기존 AI의 추출 사실 목록은 facts 내부의 `extractedFacts`에 누적하고 기존 knownFacts도 유지합니다. sessionId는 이 API의 필수 입력이 아닙니다.
+AI-03도 `facts`, `fraudTypeCode`를 받아 `scenario`, `mockPageTemplateCode`를 반환합니다. scenario에는 Spring용 description과 기존 AI 로직이 재사용할 전체 시나리오를 함께 담습니다.
+AI-04는 `scenario`, `messages`, `userInput`, `turnCount`를 받아 `reply`, `recognizedActions`, `shouldFinish`, `mockPage`를 반환합니다.
+AI-05는 `scenario`, `conversation`, `actions`를 받아 RPT 평가 필드를 반환합니다. 모의 화면 판정은 전달된 행동 코드로 계산하며, 턴별 피드백은 현재 Spring 계약에 맞춰 빈 배열입니다.
+세 API 모두 success/data 응답을 사용합니다. 기존 서비스 함수의 직접 호출 인터페이스는 유지됩니다.
+
+장면 번호는 AI-04의 현 명세에 없어 마지막 상대 대사의 요구 정보로 추정합니다. 정확한 장면 이어하기가 필요하면 Spring이 현재 장면을 보관해 전달하는 계약을 합의해야 합니다.
+AI-05의 현 요청에는 턴별 행동 판정 이력이 없어, 설명은 전달된 대화와 모의 페이지 행동만 바탕으로 생성합니다. 이전 세부 판정을 완전히 재현해야 한다면 평가 요청에 포함할 기록을 추가 합의해야 합니다.
+
+
+AI-02(`POST /internal/ai/ocr/extract`)는 이 FastAPI 앱의 훈련용 OCR API예요. Tesseract와 한국어·영어 언어 데이터를 설치하고, Spring과 같은 `AI_API_KEY`를 설정해 `X-Internal-Api-Key` 헤더로 호출해요.
+
+요청은 multipart `images`이며 PNG/JPEG 최대 3장, 장당 5MB까지 받을 수 있어요. 원본은 별도로 저장하지 않아요. 성공 응답은 `{"success":true,"data":{"recognizedText":"...","usable":true}}`예요. 읽은 문자에 민감정보나 연락처·링크 패턴이 있으면 원문 없이 `usable:false`를 반환해요.
+
 훈련(시뮬레이션) 흐름 5단계 중 지금 들어있는 것:
 
 | 단계 | 기능 | API | 상태 |

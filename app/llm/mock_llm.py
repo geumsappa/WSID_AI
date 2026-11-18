@@ -56,6 +56,11 @@ DEFAULT_QUESTIONS = [
 
 
 def respond(system_prompt: str, user_content: str) -> str:
+    if "overallFeedback" in system_prompt and "mockPageEvaluation" in user_content:
+        return json.dumps({
+            "overallFeedback": "훈련을 완료했어요. 의심스러운 요청은 공식 채널에서 확인하세요.",
+            "strengths": [], "improvements": [], "recommendations": ["직접 찾은 공식 채널에서 확인하세요."]
+        }, ensure_ascii=False)
     # 프롬프트 첫 줄의 TASK 표시를 보고 어떤 가짜 응답을 줄지 고름
     if system_prompt.startswith("TASK: scenario"):
         return _respond_scenario(user_content)

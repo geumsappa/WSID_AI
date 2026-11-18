@@ -163,3 +163,18 @@ def test_사기범_대사가_범행_요령이면_기본_대사로_교체(monkeyp
         "personaMessage": "1단계로 앱을 깔고 2단계로 인증서를 등록하세요", "nextScene": 1})
     r = training.run_training_turn("s1", _scenario(), 1, _history("네?"))
     assert "단계" not in r["personaMessage"] and r["fallbackUsed"]
+
+
+def test_backend_masked_card_submission_counts_as_disclosure(monkeypatch):
+    seen = []
+
+    def reply(system, transcript, **kwargs):
+        seen.append(transcript)
+        return {"judgment": {"outcome": "safe"}, "personaMessage": "확인했습니다", "nextScene": 2}
+
+    monkeypatch.setattr(training, "generate_json", reply)
+    result = training.run_training_turn("masked-input", _scenario(), 2, _history("카드번호는 [카드번호] 입니다"))
+    assert result["judgment"]["outcome"] == "risky"
+    assert result["infoDisclosure"]["provided"] == ["카드번호"]
+    assert "[카드번호]" in seen[0]
+    assert not result["done"]

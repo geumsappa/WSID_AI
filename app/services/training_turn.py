@@ -64,6 +64,12 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     masked_last, provided = mask_sensitive(history[-1]["text"])
     masked_last, numeric = mask_requested_numbers(masked_last, asked_info)
     provided += [n for n in numeric if n not in provided]
+    # Spring masks values before HTTP transmission/storage. Keep the disclosure event
+    # even when this service receives only a type marker instead of the original number.
+    marker_types = ("주민등록번호", "카드번호", "전화번호", "계좌번호", "이메일",
+                    "비밀번호", "인증정보", "민감정보")
+    provided += [label for label in marker_types
+                 if f"[{label}]" in history[-1]["text"] and label not in provided]
 
     # 3) LLM 호출
     used_fallback = False

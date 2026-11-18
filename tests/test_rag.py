@@ -6,7 +6,12 @@ from pathlib import Path
 os.environ["RAG_FAKE"] = "1"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from rag import index  # noqa: E402
+import tempfile  # noqa: E402
+
+from rag import config, index  # noqa: E402
+
+# 가짜 임베딩 인덱스는 임시 폴더에 만들어요. data/index(실제 Gemini 인덱스)를 덮어쓰지 않게요.
+config.INDEX_DIR = Path(tempfile.mkdtemp(prefix="rag_test_index_"))
 from rag.explain import ExplainError, explain, validate_result  # noqa: E402
 from rag.guard import has_forbidden, strip_contact_sentences  # noqa: E402
 from rag.retrieve import find_references  # noqa: E402

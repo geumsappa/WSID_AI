@@ -264,10 +264,13 @@ LLM이 설명 글만 작성: 한 줄 요약, 총평, 턴별 피드백, 놓친 �
 | ② | AI-03 | `POST /internal/ai/scenarios/generate` | TRN-06 개인화 시나리오 생성 | ①이 `done: true`일 때 1번 | 60초 (로딩 화면) |
 | ③ | AI-04 | `POST /internal/ai/simulation/reply` | TRN-07 훈련 시작(첫 메시지), TRN-08 AI 훈련 메시지 | 훈련 대화에서 사용자가 답할 때마다 | 25초 |
 | ⑤ | AI-05 | `POST /internal/ai/training/evaluate` | TRN-11 훈련 종료 및 리포트 생성 | 훈련이 끝났을 때 1번 | 60초 (로딩 화면) |
+| 피해 대응 | AI-06 | `POST /internal/ai/solutions/extract` | SOL-01 상담 시작, SOL-03 상황 설명 | 사용자가 상황을 설명할 때 | 25초 |
+| 피해 대응 | AI-07 | `POST /internal/ai/solutions/explain` | SOL-01·03·04 (대응 카드 확정 후) | 카드가 정해진 뒤 설명이 필요할 때 | 25초 |
+| 피해 대응 | 가안 | `POST /internal/ai/solutions/answer` | SOL-03 질문(QUESTION)·되물음 답변(CLARIFICATION_ANSWER) | 사용자가 질문할 때 | 25초 |
 | - | - | `GET /health` | - | 서버 상태 확인 (Docker 등) | - |
 
 - **AI-02 이미지 OCR**(`/internal/ai/ocr/extract`)은 아직 이 서버에 없어요.
-- **AI-06·AI-07 피해 대응**(`/internal/ai/solutions/*`)도 아직 없어요. 같은 서버에 추가할 예정이면 `/internal/ai` 아래에 붙이면 돼요.
+- **피해 대응 API**(`/internal/ai/solutions/*`)는 아래 [피해 대응 API](#피해-대응-api-spring-연동) 절을 보세요. 근거 인덱스(`python -m rag.index`)를 먼저 만들어야 해요.
 - TRN-10 모의 페이지 행동 기록은 Spring이 저장만 하고, 훈련 종료 때 AI-05 요청의 `mockPageEvents`로 넘기면 돼요.
 
 모든 JSON 필드는 camelCase예요. 전체 필드 설명은 서버를 켜고 `/docs`에서도 볼 수 있어요.
@@ -521,11 +524,45 @@ Spring이 할 일
 
 ## 피해 대응 RAG
 
-RAG는 별도 데모 명령으로 실행합니다. FastAPI 경로 연결은 후속 작업입니다.
+긴급대응(피해 대응)의 RAG 모듈(`rag/`)과 이를 감싼 FastAPI 주소(`app/routers/solutions.py`)가 들어 있어요.
 
-금사빠_어떡하지 AI 저장소. 지금은 **긴급대응 AI-07(피해 대응 근거 설명)의 RAG 핵심 모듈**이 들어 있어요.
-서버(FastAPI)는 아직 없습니다. 백엔드 OHC 브랜치의 `docs/ai-07-solution-explain-plan.md` 기준으로
-FastAPI는 2차 작업이고, 지금은 그때 그대로 감쌀 수 있는 **검색·설명 함수와 근거 문단 데이터**를 먼저 만듭니다.
+### 피해 대응 API (Spring 연동)
+
+서버 켜기 전에 근거 인덱스를 한 번 만들어 두세요: `python -m rag.index` (키 없이 확인만 할 땐 `.env`에 `RAG_FAKE=1`).
+인덱스가 없거나 Gemini가 실패하면 **503**을 돌려줘요. Spring은 이때 AI 문장 없이 대응 카드만 보여 주면 돼요.
+입력 형식이 틀리면 400/422예요. 모든 필드는 camelCase, 전체 설명은 `/docs`에서 볼 수 있어요.
+
+**AI-06 `POST /internal/ai/solutions/extract`** — 상황 설명 → 사실 4개
+```json
+요청 {"description": "당근에서 중고거래로 50만원 송금했는데 판매자가 연락두절됐어요"}
+응답 {"facts": {"transferredMoney": "YES", "contactContinues": "UNKNOWN", "sharedInformation": "UNKNOWN", "installedApp": "UNKNOWN"},
+      "uncertainFields": ["contactContinues", "sharedInformation", "installedApp"],
+      "fraudType": "SECONDHAND_TRADE"}
+```
+- `fraudType`은 계약 추가 제안이에요. Spring이 저장해 두었다가 질문 답변 API에 넘기면, 중고거래에 "지급정지·환급"을 잘못 안내하는 걸 막아요.
+- 설명은 AI 서버에서도 개인정보를 한 번 더 가린 뒤 Gemini에 보내요.
+
+**AI-07 `POST /internal/ai/solutions/explain`** — 사실 + 검토된 근거 → 설명 (기존 Spring 계약 그대로)
+```json
+요청 {"facts": {...}, "verifiedReferences": [{"code": "REF_...", "title": "...", "excerpt": "..."}]}
+응답 {"explanation": "...", "referenceCodes": ["REF_..."]}
+```
+
+**질문 답변(가안) `POST /internal/ai/solutions/answer`** — 백엔드 초안(11/17)의 `assistant`(AI 질문·답변)용
+```json
+요청 {"facts": {...}, "question": "경찰에 신고했는데 이제 뭘 하면 돼요?", "fraudType": "SECONDHAND_TRADE", "verifiedReferences": null}
+응답 {"status": "ANSWERED", "answer": "...", "referenceCodes": ["REF_..."], "references": [{...}],
+      "clarifyFactKey": null, "clarifyQuestion": null}
+```
+| status | 뜻 | Spring이 할 일 |
+|---|---|---|
+| `ANSWERED` | `answer`가 답변 | AI-07과 같은 규칙으로 검증 후 `assistant.answer`로 내려주기 |
+| `NEED_USER_INPUT` | 답에 꼭 필요한 사실이 UNKNOWN (예: 송금 여부를 모르는데 환급을 물음) | `questionId`를 만들고 `clarifyQuestion`을 `nextQuestion.content`로. 사용자가 답하면 사실을 고친 뒤 **원래 질문으로 다시 호출** |
+| `UNABLE_TO_ANSWER` | 범위 밖(투자·코인 추천 등)이거나 맞는 근거가 없음 | 답변 불가 안내 + 대응 카드 |
+
+- `verifiedReferences`를 보내면 그 근거 안에서만 답하고, `null`이면 AI 서버가 `references.jsonl`에서 찾아요(확정된 사실이 없으면 질문 문장으로 검색).
+- 응답의 `references`는 AI에 넘긴 근거 전체예요. `referenceCodes`가 이 안에 있는지 Spring이 확인할 수 있어요.
+- 이름(`/answer`)과 필드는 가안이라 백엔드와 확정이 필요해요.
 
 ### 전체 흐름에서 이 레포가 맡는 부분
 
@@ -585,7 +622,7 @@ python try_rag.py --money YES --type SECONDHAND_TRADE --debug
 python ask.py
 ```
 상황을 문장으로 입력하면 사실 추출(AI-06 데모, `rag/extract.py`) → 긴급 카드 → 근거 검색 → 질문 답변(`rag/qa.py`) 순서로 진행돼요.
-**AI-07 계약은 사용자 원문을 받지 않기 때문에** 질문 답변은 체험용이에요. 실제 서비스에 넣으려면 질문 필드 추가나 별도 API를 백엔드와 합의해야 해요.
+서비스에서는 위 질문 답변 API(`/internal/ai/solutions/answer`)가 같은 기능을 해요.
 
 ### 폴더
 
@@ -597,6 +634,8 @@ python ask.py
 | `rag/` | `config` 설정 · `guard` 연락처/링크 금지 규칙 · `facts` 사실→상황 코드 · `gemini` API 호출 · `index` 인덱스 · `retrieve` 검색 · `explain` 설명 생성·검증 |
 | `scripts/` | `hana_fraud_crawler.py` PDF 수집 → `parse_pdfs.py` 청크 → `merge_corpus.py` 병합 → `build_references.py` 근거 문단 |
 | `tests/test_rag.py` | 키 없이 도는 테스트 (Spring 금지 규칙과 같은지, 코드 대조, 파이프라인) |
+| `app/routers/solutions.py` · `app/services/solution.py` · `app/schemas/solution.py` | 피해 대응 API (AI-06·AI-07·질문 답변) |
+| `tests/test_solutions.py` | 피해 대응 API 테스트 (키 없이 가짜 모드) |
 
 ### 근거 문단 규칙 (Spring 계약)
 

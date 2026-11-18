@@ -149,6 +149,8 @@ class Scenario(CamelModel):
     persona: Persona
     background: str = Field(description="훈련 시작 시 사용자에게 보여줄 상황 설명")
     opening_message: str = Field(description="가상 인물의 첫 메시지 (훈련 채팅 첫 말풍선)")
+    allowed_organizations: list[str] = Field(default_factory=list, max_length=50,
+                                           description="입력 사실에서 확인해 이 훈련에 허용한 기관명")
     key_scenes: list[KeyScene]
     expected_actions: list[ExpectedAction]
     mock_page: str | None = Field(description="금융 | 공공민원 | 채용 | null")

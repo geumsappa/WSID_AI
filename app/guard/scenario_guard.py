@@ -69,11 +69,21 @@ def find_copycat_risk(text: str) -> list[str]:
     return problems
 
 
-def find_unsafe_text(text: str) -> list[str]:
+def mentioned_organizations(facts: list[dict]) -> list[str]:
+    """Only names present in input facts may be reused in the fictional role-play."""
+    text = " ".join(str(fact.get(key) or "") for fact in facts for key in ("detail", "impersonatedIdentity"))
+    return [name for name in REAL_NAMES if (re.search(r"(?<![A-Za-z])" + re.escape(name) + r"(?![A-Za-z])", text)
+            if name.isascii() else name in text)]
+
+
+def find_unsafe_text(text: str, allowed_organizations: list[str] | None = None) -> list[str]:
     """실제 사기에 악용될 수 있는 내용을 찾는다."""
     problems = []
+    organization_text = text
+    for allowed in sorted(set(allowed_organizations or []) & set(REAL_NAMES), key=len, reverse=True):
+        organization_text = organization_text.replace(allowed, "")
     for name in REAL_NAMES:
-        if name in text:
+        if name in organization_text:
             problems.append(f"실존 이름 사용: {name}")
     if URL_PATTERN.search(text):
         problems.append("실제 URL 형태 포함 ([모의링크]만 허용)")
@@ -97,7 +107,7 @@ def _s(value, limit: int = 300) -> str:
     return str(value or "").strip()[:limit]
 
 
-def validate_and_normalize(data: dict) -> tuple[dict | None, list[str]]:
+def validate_and_normalize(data: dict, allowed_organizations: list[str] | None = None) -> tuple[dict | None, list[str]]:
     """LLM 결과를 검사하고, 통과하면 깔끔하게 정리한 dict 를 돌려준다.
 
     반환: (정리된 결과 또는 None, 문제 목록)
@@ -233,11 +243,12 @@ def validate_and_normalize(data: dict) -> tuple[dict | None, list[str]]:
 
     # ---- 악용 가능 내용 검사 (시나리오 전체 글자 대상) ----
     all_text = " ".join(_all_texts({k: v for k, v in scenario.items() if k != "basedOnCases"}))
-    errors += find_unsafe_text(all_text)
+    errors += find_unsafe_text(all_text, allowed_organizations)
     errors += find_copycat_risk(all_text)
     if any(w in all_text for w in VOICE_WORDS):
         errors.append("보이스피싱(전화) 요소 포함")
 
     if errors:
         return None, errors
+    scenario["allowedOrganizations"] = [name for name in (allowed_organizations or []) if name in REAL_NAMES]
     return {"analysis": analysis, "scenario": scenario}, []

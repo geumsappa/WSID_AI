@@ -3,6 +3,10 @@ import json
 from pydantic import ValidationError
 
 from app.api_errors import AiApiError
+from app.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 from app.guard.scenario_guard import PHONE_PATTERN, URL_PATTERN
 from app.guard.sensitive import mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
@@ -49,21 +53,33 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
     # Spring은 제목·설명과 함께 전체 시나리오를 보관하고 다음 AI 요청에 재사용한다.
     generated["description"] = generated["background"]
     return ScenarioResult(scenario=generated,
-                          mockPageTemplateCode="BANK_NOTICE" if generated.get("mockPage") == "금융" else None)
+                          mockPageTemplateCode="BANK_NOTICE" if (generated.get("mockPage") is not None
+                              or "[모의링크]" in generated.get("openingMessage", "")
+                              or any(scene.get("request") in ("링크 클릭", "앱 설치") for scene in generated["keyScenes"])) else None)
 
 
 def simulation(request: SimulationRequest) -> SimulationResult:
     data = _scenario(request.scenario)
-    history = [{"role": "user" if message.sender == "USER" else "persona", "text": message.content}
-               for message in request.messages if message.sender != "SYSTEM"]
+    known_events = {"[훈련 행동: 본인 확인 정보 제출 완료]", "[훈련 행동: 공식 경로 확인]"}
+    history = [{"role": "event" if message.sender == "SYSTEM" else "user" if message.sender == "USER" else "persona",
+                "text": message.content} for message in request.messages
+               if message.sender != "SYSTEM" or message.content in known_events]
+    submitted = any(message["role"] == "event" and message["text"] == "[훈련 행동: 본인 확인 정보 제출 완료]" for message in history)
+    last_ai = max((index for index, message in enumerate(history) if message["role"] == "persona"), default=-1)
+    fresh_submission = any(message["role"] == "event" and message["text"] == "[훈련 행동: 본인 확인 정보 제출 완료]"
+                           for message in history[last_ai + 1:])
     history.append({"role": "user", "text": request.userInput})
     # 현재 Spring 계약에는 장면 ID가 없어서 마지막 상대 대사를 생성 장면의 요청과 대조한다.
     last_persona = next((message["text"] for message in reversed(history) if message["role"] == "persona"), "")
-    scene = 1
-    for candidate in data["keyScenes"]:
-        requested = candidate.get("requestedInfo") or []
-        if requested and any(info in last_persona for info in requested):
-            scene = candidate["order"]
+    scene = request.currentScene or 1
+    if request.currentScene is None:
+        for candidate in data["keyScenes"]:
+            requested = candidate.get("requestedInfo") or []
+            if requested and any(info in last_persona for info in requested):
+                scene = candidate["order"]
+    if submitted and (fresh_submission or request.currentScene is None):
+        scene = min(scene + 1, max(1, len(data["keyScenes"])))
+    data["completedPageSubmission"] = submitted
     result = run_training_turn("simulation", data, scene, history)
     actions = []
     judgment = result.get("judgment") or {}
@@ -73,9 +89,23 @@ def simulation(request: SimulationRequest) -> SimulationResult:
         actions.append("RISKY_RESPONSE")
     if result.get("infoDisclosure", {}).get("provided"):
         actions.append("SENSITIVE_INFO_SHARED")
-    page = BANK_PAGE if data.get("mockPage") == "금융" and result.get("requestType") == "링크 클릭" else None
-    return SimulationResult(reply=result["personaMessage"], recognizedActions=actions,
-                            shouldFinish=result["done"] or request.turnCount >= data["maxTurns"], mockPage=page)
+    if fresh_submission:
+        actions = [action for action in actions if action != "SAFE_RESPONSE"]
+        actions = list(dict.fromkeys([*actions, "RISKY_RESPONSE", "SENSITIVE_INFO_SHARED", "MOCK_LOGIN_ATTEMPT"]))
+    has_link = result.get("requestType") in ("링크 클릭", "앱 설치") or "[모의링크]" in result["personaMessage"]
+    page = BANK_PAGE if has_link and not result["done"] and not submitted else None
+    reply = result["personaMessage"]
+    if submitted and has_link:
+        # A generated instruction to repeat the same form is invalid once its submission is recorded.
+        current = data["keyScenes"][min(scene - 1, len(data["keyScenes"]) - 1)] if data["keyScenes"] else {}
+        from app.services.training_turn import _fallback_line
+        reply = ("확인 정보가 접수되었습니다. 다음 안내를 이어가겠습니다." if current.get("request") in ("링크 클릭", "앱 설치")
+                 else "확인 정보가 접수되었습니다. " + _fallback_line(current, current.get("request", "대화 지속")))
+    if page is not None and "[모의링크]" not in reply:
+        reply += " [모의링크]"
+    return SimulationResult(reply=reply, recognizedActions=actions,
+                            shouldFinish=result["done"] or request.turnCount >= data["maxTurns"], mockPage=page,
+                            nextScene=min(max(scene, result.get("currentScene", scene)), max(1, len(data["keyScenes"]))))
 
 
 def evaluate(request: EvaluationRequest) -> EvaluationResult:
@@ -99,7 +129,7 @@ SEND_MOCK_ID_CARD, SEND_MOCK_BANKBOOK, SEND_MOCK_PHOTO는 훈련 중 사진 제�
                           "mockPageEvaluation": page.model_dump(),
                           "actions": [{"actionCode": code} for code in sorted(actions)]}, ensure_ascii=False)
     try:
-        raw = generate_json(system, content, max_tokens=1500, attempts=1)
+        raw = generate_json(system, content, max_tokens=1500, timeout=settings.evaluation_timeout_seconds, attempts=1)
         result = EvaluationResult(
             overallFeedback=raw["overallFeedback"], strengths=raw["strengths"],
             improvements=raw["improvements"], recommendations=raw["recommendations"],
@@ -116,5 +146,6 @@ SEND_MOCK_ID_CARD, SEND_MOCK_BANKBOOK, SEND_MOCK_PHOTO는 훈련 중 사진 제�
                              for code, subject in photo_actions.items() if code in actions]
         result.improvements = list(dict.fromkeys([*required_feedback, *result.improvements]))[:10]
         return result
-    except (LLMError, KeyError, TypeError, ValueError):
+    except (LLMError, KeyError, TypeError, ValueError) as error:
+        logger.warning("Training evaluation failed: type=%s", type(error).__name__)
         raise AiApiError(503, "AI_SERVICE_UNAVAILABLE", "훈련 평가를 생성하지 못했어요.") from None

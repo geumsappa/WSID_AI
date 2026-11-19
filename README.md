@@ -3,7 +3,7 @@
 ## 빠른 실행
 
 ```bash
-cp .env.example .env      # AI_API_KEY(Spring과 같은 값), GEMINI_API_KEY 등 입력
+cp .env.example .env      # GEMINI_API_KEY 입력. AI_API_KEY는 Spring과 같은 값(로컬 기본 local-dev-key)
 pip install -r requirements.txt
 python -m rag.index       # 피해 대응 근거 인덱스. 없으면 solutions API가 503
 python -m uvicorn app.main:app --port 8000

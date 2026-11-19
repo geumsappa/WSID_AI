@@ -38,9 +38,9 @@ AI-04는 선택 입력 `currentScene`과 응답 `nextScene`으로 장면을 이�
 AI-05의 현 요청에는 턴별 행동 판정 이력이 없어, 설명은 전달된 대화와 모의 페이지 행동만 바탕으로 생성합니다. 이전 세부 판정을 완전히 재현해야 한다면 평가 요청에 포함할 기록을 추가 합의해야 합니다.
 
 
-AI-02(`POST /internal/ai/ocr/extract`)는 이 FastAPI 앱의 훈련용 OCR API예요. Tesseract와 한국어·영어 언어 데이터를 설치하고, Spring과 같은 `AI_API_KEY`를 설정해 `X-Internal-Api-Key` 헤더로 호출해요.
+AI-02(`POST /internal/ai/ocr/extract`)는 피해 대응 사진에서 텍스트를 읽는 내부 API예요. 기본 엔진은 서버 시작 시 로드하는 PaddleOCR 한국어 모델이며 `OCR_ENGINE=tesseract`로 전환할 수 있어요. Spring과 같은 `AI_API_KEY`를 설정해 `X-Internal-Api-Key` 헤더로 호출해요. 인식 원문과 사진 유형·요약을 반환하며 Gemini에는 정규식으로 가린 텍스트를 보내요.
 
-요청은 multipart `images`이며 PNG/JPEG 최대 3장, 장당 5MB까지 받을 수 있어요. 원본은 별도로 저장하지 않아요. 성공 응답은 `{"success":true,"data":{"recognizedText":"...","usable":true}}`예요. 읽은 문자에 민감정보나 연락처·링크 패턴이 있으면 원문 없이 `usable:false`를 반환해요.
+요청은 multipart `images`이며 PNG/JPEG 최대 3장, 장당 5MB까지 받을 수 있어요. 원본은 별도로 저장하지 않아요. 성공 응답에는 `recognizedText`, `usable`, `imageType`, `summary`가 들어가요. 인식 원문에는 민감정보가 포함될 수 있어 Spring에서도 저장·로그 정책을 적용해야 해요. 분류가 실패하거나 시간 제한에 걸리면 `imageType`은 `OTHER`, `summary`는 `null`이에요. 글자를 못 읽으면 기존처럼 `OCR_FAILED`를 반환해요.
 
 훈련(시뮬레이션) 흐름 5단계 중 지금 들어있는 것:
 
@@ -311,7 +311,7 @@ LLM이 설명 글만 작성: 한 줄 요약, 총평, 턴별 피드백, 놓친 �
 | 피해 대응 | 가안 | `POST /internal/ai/solutions/answer` | SOL-03 질문(QUESTION)·되물음 답변(CLARIFICATION_ANSWER) | 사용자가 질문할 때 | 25초 |
 | - | - | `GET /health` | - | 서버 상태 확인 (Docker 등) | - |
 
-- **AI-02 이미지 OCR**(`/internal/ai/ocr/extract`)은 아직 이 서버에 없어요.
+- **AI-02 이미지 OCR**(`/internal/ai/ocr/extract`)은 사진에서 텍스트를 추출해요.
 - **피해 대응 API**(`/internal/ai/solutions/*`)는 아래 [피해 대응 API](#피해-대응-api-spring-연동) 절을 보세요. 근거 인덱스(`python -m rag.index`)를 먼저 만들어야 해요.
 - TRN-10 모의 페이지 행동 기록은 Spring이 저장만 하고, 훈련 종료 때 AI-05 요청의 `mockPageEvents`로 넘기면 돼요.
 

@@ -38,19 +38,22 @@ def test_scenario_uses_fact_allowlist_instead_of_model_declared_allowlist():
     assert validate_and_normalize(output, ["기업은행"])[0] is None
 
 
-def test_generation_keeps_user_organization_and_stores_allowed_names(monkeypatch):
-    captured = []
 
-    def generate(system, content, **kwargs):
-        captured.append(system)
-        return scenario_output("채용·아르바이트 사기")
 
-    monkeypatch.setattr(scenario_service, "generate_json", generate)
-    result = scenario_service.run_scenario("context", [{"category": "구직·아르바이트", "detail": "기업은행 역량검사를 봤어요"}])
-    assert not result["fallback_used"]
-    assert result["scenario"]["persona"]["organization"] == "기업은행"
+def test_generation_keeps_grounded_organization(pipeline_model, graph_data, plan_data, generation_data):
+    from app.case_db import case_ids_for_subtype
+    graph_data["events"][0].update(actorId="actor_user", action="역량검사를 봄", object="기업은행")
+    graph_data["entities"][1].update(label="기업은행", kind="ORGANIZATION")
+    graph_data["evidence"][0]["quote"] = "기업은행 역량검사를 봤어요"
+    plan_data.update(fraudSubtype="채용·아르바이트 사기", channel="이메일", caseIds=case_ids_for_subtype("채용·아르바이트 사기")[:1])
+    plan_data["anchorClaims"][0]["actorId"] = "actor_user"
+    generation_data.clear()
+    generation_data.update(scenario_output("채용·아르바이트 사기"))
+    generation_data["scenario"].update(channel="이메일", basedOnCaseIds=plan_data["caseIds"])
+    generation_data["preservedClaims"] = copy.deepcopy(plan_data["anchorClaims"])
+    result = scenario_service.run_scenario("s", [{"detail": "기업은행 역량검사를 봤어요"}])
     assert "기업은행" in result["scenario"]["allowedOrganizations"]
-    assert "사용자가 언급해 재사용할 수 있는 기관명: 기업은행" in captured[0]
+    assert result["scenario"]["persona"]["organization"] == "기업은행"
 
 
 def test_followup_dialogue_keeps_allowed_organization(monkeypatch):

@@ -28,6 +28,17 @@ def score_facts(facts, ready, expected, questions):
         checks["fact_category"] = any(f.get("category") == expected["category"] for f in extracted)
     if "code" in expected:
         checks["fact_type"] = facts.get("fraudTypeCode") == expected["code"]
+    if "acceptableCodes" in expected:
+        checks["fact_type"] = facts.get("fraudTypeCode") in expected["acceptableCodes"]
+    graph = facts.get("contextGraph") or {}
+    events = graph.get("events", [])
+    evidence = {item["id"]: item["quote"] for item in graph.get("evidence", [])}
+    for index, expectation in enumerate(expected.get("events", [])):
+        matching = [event for event in events if event.get("certainty") == "CONFIRMED"
+                    and any(word in event.get("action", "") for word in expectation["actionAny"])
+                    and any(expectation["evidenceContains"] in evidence.get(key, "") for key in event.get("evidenceIds", []))]
+        checks[f"event_actor:{index}"] = any(event.get("actorId") is not None and
+            ((event["actorId"] == graph.get("userActorId")) is expectation["actorIsUser"]) for event in matching)
     if "ready" in expected:
         checks["readiness"] = ready is expected["ready"]
     if expected.get("no_invented_request"):
@@ -48,7 +59,10 @@ def score_scenario(scenario, expected):
         checks["scenario_schema"] = True
     except ValueError:
         checks["scenario_schema"] = False
-    checks["scenario_type"] = scenario.get("fraudTypeCode") == expected["code"]
+    if "code" in expected:
+        checks["scenario_type"] = scenario.get("fraudTypeCode") == expected["code"]
+    if "acceptableCodes" in expected:
+        checks["scenario_type"] = scenario.get("fraudTypeCode") in expected["acceptableCodes"]
     if "channel" in expected:
         checks["scenario_channel"] = scenario.get("channel") == expected["channel"]
     # Exclude sourceFacts/allowedOrganizations: copying input metadata is not personalization.
@@ -120,6 +134,8 @@ def summarize(rows):
     for metric in metrics.values():
         metric["rate"] = round(metric["passed"] / metric["total"], 4)
     calls = [call for row in rows for call in row["calls"]]
+    llm_calls = [call for row in rows for call in row.get("model_calls", [])]
+    task_names = sorted({call["stage"] for call in llm_calls})
     return {
         "runs": len(rows), "completed": sum(r["error"] is None for r in rows),
         "functional_passes": sum(all(r["checks"].values()) for r in rows),
@@ -129,15 +145,19 @@ def summarize(rows):
         "mean_run_seconds": round(sum(r["seconds"] for r in rows) / len(rows), 3) if rows else None,
         "metrics": dict(metrics), "stages": summarize_stages(calls),
         "run_latency": latency_stats([row["seconds"] for row in rows]),
+        "model_stages": {task: {"calls": sum(call["stage"] == task for call in llm_calls),
+                         "failures": sum(call["stage"] == task and call["status"] == "failed" for call in llm_calls),
+                         "latency": latency_stats([call["seconds"] for call in llm_calls if call["stage"] == task])} for task in task_names},
     }
 
 
 def run_case(case, repeat):
     from app.services import discovery, training_api
+    from app.services import scenario, scenario_planner, fast_discovery
     from app.schemas.discovery import DiscoveryRequest
     from app.schemas.training_api import ScenarioRequest
 
-    row = {"case_id": case["id"], "repeat": repeat, "checks": {}, "calls": [], "turns": [], "scenario": None, "error": None}
+    row = {"case_id": case["id"], "repeat": repeat, "checks": {}, "calls": [], "model_calls": [], "reviews": [], "verified_context": None, "intake_decisions": [], "turns": [], "scenario": None, "error": None}
     facts, conversation, questions, ready = {}, [], [], False
     started = time.perf_counter()
 
@@ -145,11 +165,24 @@ def run_case(case, repeat):
         def wrapped(*args, **kwargs):
             result = original(*args, **kwargs)
             row["calls"][-1]["fallback"] = bool(result.get("fallback_used"))
+            if result.get("contextGraph"):
+                row["verified_context"] = result["contextGraph"]
+            if result.get("review"):
+                row["reviews"].append(result["review"])
+            return result
+        return wrapped
+
+    def observe_model(original):
+        def wrapped(system, content, **kwargs):
+            task = system.splitlines()[0].removeprefix("TASK: ")
+            result = measure_call(row["model_calls"], task, lambda: original(system, content, **kwargs))
+            if task == "intake_plan":
+                row["intake_decisions"].append(scenario_planner.safe_tree(result))
             return result
         return wrapped
 
     try:
-        with patch.object(discovery, "run_context_turn", side_effect=observe(discovery.run_context_turn)), patch.object(training_api, "run_scenario", side_effect=observe(training_api.run_scenario)):
+        with patch.object(discovery, "run_context_turn", side_effect=observe(discovery.run_context_turn)), patch.object(training_api, "run_scenario", side_effect=observe(training_api.run_scenario)), patch.object(scenario_planner, "generate_json", side_effect=observe_model(scenario_planner.generate_json)), patch.object(scenario, "generate_json", side_effect=observe_model(scenario.generate_json)), patch.object(fast_discovery, "generate_json", side_effect=observe_model(fast_discovery.generate_json)):
             for user_input in case["inputs"]:
                 result = measure_call(row["calls"], "discovery", lambda: discovery.discover(
                     DiscoveryRequest(conversation=conversation, knownFacts=facts, currentInput=user_input)))
@@ -159,21 +192,36 @@ def run_case(case, repeat):
                 conversation.append({"sender": "USER", "content": user_input, "phase": "DISCOVERY"})
                 if result.nextQuestion:
                     conversation.append({"sender": "AI", "content": result.nextQuestion, "phase": "DISCOVERY"})
-            row["checks"].update(score_facts(facts, ready, case["expected"], questions))
+            conversational_expected = case["expected"]
+            if facts.get("pipelineVersion") == 2:
+                # Facts/actor gold labels are evaluated only after deferred verification, not from copied input.
+                conversational_expected = {key: value for key, value in case["expected"].items()
+                                           if key in {"ready"}}
+            row["checks"].update(score_facts(facts, ready, conversational_expected, questions))
             row["checks"].update(score_turns(row["turns"], case.get("turn_expectations", [])))
             if case.get("generate_scenario"):
-                # Generation evaluated independently even if readiness was wrong; readiness is scored above.
-                generated = measure_call(row["calls"], "scenario", lambda: training_api.scenario(
-                    ScenarioRequest(facts=facts, fraudTypeCode=case["expected"]["code"])))
-                row["scenario"] = generated.scenario
-                row["checks"].update(score_scenario(generated.scenario, case["expected"]))
+                if ready:
+                    generated = measure_call(row["calls"], "scenario", lambda: training_api.scenario(
+                        ScenarioRequest(facts=facts, fraudTypeCode=facts.get("fraudTypeCode") or case["expected"].get("code", "SMISHING"))))
+                    row["scenario"] = generated.scenario
+                    row["checks"].update(score_scenario(generated.scenario, case["expected"]))
+                    if row["verified_context"] is not None:
+                        from app.schemas.context_graph import ContextGraph
+                        from app.services.context_graph import project_facts
+                        verified = {"contextGraph": row["verified_context"],
+                                    "extractedFacts": project_facts(ContextGraph.model_validate(row["verified_context"])),
+                                    "fraudTypeCode": generated.scenario.get("fraudTypeCode")}
+                        row["checks"].update(score_facts(verified, ready, case["expected"], questions))
+                else:
+                    row["checks"].update({name: False for name in score_scenario({}, case["expected"])})
+                    row["checks"]["generation_ready"] = False
             row["checks"]["execution"] = True
     except Exception as error:
         # Provider messages may contain secrets. Save only the exception class.
         row["error"] = type(error).__name__
         row["checks"]["execution"] = False
         # Errors cannot silently disappear from applicable metric denominators.
-        pending = score_facts({}, False, case["expected"], [])
+        pending = score_facts(facts, ready, case["expected"], questions)
         pending.update(score_turns([], case.get("turn_expectations", [])))
         if case.get("generate_scenario"):
             pending.update(score_scenario({}, case["expected"]))
@@ -212,6 +260,11 @@ def timing_report(summary):
                   "P95는 시간을 정렬한 뒤 ceil(0.95 × 표본 수)번째 값을 사용합니다. 표본이 적으면 참고값입니다.",
                   "호출이 없는 항목은 0초 대신 미측정으로 표시합니다. 기본 대체 없이 반환됐어도 기능 기준에 실패할 수 있습니다.",
                   "실패율은 서비스가 예외를 반환한 비율입니다. 내부에서 잡힌 타임아웃은 대체 응답에 포함될 수 있어 외부 API 타임아웃 비율과 다릅니다."])
+    if summary.get("model_stages"):
+        lines.extend(["", "## 모델 호출 단계별 시간", "", "| 단계 | 호출 수 | 호출 오류 | 평균(초) | 중앙값(초) | P95(초) |", "| --- | ---: | ---: | ---: | ---: | ---: |"])
+        for name, data in summary["model_stages"].items():
+            stats = data["latency"]
+            lines.append(f"| {name} | {data['calls']} | {data['failures']} | {seconds(stats['mean_seconds'])} | {seconds(stats['median_seconds'])} | {seconds(stats['p95_seconds'])} |")
     return lines
 
 
@@ -273,8 +326,10 @@ def main(argv=None):
     report = {"created_at": stamp, "mode": "live" if args.live else "mock", "provider": settings.llm_provider,
               "model": settings.llm_model if args.live else "mock", "results": rows, "summary": summarize(rows),
               "repeats": args.repeats, "cases_sha256": hashlib.sha256(CASES.read_bytes()).hexdigest(),
+              "protocol": "deferred-discovery-v1", "pipeline_reasoning_effort": settings.pipeline_reasoning_effort or "provider-default",
+              "discovery_reasoning_effort": settings.discovery_reasoning_effort or "provider-default",
               "prompt_sha256": {name: hashlib.sha256((Path(__file__).resolve().parents[2] / "app" / "prompts" / name).read_bytes()).hexdigest()
-                                for name in ("context_turn.md", "scenario.md")}}
+                                for name in ("discovery_brief.md", "intake_plan.md", "semantic_review.md", "scenario.md")}}
     folder = args.output / stamp
     write_report(folder, report)
     print(f"Report: {folder.resolve()}")

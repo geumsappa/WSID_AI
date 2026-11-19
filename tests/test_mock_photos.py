@@ -6,7 +6,15 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.scenario_data import FALLBACK_SCENARIOS
 from app.services import training_api, training_turn
-from app.services.scenario import _fallback
+from app.guard.scenario_guard import validate_and_normalize
+
+
+def _fallback(_facts):
+    """Test sample only; production generation no longer has a fallback path."""
+    result, errors = validate_and_normalize(copy.deepcopy(FALLBACK_SCENARIOS["택배 사칭"]))
+    assert not errors
+    result["scenario"]["maxTurns"] = 15
+    return result
 
 
 def test_virtual_photo_submission_is_risky_without_any_image_in_model_input(monkeypatch):

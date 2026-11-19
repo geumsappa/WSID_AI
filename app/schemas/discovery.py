@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DiscoveryMessage(BaseModel):
@@ -20,11 +20,3 @@ class DiscoveryResult(BaseModel):
     facts: dict
     nextQuestion: str
     canGenerateScenario: bool
-
-
-class ContextModelOutput(BaseModel):
-    next_question: str = Field(default="", max_length=1000)
-    extracted_facts: list[dict] = Field(default_factory=list, max_length=5)
-    enough_info: StrictBool = False
-    real_concern: StrictBool = False
-    retracted_fact_ids: list[str] = Field(default_factory=list, max_length=30)

@@ -23,6 +23,9 @@ def get_case(case_id: str) -> dict | None:
 
 
 def case_ids_for_subtype(subtype: str) -> list[str]:
+    if subtype == "결제·환불 사칭":
+        # Reuse documented message/link impersonation mechanics, not a claimed restaurant incident.
+        return [cid for cid, c in load_cases().items() if c.get("riskType") == "스미싱"][:2]
     return [cid for cid, c in load_cases().items() if c.get("subtype") == subtype]
 
 
@@ -30,7 +33,8 @@ def cases_for_prompt(subtypes: set[str] | None = None) -> str:
     """LLM 에 보여줄 사례 목록. 출처·실존 기관명은 빼고 수법 요약만 보낸다."""
     lines = []
     for cid, c in load_cases().items():
-        if subtypes and c.get("subtype") not in subtypes:
+        payment_reference = subtypes and "결제·환불 사칭" in subtypes and cid in case_ids_for_subtype("결제·환불 사칭")
+        if subtypes and c.get("subtype") not in subtypes and not payment_reference:
             continue
         info = ", ".join(c.get("requestedInfo") or []) or "없음"
         lines.append(

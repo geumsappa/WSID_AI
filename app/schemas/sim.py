@@ -43,10 +43,18 @@ class ContextTurnRequest(CamelModel):
 
 class Fact(CamelModel):
     """SIM-002 입력 정보 분석 결과: 사실 1개"""
-    category: str = Field(description="거래(중고·쇼핑) | 구직·아르바이트 | 택배·배송 | 금융·대출 | 투자 | 가족·지인 연락 | 공공기관·민원 | 여행·이동 | 기타")
+    category: str = Field(description="거래(중고·쇼핑) | 일상 소비·결제 | 구직·아르바이트 | 택배·배송 | 금융·대출 | 투자 | 가족·지인 연락 | 공공기관·민원 | 여행·이동 | 기타")
     detail: str = Field(description="사실 한 문장")
+    item_name: str | None = Field(default=None, max_length=100, description="사용자가 명시한 거래 물품명")
+    organization_name: str | None = Field(default=None, max_length=100, description="지원하거나 관심 있는 회사")
+    counterpart_name: str | None = Field(default=None, max_length=100, description="사용자가 지정한 상대방의 훈련 호칭")
+    context_only: bool = Field(default=False, description="추가 배경이며 훈련 유형을 선택하는 핵심 사실이 아님")
     fact_id: str | None = None
     source_turn: int | None = Field(default=None, ge=1)
+    actor_id: str | None = None
+    event_id: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list, max_length=5)
+    certainty: Literal["CONFIRMED", "UNCERTAIN", "NEGATED"] | None = None
     channel: str | None = Field(default=None, description="채널: 문자, 메신저, 중고거래 앱 채팅, 이메일 등")
     impersonated_identity: str | None = Field(default=None, description="사칭 신분: 상대가 자신을 누구라고 했는지")
     requested_action: str | None = Field(default=None, description="요구 행동: 링크 클릭 | 개인정보 제공 | 송금 | 앱 설치 | 대화 지속")
@@ -145,7 +153,7 @@ class CaseRef(CamelModel):
 
 class Scenario(CamelModel):
     risk_type: str = Field(description="위험 유형 대분류 (6종)")
-    fraud_subtype: str = Field(description="세부 유형: 지인·가족 사칭, 택배 사칭, 대출 사기, 공공기관 사칭, 투자 리딩방, 중고거래 사기, 채용·아르바이트 사기")
+    fraud_subtype: str = Field(description="세부 유형: 지인·가족 사칭, 결제·환불 사칭, 택배 사칭, 부고·청첩장 사칭, 대출 사기, 공공기관 사칭, 투자 리딩방, 중고거래 사기, 채용·아르바이트 사기")
     title: str
     channel: str = Field(description="문자 | 메신저 | 중고거래 앱 채팅 | 이메일 | SNS 메시지 → 화면 스타일 결정")
     persona: Persona

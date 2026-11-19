@@ -71,7 +71,7 @@ def find_copycat_risk(text: str) -> list[str]:
 
 def mentioned_organizations(facts: list[dict]) -> list[str]:
     """Only names present in input facts may be reused in the fictional role-play."""
-    text = " ".join(str(fact.get(key) or "") for fact in facts for key in ("detail", "impersonatedIdentity"))
+    text = " ".join(str(fact.get(key) or "") for fact in facts for key in ("detail", "impersonatedIdentity", "organizationName"))
     return [name for name in REAL_NAMES if (re.search(r"(?<![A-Za-z])" + re.escape(name) + r"(?![A-Za-z])", text)
             if name.isascii() else name in text)]
 

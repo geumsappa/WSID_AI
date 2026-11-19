@@ -52,9 +52,18 @@ def test_execution_error_counts_applicable_metrics_as_failures_without_saving_me
 def test_catalog_covers_all_training_codes_and_unique_ids():
     cases = json.loads(CASES.read_text(encoding="utf-8"))
     assert len(cases) == len({case["id"] for case in cases})
-    assert {case["expected"]["code"] for case in cases if case.get("generate_scenario")} == {
+    assert {case["expected"]["code"] for case in cases if case.get("generate_scenario") and "code" in case["expected"]} == {
         "JOB_SCAM", "SMISHING", "SECONDHAND_TRADE", "LOAN_FRAUD", "MESSENGER_PHISHING", "INVESTMENT_FRAUD", "INSTITUTION_IMPERSONATION",
     }
+
+
+def test_structured_actor_metric_does_not_treat_unknown_as_a_correct_peer():
+    expected = {"events": [{"actionAny": ["결제"], "evidenceContains": "동료", "actorIsUser": False}]}
+    facts = {"contextGraph": {"userActorId": "u", "events": [{"id": "e", "actorId": None, "action": "결제", "certainty": "CONFIRMED", "evidenceIds": ["q"]}],
+                              "evidence": [{"id": "q", "quote": "동료가 결제했어요"}]}}
+    assert not score_facts(facts, True, expected, [])["event_actor:0"]
+    facts["contextGraph"]["events"][0]["actorId"] = "peer"
+    assert score_facts(facts, True, expected, [])["event_actor:0"]
 
 
 def test_review_scores_start_blank_and_report_is_marked_mock(tmp_path):

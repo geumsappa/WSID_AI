@@ -2,7 +2,7 @@
 import app.services.scenario as scenario_service
 from app.guard.scenario_guard import find_unsafe_text, validate_and_normalize
 from app.llm.llm_client import LLMError
-from app.scenario_data import FALLBACK_SCENARIOS, RISK_TYPES, pick_subtype
+from app.scenario_data import FALLBACK_SCENARIOS, RISK_TYPES
 
 
 def _good_llm_output():
@@ -69,15 +69,8 @@ def test_6분류에_없는_위험유형은_차단():
     assert result is None
 
 
-def test_사실_카테고리로_유형_선택():
-    facts = [{"category": "구직·아르바이트", "detail": "알바 구함"},
-             {"category": "구직·아르바이트", "detail": "면접 다님"},
-             {"category": "택배·배송", "detail": "택배 기다림"}]
-    assert pick_subtype(facts) == "채용·아르바이트 사기"
 
 
-def test_사실이_없으면_택배_기본():
-    assert pick_subtype([]) == "택배 사칭"
 
 
 # ---------- 전체 흐름 ----------
@@ -91,51 +84,12 @@ def test_mock으로_시나리오_생성():
     assert not r["fallback_used"]
 
 
-def test_LLM이_계속_실패하면_사실에_맞는_기본_시나리오(monkeypatch):
-    def boom(*a, **k):
-        raise LLMError("x")
-    monkeypatch.setattr(scenario_service, "generate_json", boom)
-    r = scenario_service.run_scenario("s1", [{"category": "투자", "detail": "코인 투자"}])
-    assert r["fallback_used"]
-    assert r["scenario"]["fraudSubtype"] == "투자 리딩방"
-    assert r["scenario"]["riskType"] == "투자·가상자산"
-    assert r["analysis"]["usedFacts"] == ["코인 투자"]
 
 
-def test_가드레일_위반_시나리오는_재생성(monkeypatch):
-    bad = _good_llm_output()
-    bad["scenario"]["openingMessage"] = "토스로 결제했어요 http://fake.com"
-    good = _good_llm_output()
-    calls = iter([bad, good])
-    monkeypatch.setattr(scenario_service, "generate_json", lambda *a, **k: next(calls))
-    r = scenario_service.run_scenario("s1", [{"category": "거래(중고·쇼핑)", "detail": "자전거 판매"}])
-    assert not r["fallback_used"]
-    assert "http" not in r["scenario"]["openingMessage"]
 
 
-def test_입력_사실의_개인정보는_가려서_사용(monkeypatch):
-    seen = {}
-
-    def capture(system, user, **k):
-        seen["user"] = user
-        return _good_llm_output()
-    monkeypatch.setattr(scenario_service, "generate_json", capture)
-    scenario_service.run_scenario("s1", [{"category": "거래(중고·쇼핑)", "detail": "010-1234-5678로 연락함"}])
-    assert "1234" not in seen["user"]
 
 
-def test_사실의_채널_사칭_요구정보가_LLM에_전달됨(monkeypatch):
-    seen = {}
-
-    def capture(system, user, **k):
-        seen["user"] = user
-        return _good_llm_output()
-    monkeypatch.setattr(scenario_service, "generate_json", capture)
-    scenario_service.run_scenario("s1", [{
-        "category": "택배·배송", "detail": "반송 문자 받음", "channel": "문자",
-        "impersonatedIdentity": "택배사", "requestedAction": "링크 클릭", "riskFactors": ["시간 압박"]}])
-    assert "채널: 문자" in seen["user"] and "상대가 밝힌 신분: 택배사" in seen["user"]
-    assert "요구: 링크 클릭" in seen["user"] and "위험 요소: 시간 압박" in seen["user"]
 
 
 # ---------- SIM-005/006 사례 DB · 모방범죄 · 개인정보 요구 장면 ----------

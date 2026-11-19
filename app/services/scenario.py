@@ -1,163 +1,120 @@
-"""SIM-02 위험 분석 + 위험 유형 분류 + 개인화 시나리오 생성 (SIM-003/004/005/006).
-
-흐름:
-  1) ①단계에서 모인 사실을 받음 (혹시 모를 개인정보는 한 번 더 가림)
-  2) 사실이 없으면 → 기본 시나리오 (LLM 안 씀)
-  3) 프롬프트 + 사실 목록을 LLM 에 보내 시나리오 JSON 받기
-  4) 가드레일 검사 (모양 + 실존 기관명·URL·전화번호·보이스피싱 차단)
-  5) 통과 못 하면 1번 더 생성 → 그래도 안 되면 사실에 맞는 기본 시나리오로 대체
-"""
-import copy
+"""Generate only from an evidenced, reviewed plan; never return an unrelated template."""
+import json
 import logging
 from pathlib import Path
 
-from app.case_db import cases_for_prompt
+from pydantic import ValidationError
+
+from app.api_errors import AiApiError
 from app.config import settings
 from app.guard.scenario_guard import mentioned_organizations, validate_and_normalize
 from app.guard.sensitive import mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
-from app.scenario_data import (
-    CATEGORY_TO_SUBTYPE,
-    ALLOWED_CHANNELS,
-    ALLOWED_MOCK_PAGES,
-    ALLOWED_REQUESTS,
-    FALLBACK_SCENARIOS,
-    RISK_TYPES,
-    SUBTYPE_TO_RISK_TYPE,
-    pick_subtype,
-)
+from app.schemas.context_graph import ContextGraph, GeneratedScenario, ScenarioPlan
+from app.services import scenario_planner
+from app.services.context_graph import ContextIntegrityError, check_claims, check_graph, check_plan, fingerprint, project_facts
 
 logger = logging.getLogger(__name__)
+PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "scenario.md"
+MAX_ATTEMPTS = 2
 
-PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "scenario.md"
-MAX_ATTEMPTS = 2  # 생성 + 검사 실패 시 1번 더
 
-
-def run_scenario(session_id: str, facts: list[dict]) -> dict:
-    """facts 예: [{"category": "거래(중고·쇼핑)", "detail": "중고거래 앱으로 자전거 판매"}]"""
-    facts = _clean_input_facts(facts)
-
-    if not facts:
-        logger.info("session=%s 사실 없음 → 기본 시나리오", session_id)
-        return _fallback(facts)
-
-    allowed = mentioned_organizations(facts)
-    system_prompt = _build_prompt(facts)
-    system_prompt += "\n사용자가 언급해 재사용할 수 있는 기관명: " + ", ".join(allowed or ["없음"])
-    system_prompt += "\n목록에 있는 기관은 사용자 맥락에 맞는 경우 그 이름을 유지하세요. 그 밖의 기관은 가상 이름을 쓰세요."
-    user_content = "사용자가 앞선 대화에서 말한 사실 목록입니다.\n\n" + "\n".join(
-        _fact_line(f) for f in facts
-    ) + "\n\n규칙에 따라 JSON 으로만 응답하세요."
-
-    for attempt in range(1, MAX_ATTEMPTS + 1):
+def _prepare_context(facts, context, plan, context_hash, discovery_evidence=None, discovery_ready=False, readiness_evidence=None):
+    if discovery_evidence is not None:
+        from app.services.fast_discovery import load_evidence
+        from app.schemas.fast_discovery import DetailEvidence
+        if discovery_ready is not True:
+            raise AiApiError(422, "INVALID_REQUEST", "상황 파악을 먼저 마쳐 주세요.")
         try:
-            data = generate_json(system_prompt, user_content, max_tokens=2500,
-                                 timeout=settings.scenario_timeout_seconds, attempts=1)
-        except LLMError:
-            logger.warning("session=%s 시나리오 LLM 실패 (시도 %d)", session_id, attempt)
-            continue
-
-        result, errors = validate_and_normalize(data, allowed)
-        expected_subtypes = {CATEGORY_TO_SUBTYPE[fact["category"]] for fact in facts if fact["category"] in CATEGORY_TO_SUBTYPE}
-        if result and expected_subtypes and result["scenario"]["fraudSubtype"] not in expected_subtypes:
-            errors = ["사용자 활동 분류와 맞지 않는 시나리오"]
-            result = None
-        expected_channels = {fact["channel"] for fact in facts if fact.get("channel") in ALLOWED_CHANNELS}
-        if result and expected_channels and result["scenario"]["channel"] not in expected_channels:
-            errors = ["사용자가 제공한 연락 경로와 맞지 않는 시나리오"]
-            result = None
-        if result:
-            result["scenario"]["sourceFacts"] = facts[-10:]
-            result["analysis"]["usedFacts"] = [fact["detail"] for fact in facts[:3]]
-            result["scenario"]["maxTurns"] = settings.training_max_turns
-            result["fallback_used"] = False
-            logger.info("session=%s 시나리오 생성: %s", session_id, result["scenario"]["fraudSubtype"])
-            return result
-        logger.warning("session=%s 시나리오 가드레일 불통과 (시도 %d): %s", session_id, attempt, errors)
-
-    logger.warning("session=%s 기본 시나리오로 대체", session_id)
-    return _fallback(facts)
-
-
-def _build_prompt(facts: list[dict] | None = None) -> str:
-    relevant = {CATEGORY_TO_SUBTYPE[fact["category"]] for fact in (facts or []) if fact.get("category") in CATEGORY_TO_SUBTYPE}
-    return (
-        PROMPT_PATH.read_text(encoding="utf-8")
-        .replace("{{RISK_TYPES}}", ", ".join(RISK_TYPES))
-        .replace("{{SUBTYPES}}", "\n".join(f"  - {sub} → 대분류 {rt}" for sub, rt in SUBTYPE_TO_RISK_TYPE.items()))
-        .replace("{{CHANNELS}}", ", ".join(ALLOWED_CHANNELS))
-        .replace("{{REQUESTS}}", ", ".join(ALLOWED_REQUESTS))
-        .replace("{{MOCK_PAGES}}", ", ".join(ALLOWED_MOCK_PAGES))
-        .replace("{{CASES}}", cases_for_prompt(relevant or None))
-    )
+            messages = load_evidence(discovery_evidence)
+            if readiness_evidence is not None:
+                detail = DetailEvidence.model_validate(readiness_evidence)
+                source = next((item["text"] for item in messages if item["turn"] == detail.turn), "")
+                if " ".join(detail.quote.split()) not in " ".join(source.split()):
+                    raise ValueError("Readiness evidence does not match the user source")
+                readiness_evidence = detail.model_dump()
+        except (ValueError, ValidationError):
+            raise AiApiError(422, "INVALID_REQUEST", "상황 기록 형식을 확인해 주세요.") from None
+        intake, selected = scenario_planner.intake(messages, generation_requested=True, readiness_evidence=readiness_evidence)
+        graph = intake.context
+        verdict = scenario_planner.review(graph, selected, messages=messages)
+        if selected is None or not verdict.accepts():
+            raise AiApiError(422, "INVALID_REQUEST", "시나리오를 만들기 위한 상황이 부족해요. 상황 파악에서 조금 더 알려 주세요.")
+        return graph, selected
+    if context is not None:
+        graph = ContextGraph.model_validate(scenario_planner.safe_tree(context))
+        # Validate stored quotations against the evidence already retained by the server.
+        check_graph(graph, [], graph)
+        selected = ScenarioPlan.model_validate(plan) if plan is not None else None
+        if selected is None or context_hash != fingerprint(graph):
+            raise ContextIntegrityError("missing_or_stale_plan")
+        check_plan(selected, graph)
+        return graph, selected
+    # Backwards compatibility for clients providing legacy facts, with fresh extraction and review.
+    details = [fact.get("detail", "") for fact in facts if isinstance(fact, dict) and isinstance(fact.get("detail"), str)]
+    if not details or not any(detail.strip() for detail in details):
+        raise AiApiError(422, "INVALID_REQUEST", "훈련에 사용할 상황을 먼저 알려 주세요.")
+    messages = [{"turn": index + 1, "text": scenario_planner.mask_input(detail)} for index, detail in enumerate(details)]
+    intake, selected = scenario_planner.intake(messages, generation_requested=True, readiness_evidence=readiness_evidence)
+    graph = intake.context
+    verdict = scenario_planner.review(graph, selected, messages=messages)
+    if selected is None or not verdict.accepts():
+        raise AiApiError(422, "INVALID_REQUEST", "시나리오에 필요한 상황을 먼저 확인해 주세요.")
+    return graph, selected
 
 
-def _clean_input_facts(facts: list[dict]) -> list[dict]:
-    """camelCase/snake_case 어느 쪽으로 와도 받고, 혹시 모를 개인정보는 다시 가린다."""
-    def get(f, camel, snake):
-        v = f.get(camel, f.get(snake))
-        if v is None or str(v).strip() == "":
-            return None
-        text, _ = mask_sensitive(" ".join(str(v).split()))
-        return text[:200] if camel == "detail" else text[:100]
-
-    cleaned = []
-    for f in facts[:30]:
-        detail = get(f, "detail", "detail")
-        if not detail:
-            continue
-        risk = f.get("riskFactors", f.get("risk_factors")) or []
-        cleaned.append({
-            **({"factId": f["factId"]} if isinstance(f.get("factId"), str) and f["factId"].startswith("fact-") else {}),
-            **({"sourceTurn": f["sourceTurn"]} if isinstance(f.get("sourceTurn"), int) and not isinstance(f["sourceTurn"], bool) and f["sourceTurn"] > 0 else {}),
-            "category": str(f.get("category", "기타")).strip() or "기타",
-            "detail": detail,
-            "channel": get(f, "channel", "channel"),
-            "impersonatedIdentity": get(f, "impersonatedIdentity", "impersonated_identity"),
-            "requestedAction": get(f, "requestedAction", "requested_action"),
-            "riskFactors": [mask_sensitive(str(r))[0][:50] for r in risk if str(r).strip()][:5],
-        })
-    return cleaned
-
-
-def _fact_line(f: dict) -> str:
-    """LLM 에 보낼 사실 한 줄. 예: - [택배·배송] 반송 문자 받음 (채널: 문자 / 사칭: 택배사 / 요구: 링크 클릭 / 위험 요소: 시간 압박)"""
-    extras = []
-    if f.get("channel"):
-        extras.append(f"채널: {f['channel']}")
-    if f.get("impersonatedIdentity"):
-        extras.append(f"상대가 밝힌 신분: {f['impersonatedIdentity']}")
-    if f.get("requestedAction"):
-        extras.append(f"요구: {f['requestedAction']}")
-    if f.get("riskFactors"):
-        extras.append(f"위험 요소: {', '.join(f['riskFactors'])}")
-    tail = f" ({' / '.join(extras)})" if extras else ""
-    return f"- [{f['category']}] {f['detail']}{tail}"
-
-
-def _fallback(facts: list[dict]) -> dict:
-    subtype = pick_subtype(facts)
-    raw = copy.deepcopy(FALLBACK_SCENARIOS[subtype])
-    raw["analysis"]["usedFacts"] = [
-        f["detail"] for f in facts
-        if pick_subtype([f]) == subtype
-    ][:3]
-    allowed = mentioned_organizations(facts)
-    if subtype == "채용·아르바이트 사기" and allowed:
-        organization = max(allowed, key=len)
-        raw["scenario"]["persona"]["organization"] = organization
-        raw["scenario"]["persona"]["role"] = "채용 담당자"
-        raw["scenario"]["openingMessage"] = f"안녕하세요. {organization} 채용 담당자입니다. 지원자 확인을 위해 연락드렸습니다."
-    channel = next((fact["channel"] for fact in reversed(facts) if fact.get("channel") in ALLOWED_CHANNELS), None)
-    if channel:
-        raw["scenario"]["channel"] = channel
-    if facts:
-        summary = "; ".join(fact["detail"] for fact in facts[:2])[:160]
-        raw["scenario"]["background"] = f"알려주신 상황은 ‘{summary}’입니다. 이 상황과 관련한 가상의 연락을 받았다고 가정하고 대응을 연습합니다."
-    result, errors = validate_and_normalize(raw, allowed)  # 기본 시나리오도 같은 검증을 거침
-    if result is None:
-        raise RuntimeError(f"기본 시나리오 '{subtype}' 가 검증을 통과하지 못함: {errors}")
-    result["scenario"]["sourceFacts"] = facts[-10:]
-    result["scenario"]["maxTurns"] = settings.training_max_turns
-    result["fallback_used"] = True
-    return result
+def run_scenario(session_id, facts, *, context=None, plan=None, context_hash=None, discovery_evidence=None, discovery_ready=False, readiness_evidence=None):
+    try:
+        graph, selected = _prepare_context(facts, context, plan, context_hash, discovery_evidence, discovery_ready, readiness_evidence)
+    except (ValidationError, ContextIntegrityError) as error:
+        reason = str(error) if isinstance(error, ContextIntegrityError) else ";".join(
+            ".".join(map(str, item["loc"])) + ":" + item["type"] for item in error.errors())
+        logger.warning("Scenario preparation failed: type=%s check=%s", type(error).__name__, reason)
+        raise AiApiError(422, "INVALID_REQUEST", "상황이 변경되었거나 검증된 계획이 없어요. 상황 파악부터 다시 진행해 주세요.") from None
+    except LLMError:
+        raise AiApiError(503, "AI_SERVICE_UNAVAILABLE", "시나리오 계획을 확인하지 못했어요.") from None
+    source_facts = project_facts(graph)
+    allowed = mentioned_organizations(source_facts)
+    failures = []
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            prompt = PROMPT_PATH.read_text(encoding="utf-8")
+            prompt += "\n출력 JSON 스키마:\n" + json.dumps(GeneratedScenario.model_json_schema(), ensure_ascii=False)
+            payload = {"context": graph.model_dump(), "plan": selected.model_dump(),
+                       "allowedOrganizations": allowed, "retryIssues": failures}
+            generated = GeneratedScenario.model_validate(generate_json(prompt, json.dumps(payload, ensure_ascii=False),
+                timeout=settings.scenario_timeout_seconds, max_tokens=4000, attempts=1,
+                reasoning_effort=settings.pipeline_reasoning_effort or None))
+            check_claims(generated.preservedClaims, graph)
+            if {claim.eventId for claim in generated.preservedClaims} != {claim.eventId for claim in selected.anchorClaims}:
+                raise ContextIntegrityError("missing_preserved_claim")
+            normalized, errors = validate_and_normalize({"analysis": generated.analysis.model_dump(), "scenario": generated.scenario.model_dump()}, allowed)
+            if normalized is None:
+                failures = ["FORMAT_OR_SAFETY_CHECK_FAILED", *errors[:8]]
+                continue
+            content = normalized["scenario"]
+            if content["fraudSubtype"] != selected.fraudSubtype or content["channel"] != selected.channel:
+                failures = ["PLAN_CLASSIFICATION_OR_CHANNEL_CHANGED"]
+                continue
+            if {case["caseId"] for case in content["basedOnCases"]} != set(selected.caseIds):
+                failures = ["PLAN_REFERENCES_CHANGED"]
+                continue
+            verdict = scenario_planner.review(graph, selected, generated={"analysis": normalized["analysis"], "scenario": content})
+            if not verdict.accepts():
+                logger.warning("Scenario semantic review rejected: attempt=%d codes=%s", attempt + 1, [issue.code for issue in verdict.issues])
+                failures = [issue.code + ": " + scenario_planner.mask_input(issue.detail) for issue in verdict.issues] or ["SEMANTIC_CHECK_FAILED"]
+                continue
+            content["sourceFacts"] = source_facts
+            content["maxTurns"] = settings.training_max_turns
+            normalized["fallback_used"] = False
+            normalized["review"] = verdict.model_dump()
+            normalized["contextGraph"] = graph.model_dump()
+            logger.info("Scenario pipeline accepted: attempt=%d", attempt + 1)
+            return normalized
+        except (LLMError, ValidationError, ContextIntegrityError) as error:
+            if isinstance(error, ValidationError):
+                failures = ["SCHEMA: " + ".".join(map(str, item["loc"])) + ": " + item["type"] for item in error.errors()][:8]
+            else:
+                failures = [str(error) if isinstance(error, ContextIntegrityError) else type(error).__name__]
+    logger.warning("Scenario pipeline rejected: checks=%s", failures)
+    raise AiApiError(503, "AI_SERVICE_UNAVAILABLE", "상황과 일치하는 시나리오를 검증하지 못했어요. 다시 시도해 주세요.")

@@ -13,6 +13,7 @@ from .contracts import (
     AnswerRequest, AnswerResponse, Assessment, CandidateReference, Clarification,
     PlanRequest, PlanResponse, QuestionIntent,
 )
+from .context import REFERENTIAL, drop_refund_notice, previous_ai, previous_user, topic_codes, topic_text
 from .model import AssistModel, CLARIFICATION_TEXT, INTENT_QUERIES, allowed_fact_keys
 from .upstream import request_id
 
@@ -102,12 +103,29 @@ class AssistService:
         query = INTENT_QUERIES[intent]
         if request.question is not None:
             query += "\n질문: " + request.question
+        # v1.1: 질문이 없거나 짧으면("둘 다 알려줘") 직전 사용자 말을 붙여 무엇을 묻는지 검색해요
+        prev = previous_user(request)
+        if prev and len(request.question or "") < 40:
+            query += "\n이전 질문: " + prev[:300]
+        if request.question and REFERENTIAL.search(request.question) and previous_ai(request):
+            query += "\n이전 답변: " + previous_ai(request)[:300]
+        if request.fraudType is not None:
+            query += "\n사기 유형: " + request.fraudType
         query += "\n사실: " + ", ".join(f"{key}={value}" for key, value in request.facts.model_dump().items())
         return {"intent": intent, "assessment": assessment, "query": query}
 
     async def _search(self, state: AssistState) -> dict:
         started = time.monotonic()
-        references = await self.retriever.search(state["query"], state["request"].facts.model_dump())
+        request = state["request"]
+        extra = {"fraud_type": request.fraudType} if request.fraudType is not None else {}
+        references = await self.retriever.search(state["query"], request.facts.model_dump(), **extra)
+        # 질문 주제로 꼭 넣을 근거를 앞에 두고(검색 결과와 합쳐 최대 10개), 중고거래면 환급 안내 문단은 빼요
+        text = topic_text(request)
+        forced = self.retriever.by_codes(topic_codes(text)) if hasattr(self.retriever, "by_codes") else []
+        if forced:
+            seen = {ref["code"] for ref in forced}
+            references = (forced + [ref for ref in references if ref["code"] not in seen])[:10]
+        references = drop_refund_notice(references, request.fraudType, text)
         logger.info("assist request_id=%s stage=search elapsed_ms=%d n=%d",
                     request_id.get(), round((time.monotonic() - started) * 1000), len(references))
         if len(references) > 10:

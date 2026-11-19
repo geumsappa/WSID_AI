@@ -249,3 +249,31 @@ OpenAPI는 FastAPI DTO에서 생성한 [assist-openapi.json](assist-openapi.json
 | 실제 Gemini·Spring | 호출/통합 미검증. 의미 품질·응답 시간·승인 목록 매핑 확인 필요 |
 
 2026-11-18: 단계별 시간 제한과 고정 질문 변경 후 pytest 101개 통과(모델 대역). 실제 Gemini 및 Spring 연동은 검증하지 않았다.
+
+## v1.1 제안: 선택 필드 `history`·`fraudType` (2026-11-19, 합의 전)
+
+PLAN·ANSWER 요청에 아래 두 필드를 **선택**으로 추가한다. 보내지 않거나 null이면 v1과 똑같이 동작하므로
+Spring이 v1 그대로 호출해도 깨지지 않는다.
+
+| 필드 | 타입·규칙 | 쓰임 |
+| --- | --- | --- |
+| history | null 또는 `[{"role":"USER"\|"AI","content":"1~2000자"}]` 최대 10개 | 이번 질문 **앞**의 대화(가린 글 safe_content). 확인 질문 뒤 후속 PLAN·ANSWER에서는 원래 질문·확인 질문·대답까지 포함 |
+| fraudType | null 또는 AI-06 `/extract`의 `fraudType` 값 (`MESSENGER_PHISHING`, `SMISHING`, `LOAN_FRAUD`, `INSTITUTION_IMPERSONATION`, `INVESTMENT_FRAUD`, `SECONDHAND_TRADE`) | 유형에 맞는 근거 고르기 |
+
+Python 동작 (`assist/context.py`):
+
+- 질문이 없거나 짧으면(40자 미만, 예: "둘 다 알려줘") history의 최근 사용자 질문을 검색어에 붙인다.
+  확인 질문에 대한 짧은 대답("네", "아니요, 안 보냈어요")은 건너뛴다.
+- 후속 PLAN(question=null)에서 추가 질문 허용 여부(질문에 언급된 행동)를 history의 원래 질문으로 판단한다.
+- 질문 주제(추가 송금 요구, 고소·신고 접수, 민사소송·소액·지급명령, 배상·피해 회복, 신고 이후)별로
+  꼭 넣을 근거 code를 검색 결과 앞에 둔다. 후보는 여전히 최대 10개이고 Spring 승인 원칙은 같다.
+- `SECONDHAND_TRADE`면 환급법 전용 문단은 후보에서 빼고, 환급을 묻지 않았으면 '환급 대상 아님' 안내 문단도 뺀다.
+  유형이 맞는 문단은 검색 점수를 조금(+0.04) 올린다.
+- 모델에는 history 최근 6턴·턴당 600자만 넘기고, 사실의 근거로 쓰지 않도록 프롬프트에 명시한다.
+  history는 로그에 남기지 않는다(기존 로그 정책과 동일).
+- ANSWER 프롬프트에 답변 규칙(첫 문장이 답, 근거의 절차·기간·제출처를 구체적으로, 신고 이후 다음 단계,
+  추가 송금 요구 시 '더 보내지 말 것' 우선, 이전 대화 반복 금지)을 추가했다. 이 규칙은 v1 요청에도 적용된다.
+
+Spring에 필요한 변경: SOL-03 QUESTION·CLARIFICATION_ANSWER에서 상담의 최근 메시지(safe_content)와
+상담 시작 때 AI-06이 준 `fraudType`을 함께 보낸다. 테스트: `tests/test_assist_context.py`,
+체험: `python scripts/try_assist.py` (`--v1`이면 두 필드 없이 호출).

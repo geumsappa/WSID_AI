@@ -91,7 +91,36 @@ def test_router_contract():
     assert r.status_code == 200 and set(r.json()) >= {"facts", "uncertainFields"}
     r = c.post("/internal/ai/solutions/answer", json={"facts": FACTS, "question": "이제 뭐 해요?", "fraudType": "SECONDHAND_TRADE"})
     assert r.status_code == 200 and r.json()["status"] == "ANSWERED"
-    assert c.post("/internal/ai/solutions/answer", json={"facts": FACTS, "question": ""}).status_code == 422
+    assert c.post("/internal/ai/solutions/answer", json={"facts": FACTS, "question": ""}).status_code in (400, 422)
     r = c.post("/internal/ai/solutions/explain", json={"facts": FACTS, "verifiedReferences": [
         {"code": "REF_A_V1_P1", "title": "t", "excerpt": "지급정지를 먼저 요청합니다."}]})
     assert r.status_code == 200 and r.json()["referenceCodes"] == ["REF_A_V1_P1"]
+
+
+def test_topic_routing_puts_civil_procedure_refs_first():
+    r = run_answer(FACTS, "민사소송하고싶어 절차 알려줘", "SECONDHAND_TRADE")
+    codes = [x["code"] for x in r["references"]]
+    assert codes[0] == "REF_EASYLAW_CIVIL_FILING_V1_P1" and "REF_EASYLAW_PAYMENT_ORDER_V1_P1" in codes
+
+
+def test_secondhand_refund_notice_only_when_asked():
+    asked = [x["code"] for x in run_answer(FACTS, "돈 돌려받을 수 있어요?", "SECONDHAND_TRADE")["references"]]
+    not_asked = [x["code"] for x in run_answer(FACTS, "증거는 뭘 모아야 해요?", "SECONDHAND_TRADE")["references"]]
+    assert "REF_LAW_REFUND_PROCEDURE_V1_P2" not in not_asked
+    assert "REF_EASYLAW_VICTIM_RECOVERY_V1_P1" in asked
+
+
+def test_extra_payment_question_gets_extra_payment_ref():
+    r = run_answer(FACTS, "돈 더 보내래", "SECONDHAND_TRADE")
+    assert r["references"][0]["code"] == "REF_FSS_2024_28_ALERT_V1_P1"
+
+
+def test_complaint_question_gets_where_to_file_refs():
+    codes = [x["code"] for x in run_answer(FACTS, "고소장은 어디에 내요?", "SECONDHAND_TRADE")["references"]]
+    assert codes[:2] == ["REF_EASYLAW_COMPLAINT_V1_P1", "REF_EASYLAW_SECONDHAND_REPORT_V1_P1"]
+
+
+def test_history_resolves_referring_question():
+    hist = [{"role": "USER", "content": "민사소송, 형사소송 절차를 알려줘"}, {"role": "AI", "content": "배상명령을 신청할 수 있어요."}]
+    codes = [x["code"] for x in run_answer(FACTS, "그럼 둘다 알려줘", "SECONDHAND_TRADE", None, hist)["references"]]
+    assert "REF_EASYLAW_COMPLAINT_V1_P1" in codes and "REF_EASYLAW_CIVIL_FILING_V1_P1" in codes

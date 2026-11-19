@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.discovery import DiscoveryMessage
 
@@ -19,10 +19,12 @@ class ScenarioResult(BaseModel):
 
 
 class SimulationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     scenario: dict
     messages: list[DiscoveryMessage] = Field(max_length=60)
     userInput: str = Field(min_length=1, max_length=1000)
     turnCount: int = Field(ge=1, le=15)
+    currentScene: int | None = Field(default=None, ge=1, le=15)
 
 
 class MockPage(BaseModel):
@@ -38,6 +40,7 @@ class SimulationResult(BaseModel):
     recognizedActions: list[str]
     shouldFinish: bool
     mockPage: MockPage | None
+    nextScene: int | None = Field(default=None, ge=1, le=15)
 
 
 class EvaluationAction(BaseModel):

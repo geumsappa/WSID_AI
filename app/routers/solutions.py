@@ -49,4 +49,5 @@ def explain(req: SolutionExplainRequest):
              summary="(가안) 피해 대응 질문 답변 — 근거 안에서 답하거나, 필요한 사실을 되묻거나, 답변 불가")
 def answer(req: SolutionAnswerRequest):
     refs = [r.model_dump(by_alias=True) for r in req.verified_references] if req.verified_references is not None else None
-    return _call(run_answer, req.facts, req.question, req.fraud_type, refs)
+    history = [t.model_dump(by_alias=True) for t in req.history] if req.history else None
+    return _call(run_answer, req.facts, req.question, req.fraud_type, refs, history)

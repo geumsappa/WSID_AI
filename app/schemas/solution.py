@@ -56,6 +56,11 @@ class SolutionExplainResult(CamelModel):
 
 
 # ---------- 질문 답변 (가안) ----------
+class ChatTurn(CamelModel):
+    role: Literal["USER", "AI"] = Field(description="USER: 사용자, AI: 도우미")
+    content: str = Field(min_length=1, max_length=2000)
+
+
 class SolutionAnswerRequest(CamelModel):
     facts: SolutionFacts
     question: str = Field(min_length=1, max_length=1000, description="사용자 질문 (개인정보는 AI 서버에서 한 번 더 가림)")
@@ -63,6 +68,9 @@ class SolutionAnswerRequest(CamelModel):
     verified_references: list[VerifiedReference] | None = Field(
         default=None, max_length=10,
         description="Spring 이 근거를 직접 골라 보내면 그 안에서만 답해요. null 이면 AI 서버가 근거를 찾아요")
+    history: list[ChatTurn] | None = Field(
+        default=None, max_length=10,
+        description="(선택) 최근 대화 몇 개(오래된 것부터). '둘 다 알려줘'처럼 앞 대화를 가리키는 질문을 이해하려고 써요")
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, json_schema_extra={
         "examples": [{

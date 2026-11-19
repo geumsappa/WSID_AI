@@ -1,0 +1,11 @@
+version: 1
+id: 4899978d-7f36-4d75-ae9f-f08565c60ccb
+name: gemini-assist
+slug: gemini-assist
+protocol: http
+interceptRequests: true
+port: 4500
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

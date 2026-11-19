@@ -20,6 +20,11 @@ CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.8-flash")
 FALLBACK_MODELS = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.7-flash,gemini-3.5-flash-lite").split(",") if m.strip()]
 # Gemini 한 번 호출에 기다리는 최대 시간(초)
 TIMEOUT_SEC = int(os.getenv("RAG_TIMEOUT_SEC", "30"))
+# assist의 각 HTTP 단계 예산. CLI/Gemini 기본 timeout과 독립적이다.
+ASSIST_PLAN_TIMEOUT_SEC = float(os.getenv("ASSIST_PLAN_TIMEOUT_SEC", "15"))
+ASSIST_ANSWER_TIMEOUT_SEC = float(os.getenv("ASSIST_ANSWER_TIMEOUT_SEC", "15"))
+if not (0 < ASSIST_PLAN_TIMEOUT_SEC < float("inf") and 0 < ASSIST_ANSWER_TIMEOUT_SEC < float("inf")):
+    raise ValueError("assist timeout must be a finite positive number")
 # 1 이면 Gemini 를 부르지 않는 가짜 임베딩·가짜 설명으로 동작 (키 없이 파이프라인 확인용)
 FAKE = os.getenv("RAG_FAKE", "0") == "1"
 

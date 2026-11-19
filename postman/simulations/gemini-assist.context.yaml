@@ -1,0 +1,34 @@
+purpose:
+  stands_in_for: Gemini non-streaming generateContent responses over local HTTP.
+  unblocks: Regression tests for assist retry limits and sanitized error reporting.
+assumptions:
+  - id: upstream-status-codes
+    status: supported
+    claim: Gemini documents 429, 500, and 503 error responses.
+    reason: These are the transient HTTP status codes selected for a bounded retry.
+    verification: Google Gemini API error documentation, accessed 2026-11-18.
+    source: https://ai.google.dev/gemini-api/docs/api-errors
+    updated_at: "2026-11-18"
+  - id: retry-caller-behavior
+    status: supported
+    claim: The caller retries an injected 429 or 503 once, retries a persistent 500 once, and does not retry a 400.
+    reason: This describes observed caller behavior against the locally authored stand-in only.
+    verification: >-
+      2026-11-18 local Postman simulation and tests/simulate_gemini_retry.py;
+      request events showed 429 then 200, 503 then 200, 500 then 500, and one 400. Synthetic
+      upstream message was absent from application logs and responses.
+      The published owner mock search was skipped because the CLI was signed out.
+    source: tests/simulate_gemini_retry.py; postman/mocks/gemini-assist/default.js
+    updated_at: "2026-11-18"
+  - id: live-provider-quality
+    status: unknown
+    claim: Real Gemini will behave identically to the local stand-in and produce useful answers.
+    reason: The stand-in's response and status sequence are synthetic, not evidence of live reliability or quality.
+    verification: No live provider call was used for this simulation.
+    source: postman/mocks/gemini-assist/default.js
+    updated_at: "2026-11-18"
+fingerprints:
+  - id: local-simulation
+    date: "2026-11-18"
+    commit: null
+    cli: "1.75.0"

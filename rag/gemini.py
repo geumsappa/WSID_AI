@@ -69,8 +69,9 @@ def _log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def generate_json(system: str, user: str, fake_result: dict) -> dict:
+def generate_json(system: str, user: str, fake_result: dict, *, model: str | None = None) -> dict:
     """JSON 으로만 답하게 해서 dict 로 돌려준다.
+    - model 을 주면 그 모델을 기본 모델 대신 먼저 쓴다(예: OCR 분류). 없으면 GEMINI_CHAT_MODEL.
     - 한 번 호출은 최대 RAG_TIMEOUT_SEC 초까지만 기다린다.
     - 기본 모델은 과부하(503/429)·시간 초과면 3초 쉬고 1번 더, 그래도 안 되면 예비 모델을 1번씩.
     - 모델 이름 오류(404)·요청 형식 오류(400)는 재시도하지 않는다(기본 모델일 때)."""
@@ -79,7 +80,8 @@ def generate_json(system: str, user: str, fake_result: dict) -> dict:
     from google.genai import types
     cfg = types.GenerateContentConfig(system_instruction=system, response_mime_type="application/json", temperature=0.2)
     last = None
-    plan = [(config.CHAT_MODEL, 0), (config.CHAT_MODEL, 3)] + [(m, 0) for m in config.FALLBACK_MODELS]
+    primary = model or config.CHAT_MODEL
+    plan = [(primary, 0), (primary, 3)] + [(m, 0) for m in config.FALLBACK_MODELS if m != primary]
     for model, wait in plan:
         if wait:
             _log(f"  … {wait}초 후 다시 시도")
@@ -96,7 +98,7 @@ def generate_json(system: str, user: str, fake_result: dict) -> dict:
             last = e
             code = _status(e)
             _log(f"  ✗ {model} 실패 {time.time() - t0:.1f}초: {code or type(e).__name__}")
-            if model == config.CHAT_MODEL and code in (400, 401, 403, 404):
+            if model == primary and code in (400, 401, 403, 404):
                 raise  # 이름·키 문제는 재시도해도 소용없음
             # 503·429·500·시간초과·네트워크 오류 → 다음 계획으로
     raise last

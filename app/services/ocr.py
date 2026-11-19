@@ -153,7 +153,7 @@ def _classify(text: str) -> tuple[str, str | None]:
     masked = _URL.sub("[링크]", masked)
     masked = PHONE_PATTERN.sub("[전화번호]", masked)
     raw = generate_json(_SYSTEM, f"<사진 속 글자>\n{masked}\n</사진 속 글자>",
-                        {"imageType": "OTHER", "summary": None})
+                        {"imageType": "OTHER", "summary": None}, model=settings.ocr_classify_model)
     if not isinstance(raw, dict):
         return "OTHER", None
     image_type = raw.get("imageType")

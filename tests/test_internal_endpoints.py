@@ -77,8 +77,9 @@ def test_ocr_classifier_timeout_keeps_text(client, monkeypatch):
 
 def test_ocr_classification_masks_input_and_checks_output(monkeypatch):
     captured = []
-    def fake(_system, prompt, _fallback):
+    def fake(_system, prompt, _fallback, *, model=None):
         captured.append(prompt)
+        assert model == ocr.settings.ocr_classify_model
         return {"imageType": "INVALID", "summary": "연락처 010-1234-5678"}
     monkeypatch.setattr(ocr, "generate_json", fake)
     result = ocr._classify("전화 010-1234-5678 링크 https://example.com/path 인증번호 482913")
@@ -140,3 +141,17 @@ def test_busy_slot_gives_up_after_wait():
         assert ocr._submit_bounded(pool, slot, lambda: "ok", wait=0.05) is None
     finally:
         slot.release()
+
+
+def test_generate_json_uses_given_model_first(monkeypatch):
+    from rag import config, gemini
+    calls = []
+    class Models:
+        def generate_content(self, model, contents, config):
+            calls.append(model)
+            return SimpleNamespace(text="{}")
+    monkeypatch.setattr(config, "FAKE", False)
+    monkeypatch.setattr(gemini, "_gemini", lambda: SimpleNamespace(models=Models()))
+    gemini.generate_json("s", "u", {}, model="ocr-model")
+    gemini.generate_json("s", "u", {})
+    assert calls == ["ocr-model", config.CHAT_MODEL]

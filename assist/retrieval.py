@@ -21,18 +21,15 @@ class ReferenceRetriever:
         if not references:
             return []
         if config.FAKE:
-            from rag.gemini import _fake_vec
+            from rag.openai_client import _fake_vec
             vector = _fake_vec(query, config.EMBED_DIM)
         else:
-            from google.genai import types
-            from rag.gemini import _gemini
-            response = await call(lambda: _gemini().aio.models.embed_content(
-                model=config.EMBED_MODEL, contents=[query],
-                config=types.EmbedContentConfig(
-                    task_type="RETRIEVAL_QUERY", output_dimensionality=config.EMBED_DIM,
-                ),
-            ), "embedding")
-            vector = response.embeddings[0].values
+            from rag.openai_client import async_client
+            async with async_client() as client:
+                response = await call(lambda: client.embeddings.create(
+                    model=config.EMBED_MODEL, input=[query], dimensions=config.EMBED_DIM,
+                ), "embedding")
+            vector = response.data[0].embedding
         q = np.asarray(vector, dtype=np.float32)
         q /= np.linalg.norm(q) + 1e-12
         scores = vectors @ q

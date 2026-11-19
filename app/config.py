@@ -11,9 +11,9 @@ load_dotenv()  # 같은 폴더의 .env 파일을 읽어서 환경변수로 등�
 class Settings:
     internal_api_key: str = os.getenv("AI_API_KEY", "").strip()
     ocr_engine: str = os.getenv("OCR_ENGINE", "paddle").strip().lower()
-    # Gemini 사진 분류·요약 대기(초). 넘으면 imageType=OTHER, summary=null로 대체
-    # 사진 분류·요약 전용 모델. AI-06·07의 GEMINI_CHAT_MODEL과 별개 (3.8-flash는 실측 67~90초라 분류에 부적합)
-    ocr_classify_model: str = os.getenv("OCR_CLASSIFY_MODEL", "gemini-3.5-flash-lite").strip()
+    # 사진 분류·요약 전용 모델. 비우면 LLM_MODEL 사용 (빠른 모델로 따로 지정 가능)
+    ocr_classify_model: str = os.getenv("OCR_CLASSIFY_MODEL", "").strip()
+    # 사진 분류·요약 대기(초). 넘으면 imageType=OTHER, summary=null로 대체
     ocr_classify_timeout_seconds: float = float(os.getenv("OCR_CLASSIFY_TIMEOUT_SECONDS", "10"))
     # 다른 OCR 요청이 처리 중일 때 기다리는 최대 시간(초). OCR 15초 예산 안에서 차감
     ocr_queue_wait_seconds: float = float(os.getenv("OCR_QUEUE_WAIT_SECONDS", "5"))

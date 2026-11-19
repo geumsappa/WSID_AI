@@ -1,11 +1,17 @@
 import asyncio
 import logging
 
-from google.genai.errors import APIError
+from openai import APIStatusError
 import httpx
 import pytest
 
 from assist.upstream import call, error_code, request_id
+
+
+def api_error(code):
+    request = httpx.Request("POST", "https://example.test")
+    response = httpx.Response(code, request=request)
+    return APIStatusError("PRIVATE_PROMPT_MARKER", response=response, body=None)
 
 
 @pytest.mark.parametrize("code", [429, 500, 503])
@@ -15,7 +21,7 @@ def test_transient_error_is_retried_once_without_exposing_message(code, caplog):
     async def operation():
         attempts.append(1)
         if len(attempts) == 1:
-            raise APIError(code, {"error": {"message": "PRIVATE_PROMPT_MARKER"}})
+            raise api_error(code)
         return "ok"
 
     token = request_id.set("test-request")
@@ -25,7 +31,7 @@ def test_transient_error_is_retried_once_without_exposing_message(code, caplog):
     finally:
         request_id.reset(token)
     assert len(attempts) == 2
-    assert f"GEMINI_{code}" in caplog.text and "test-request" in caplog.text
+    assert f"OPENAI_{code}" in caplog.text and "test-request" in caplog.text
     assert "PRIVATE_PROMPT_MARKER" not in caplog.text
 
 
@@ -35,9 +41,9 @@ def test_failed_call_is_bounded(code, attempts_expected):
 
     async def operation():
         attempts.append(1)
-        raise APIError(code, {"error": {"message": "hidden"}})
+        raise api_error(code)
 
-    with pytest.raises(APIError):
+    with pytest.raises(APIStatusError):
         asyncio.run(call(operation, "embedding"))
     assert len(attempts) == attempts_expected
 
@@ -55,7 +61,7 @@ def test_retry_respects_cancellation_deadline():
 
     async def operation():
         attempts.append(1)
-        raise APIError(429, {"error": {"message": "hidden"}})
+        raise api_error(429)
 
     async def run():
         async with asyncio.timeout(0.01):

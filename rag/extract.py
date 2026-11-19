@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 
 from .config import FACT_KEYS
-from .gemini import generate_json
+from .openai_client import generate_json
 
 MAX_DESCRIPTION = 1000
 FRAUD_TYPES = ["MESSENGER_PHISHING", "SMISHING", "LOAN_FRAUD", "INSTITUTION_IMPERSONATION",

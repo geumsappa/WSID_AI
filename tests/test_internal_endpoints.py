@@ -77,14 +77,47 @@ def test_ocr_classifier_timeout_keeps_text(client, monkeypatch):
 
 def test_ocr_classification_masks_input_and_checks_output(monkeypatch):
     captured = []
-    def fake(_system, prompt, _fallback, *, model=None):
+    def fake(_system, prompt, _fake_result, *, model, timeout):
         captured.append(prompt)
-        assert model == ocr.settings.ocr_classify_model
+        assert timeout == ocr.CLASSIFY_TIMEOUT_SECONDS
         return {"imageType": "INVALID", "summary": "연락처 010-1234-5678"}
     monkeypatch.setattr(ocr, "generate_json", fake)
     result = ocr._classify("전화 010-1234-5678 링크 https://example.com/path 인증번호 482913")
     assert result == ("OTHER", None)
     assert all(secret not in captured[0] for secret in ("010-1234-5678", "example.com", "482913"))
+
+
+def test_ocr_classification_uses_openai_settings(monkeypatch):
+    from rag import config as rag_config, openai_client
+
+    captured = {}
+    class FakeOpenAI:
+        def __init__(self, **kwargs):
+            captured["client"] = kwargs
+            self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+
+        def create(self, **kwargs):
+            captured["request"] = kwargs
+            message = SimpleNamespace(content='{"imageType":"SMS","summary":"배송 안내 문자입니다."}')
+            return SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(rag_config, "FAKE", False)
+    monkeypatch.setattr(openai_client, "OpenAI", FakeOpenAI)
+    monkeypatch.setattr(openai_client, "settings", SimpleNamespace(
+        llm_api_key="test-key", llm_model="test-model", llm_base_url=""))
+    monkeypatch.setattr(ocr, "settings", SimpleNamespace(ocr_classify_model=""))
+    assert ocr._classify("배송 안내 010-1234-5678") == ("SMS", "배송 안내 문자입니다.")
+    assert captured["request"]["model"] == "test-model"
+    assert captured["client"]["api_key"] == "test-key"
+    assert captured["client"]["timeout"] == ocr.CLASSIFY_TIMEOUT_SECONDS
+    assert "010-1234-5678" not in captured["request"]["messages"][1]["content"]
+
+    monkeypatch.setattr(ocr, "settings", SimpleNamespace(ocr_classify_model="fast-model"))
+    ocr._classify("배송 안내")
+    assert captured["request"]["model"] == "fast-model"
 
 
 def test_ocr_ordered_text():
@@ -141,17 +174,3 @@ def test_busy_slot_gives_up_after_wait():
         assert ocr._submit_bounded(pool, slot, lambda: "ok", wait=0.05) is None
     finally:
         slot.release()
-
-
-def test_generate_json_uses_given_model_first(monkeypatch):
-    from rag import config, gemini
-    calls = []
-    class Models:
-        def generate_content(self, model, contents, config):
-            calls.append(model)
-            return SimpleNamespace(text="{}")
-    monkeypatch.setattr(config, "FAKE", False)
-    monkeypatch.setattr(gemini, "_gemini", lambda: SimpleNamespace(models=Models()))
-    gemini.generate_json("s", "u", {}, model="ocr-model")
-    gemini.generate_json("s", "u", {})
-    assert calls == ["ocr-model", config.CHAT_MODEL]

@@ -104,21 +104,21 @@ class AssistModel(Protocol):
     async def answer(self, request: AnswerRequest) -> AnswerResponse: ...
 
 
-class GeminiAssistModel:
+class OpenAIAssistModel:
     async def _generate(self, system: str, payload: dict, schema: type):
-        from google.genai import types
-        from rag import config
-        from rag.gemini import _gemini
+        from app.config import settings
+        from rag.openai_client import async_client
 
-        response = await call(lambda: _gemini().aio.models.generate_content(
-            model=config.CHAT_MODEL,
-            contents=json.dumps(payload, ensure_ascii=False),
-            config=types.GenerateContentConfig(
-                system_instruction=system, response_mime_type="application/json",
-                response_json_schema=schema.model_json_schema(), temperature=0,
-            ),
-        ), "generation")
-        return schema.model_validate(json.loads(response.text))
+        if not settings.llm_model:
+            raise RuntimeError("LLM_MODEL을 설정해 주세요.")
+        async with async_client() as client:
+            response = await call(lambda: client.chat.completions.create(
+                model=settings.llm_model,
+                messages=[{"role": "system", "content": system},
+                          {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
+                response_format={"type": "json_object"},
+            ), "generation")
+        return schema.model_validate(json.loads(response.choices[0].message.content or ""))
 
     async def assess(self, request: PlanRequest) -> Assessment:
         return await self._generate(ASSESS_SYSTEM, request.model_dump(), Assessment)

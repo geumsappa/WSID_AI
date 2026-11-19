@@ -14,7 +14,7 @@ from app.config import settings
 from app.guard.scenario_guard import PHONE_PATTERN
 from app.guard.sensitive import NUMERIC_INFO_WORDS, mask_requested_numbers, mask_sensitive
 from app.schemas.internal import OcrResult
-from rag.gemini import generate_json
+from rag.openai_client import generate_json
 from rag.guard import has_forbidden
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -153,7 +153,8 @@ def _classify(text: str) -> tuple[str, str | None]:
     masked = _URL.sub("[링크]", masked)
     masked = PHONE_PATTERN.sub("[전화번호]", masked)
     raw = generate_json(_SYSTEM, f"<사진 속 글자>\n{masked}\n</사진 속 글자>",
-                        {"imageType": "OTHER", "summary": None}, model=settings.ocr_classify_model)
+                        {"imageType": "OTHER", "summary": None},
+                        model=settings.ocr_classify_model or None, timeout=CLASSIFY_TIMEOUT_SECONDS)
     if not isinstance(raw, dict):
         return "OTHER", None
     image_type = raw.get("imageType")

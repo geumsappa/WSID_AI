@@ -4,7 +4,7 @@
 - AI-07 run_explain : 사실 + 검토된 근거 → 대응이 필요한 이유 설명
 - 질문 답변 run_answer : 사실 + 질문 → 근거 안에서 답 / 꼭 필요한 사실을 모르면 되묻기 / 범위 밖이면 답변 불가
 
-Gemini 실패(과부하·시간 초과)는 AiUnavailable 로 올려서 라우터가 503 을 돌려줘요.
+OpenAI 실패(과부하·시간 초과)는 AiUnavailable 로 올려서 라우터가 503 을 돌려줘요.
 Spring 은 503 이면 AI 설명 없이 대응 카드만 보여 주면 돼요.
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ from rag.retrieve import find_by_question, find_references, references_by_code
 
 
 class AiUnavailable(Exception):
-    """AI(Gemini) 호출 실패 또는 근거 인덱스 없음 → 503"""
+    """AI(OpenAI) 호출 실패 또는 근거 인덱스 없음 → 503"""
 
 
 # 금융 상품 추천 등 피해 대응 범위 밖 질문 (답변 불가)
@@ -49,7 +49,7 @@ def run_extract(description: str) -> dict:
         return extract_facts(masked)
     except ValueError:
         raise
-    except Exception as e:  # noqa: BLE001  Gemini 503·429·시간 초과 등
+    except Exception as e:  # noqa: BLE001  OpenAI 503·429·시간 초과 등
         raise AiUnavailable(f"사실 추출 실패: {type(e).__name__}") from e
 
 

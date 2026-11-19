@@ -23,7 +23,7 @@ from app.api_errors import error_response
 from app.dependencies import require_internal_key
 from assist.contracts import AssistFailure, AssistRequest, AssistSuccess
 from assist.graph import AssistService
-from assist.model import FakeAssistModel, GeminiAssistModel
+from assist.model import FakeAssistModel, OpenAIAssistModel
 from assist.retrieval import ReferenceRetriever
 from assist.upstream import error_code, request_id
 from rag import config
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/internal/ai/solutions", tags=["내부 AI (피해 대
 
 @lru_cache(maxsize=1)
 def get_service() -> AssistService:
-    model = FakeAssistModel() if config.FAKE else GeminiAssistModel()
+    model = FakeAssistModel() if config.FAKE else OpenAIAssistModel()
     return AssistService(model, ReferenceRetriever())
 
 

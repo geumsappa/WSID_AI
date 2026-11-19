@@ -11,10 +11,8 @@ Pillow>=11
 paddleocr>=3.7,<4
 paddlepaddle>=3.2,<4
 httpx>=0.27
-httpx2>=2.16,<3  # assist/upstream.py가 직접 import (google-genai도 사용)
 
 # 피해 대응 RAG
-google-genai>=1.0
 numpy>=1.26
 # 상담 assist: 상태 없는 LangGraph 실행 (추적 전송은 코드에서 꺼 둠)
 langgraph>=1.0,<2

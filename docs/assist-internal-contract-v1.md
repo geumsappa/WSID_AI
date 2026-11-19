@@ -186,12 +186,12 @@ sequenceDiagram
 - LangSmith 추적은 실행 컨텍스트에서 비활성화한다. Ragas·Langfuse도 연동하지 않는다.
 - Python은 로그에 검증한 요청 UUID·phase·상태·소요 시간과 사전 정의 오류 코드만 기록한다.
   요청 오류나 SDK 예외의 원문/traceback도 로그와 오류 응답에 넣지 않는다.
-- API 키는 `AI_API_KEY`이며 Gemini 키와 별개다. 미설정 시 503, 불일치 시 401.
+- API 키는 `AI_API_KEY`이며 OpenAI 키(`LLM_API_KEY`)와 별개다. 미설정 시 503, 불일치 시 401.
 - 누락·타입·코드 오류는 422, 모델 출력 계약 위반은 502,
   의존 서비스·인덱스 오류는 503, 전체 처리 시간 초과는 504다.
   실패 본문은 `{"success":false,"error":{"code":"...","message":"..."}}`이며 Spring은 HTTP 상태로 실패 판정한다.
-- 초기 요청 예산은 `ASSIST_PLAN_TIMEOUT_SEC` 및 `ASSIST_ANSWER_TIMEOUT_SEC`(각 기본 15초)이다. `RAG_TIMEOUT_SEC`는 기존 Gemini 호출 제한으로 유지한다.
-  Gemini 생성·임베딩의 429·500·503은 0.25초 대기 후 호출당 한 번 재시도한다.
+- 초기 요청 예산은 `ASSIST_PLAN_TIMEOUT_SEC` 및 `ASSIST_ANSWER_TIMEOUT_SEC`(각 기본 15초)이다. `RAG_TIMEOUT_SEC`는 OpenAI 호출 한 번의 제한으로 유지한다.
+  OpenAI 생성·임베딩의 429·500·503은 0.25초 대기 후 호출당 한 번 재시도한다.
   재시도와 대기는 같은 요청 시간 예산에 포함되고 예비 모델로 자동 전환하지 않는다.
 - 라우터는 `app/routers/assist.py`이며 기존 `/extract`·`/explain`·`/answer`(feature/solutions-api)와 공존한다.
   `/answer`(가안)와 `/assist` 중 SOL-03이 쓸 경로는 팀 합의 항목이다.
@@ -227,23 +227,15 @@ python -m pytest -q
 python scripts/export_assist_openapi.py
 ```
 
-Gemini HTTP 오류에 대한 로컬 대역 검증:
-
-```bash
-postman simulation run postman/simulations/gemini-assist.sim.yaml --port 8768 --no-history
-# 별도 터미널: 합성 입력과 테스트 키만 사용
-python tests/simulate_gemini_retry.py
-```
-
-이 검증은 로컬 대역 서버를 상대로 SDK·재시도 동작을 확인한다. 실제 Gemini의
-가용성이나 답변 품질을 보장하지 않는다.
+2026-11-19 피해 대응 AI를 Gemini에서 OpenAI로 전환하면서 Gemini 전용 로컬 대역
+(postman/·tests/simulate_gemini_retry.py)은 삭제했다. 재시도 동작은 tests/test_upstream.py가 검증한다.
 
 모델 대역 테스트는 정보 부족, 후보 근거, 범위 밖, 상한, 재검색 복구/소진,
 인용 범위, 키 누락·타입·금지 표현, 인증, UUID, 요청 격리, 전체 시간 제한,
 민감 원문 오류/로그 비노출을 검증한다. 사용자 로컬 인덱스는 임시 인덱스로 격리한다.
 
 서버 실행은 README의 assist 절을 따른다. `RAG_FAKE=1`은 계약·연동 확인용 모델 대역이며
-의미 검색 성능·근거 충실성·실제 Gemini 호환성이나 Spring 통합 검증을 대신하지 않는다.
+의미 검색 성능·근거 충실성·실제 OpenAI 호환성이나 Spring 통합 검증을 대신하지 않는다.
 OpenAPI는 FastAPI DTO에서 생성한 [assist-openapi.json](assist-openapi.json)이다.
 표와 본문의 상태별·요청별 교차 제약도 함께 적용한다.
 

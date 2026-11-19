@@ -523,18 +523,19 @@ def test_model_failure_and_validation_do_not_leak_raw_data(client, caplog):
 
 
 def test_upstream_status_is_logged_without_response_body(client, caplog):
-    from google.genai.errors import APIError
+    from openai import APIStatusError
+    import httpx
 
     class BrokenModel(FakeAssistModel):
         async def assess(self, request):
-            raise APIError(429, {"error": {"message": "PRIVATE_RESPONSE_MARKER"}})
+            raise APIStatusError("PRIVATE_RESPONSE_MARKER", response=httpx.Response(429, request=httpx.Request("POST", "https://example.test")), body=None)
 
     http, retriever = client
     app.dependency_overrides[get_service] = lambda: AssistService(BrokenModel(), retriever)
     with caplog.at_level(logging.INFO):
         response = post(http, plan_request())
     assert response.status_code == 503
-    assert "GEMINI_429" in caplog.text
+    assert "OPENAI_429" in caplog.text
     assert "PRIVATE_RESPONSE_MARKER" not in caplog.text + response.text
 
 

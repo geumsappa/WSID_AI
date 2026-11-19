@@ -1,5 +1,7 @@
 """시뮬레이션 내부 API. 노션의 success/data 계약을 사용한다."""
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.dependencies import require_internal_key
 
 from app.schemas.discovery import DiscoveryRequest, DiscoveryResult
 from app.schemas.internal import Success
@@ -10,7 +12,8 @@ from app.schemas.training_api import (
 from app.services.discovery import discover
 from app.services.training_api import evaluate, scenario, simulation
 
-router = APIRouter(prefix="/internal/ai", tags=["내부 AI · 훈련 시뮬레이션"])
+router = APIRouter(prefix="/internal/ai", tags=["내부 AI · 훈련 시뮬레이션"],
+                   dependencies=[Depends(require_internal_key)])
 
 
 @router.post("/discovery/next", response_model=Success[DiscoveryResult])

@@ -3,8 +3,10 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+INTERNAL_HEADERS = {"X-Internal-Api-Key": "test-internal-key"}  # tests/conftest.py와 같은 키
+
 def test_spring_scenario_reply_evaluation_contract():
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         scenario_response = client.post("/internal/ai/scenarios/generate", json={
             "facts": {"activity": "중고거래"}, "fraudTypeCode": "SECONDHAND_TRADE",
         })
@@ -42,7 +44,7 @@ def test_spring_scenario_reply_evaluation_contract():
 
 
 def test_invalid_scenario_is_rejected_without_input_echo():
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         response = client.post("/internal/ai/simulation/reply", json={
             "scenario": {"private": "do-not-echo"}, "messages": [],
             "userInput": "private-answer", "turnCount": 1,
@@ -56,7 +58,7 @@ def test_evaluation_model_failure_returns_safe_error(monkeypatch):
     from app.services import training_api
     from app.llm.llm_client import LLMError
 
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         scenario = client.post("/internal/ai/scenarios/generate", json={
             "facts": {}, "fraudTypeCode": "SECONDHAND_TRADE",
         }).json()["data"]["scenario"]
@@ -79,7 +81,7 @@ def test_masked_card_submission_reaches_simulation_and_records_disclosure(monkey
     monkeypatch.setattr(training_turn, "generate_json", lambda *args, **kwargs: {
         "judgment": {"outcome": "safe"}, "personaMessage": "확인했습니다", "nextScene": 1,
     })
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         scenario = client.post("/internal/ai/scenarios/generate", json={
             "facts": {}, "fraudTypeCode": "SECONDHAND_TRADE",
         }).json()["data"]["scenario"]
@@ -93,3 +95,9 @@ def test_masked_card_submission_reaches_simulation_and_records_disclosure(monkey
     assert "SENSITIVE_INFO_SHARED" in result["recognizedActions"]
     assert "RISKY_RESPONSE" in result["recognizedActions"]
     assert not result["shouldFinish"]
+
+
+def test_training_routes_require_internal_key():
+    with TestClient(app) as client:
+        for path in ("discovery/next", "scenarios/generate", "simulation/reply", "training/evaluate"):
+            assert client.post(f"/internal/ai/{path}", json={}).status_code == 401

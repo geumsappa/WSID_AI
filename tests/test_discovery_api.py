@@ -4,6 +4,8 @@ from app.main import app
 from app.services import discovery
 
 
+INTERNAL_HEADERS = {"X-Internal-Api-Key": "test-internal-key"}  # tests/conftest.py와 같은 키
+
 def test_spring_contract_reuses_context_logic(monkeypatch):
     captured = {}
 
@@ -16,7 +18,7 @@ def test_spring_contract_reuses_context_logic(monkeypatch):
         }
 
     monkeypatch.setattr(discovery, "run_context_turn", run)
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         response = client.post("/internal/ai/discovery/next", json={
             "conversation": [{"sender": "AI", "content": "최근 어떤 상황을 겪으셨나요?", "phase": "DISCOVERY"}],
             "knownFacts": {"activity": "중고거래"},
@@ -34,7 +36,7 @@ def test_spring_contract_reuses_context_logic(monkeypatch):
 
 
 def test_invalid_request_does_not_echo_input():
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         response = client.post("/internal/ai/discovery/next", json={
             "conversation": [{"sender": "INVALID", "content": "private-input"}],
             "knownFacts": {},
@@ -45,7 +47,7 @@ def test_invalid_request_does_not_echo_input():
 
 
 def test_mock_model_accepts_spring_request():
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         response = client.post("/internal/ai/discovery/next", json={
             "conversation": [], "knownFacts": {}, "currentInput": "최근 중고거래를 했어요.",
         })

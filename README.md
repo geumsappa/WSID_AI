@@ -1,5 +1,28 @@
 # WSID_AI (어떡하지 AI 서버, FastAPI)
 
+## 빠른 실행
+
+```bash
+cp .env.example .env      # GEMINI_API_KEY 입력. AI_API_KEY는 Spring과 같은 값(로컬 기본 local-dev-key)
+pip install -r requirements.txt
+python -m rag.index       # 피해 대응 근거 인덱스. 없으면 solutions API가 503
+python -m uvicorn app.main:app --port 8000
+RAG_FAKE=1 pytest -q tests  # 키 없이 테스트
+```
+
+모든 `/internal/ai/**` API는 `X-Internal-Api-Key` 헤더(= `AI_API_KEY`)가 필요해요. 없거나 틀리면 401, 서버에 키가 없으면 503이에요.
+
+## 피해 대응 API (긴급대응)
+
+| API | 하는 일 | 코드 |
+|---|---|---|
+| `POST /internal/ai/solutions/extract` (AI-06) | 상황 설명 → 사실 4개 YES/NO/UNKNOWN | `rag/extract.py` |
+| `POST /internal/ai/solutions/explain` (AI-07) | Spring이 고른 근거로 대응 이유 설명 | `rag/explain.py` |
+| `POST /internal/ai/solutions/assist` | 채팅 추가 질문. PLAN(되묻기·근거 후보) → ANSWER(승인 근거로 답변) | `app/routers/assist.py`, `assist/` |
+| `POST /internal/ai/solutions/answer` | 사용 안 함(예전 가안). `/assist`로 대체 | `rag/qa.py` |
+
+assist 계약: `docs/assist-internal-contract-v1.md`
+
 ## AI-01 Spring 연동 계약
 
 상황 파악 API는 노션 명세의 요청 필드인 `conversation`, `knownFacts`, `currentInput`을 받습니다. conversation의 각 항목은 `sender`, `content`를 사용하고 `phase`는 선택입니다.

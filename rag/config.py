@@ -18,6 +18,14 @@ TIMEOUT_SEC = int(os.getenv("RAG_TIMEOUT_SEC", "30"))
 # assist의 각 HTTP 단계 예산. CLI/OpenAI 기본 timeout과 독립적이다.
 ASSIST_PLAN_TIMEOUT_SEC = float(os.getenv("ASSIST_PLAN_TIMEOUT_SEC", "15"))
 ASSIST_ANSWER_TIMEOUT_SEC = float(os.getenv("ASSIST_ANSWER_TIMEOUT_SEC", "15"))
+ASSIST_MAX_RESEARCHES = int(os.getenv("ASSIST_MAX_RESEARCHES", "1"))
+ASSIST_RETRY_MIN_SECONDS = float(os.getenv("ASSIST_RETRY_MIN_SECONDS", "7"))
+ASSIST_LLM_MODEL = os.getenv("ASSIST_LLM_MODEL", "").strip()
+ASSIST_REASONING_EFFORT = os.getenv("ASSIST_REASONING_EFFORT", "").strip().lower()
+if not 0 <= ASSIST_MAX_RESEARCHES <= 2 or not 0 < ASSIST_RETRY_MIN_SECONDS < float("inf"):
+    raise ValueError("invalid assist retry settings")
+if ASSIST_REASONING_EFFORT not in ("", "low"):
+    raise ValueError("ASSIST_REASONING_EFFORT must be empty or low")
 if not (0 < ASSIST_PLAN_TIMEOUT_SEC < float("inf") and 0 < ASSIST_ANSWER_TIMEOUT_SEC < float("inf")):
     raise ValueError("assist timeout must be a finite positive number")
 # 1 이면 외부 모델을 부르지 않는 가짜 임베딩·가짜 설명으로 동작 (키 없이 파이프라인 확인용)

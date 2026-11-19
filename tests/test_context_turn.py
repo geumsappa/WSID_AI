@@ -93,12 +93,12 @@ def test_민감정보_없으면_masked_text는_원문과_같음():
     assert r["masked_text"] == "택배 기다리고 있어요"
 
 
-def test_질문_상한이면_종료():
+def test_질문_상한이어도_정보가_없으면_준비완료가_아님():
     history = []
     for i in range(5):
         history += [{"role": "ai", "text": f"질문{i}"}, {"role": "user", "text": f"답변{i}"}]
     r = run_context_turn("s1", history)
-    assert r["done"]
+    assert not r["done"]
 
 
 # ---------- SIM-002 항목별 사실 추출 ----------

@@ -26,10 +26,12 @@ def case_ids_for_subtype(subtype: str) -> list[str]:
     return [cid for cid, c in load_cases().items() if c.get("subtype") == subtype]
 
 
-def cases_for_prompt() -> str:
+def cases_for_prompt(subtypes: set[str] | None = None) -> str:
     """LLM 에 보여줄 사례 목록. 출처·실존 기관명은 빼고 수법 요약만 보낸다."""
     lines = []
     for cid, c in load_cases().items():
+        if subtypes and c.get("subtype") not in subtypes:
+            continue
         info = ", ".join(c.get("requestedInfo") or []) or "없음"
         lines.append(
             f"- {cid} [{c['riskType']} / {c['subtype']}] {c['summary']} "

@@ -17,6 +17,7 @@ from app.guard.scenario_guard import mentioned_organizations, validate_and_norma
 from app.guard.sensitive import mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
 from app.scenario_data import (
+    CATEGORY_TO_SUBTYPE,
     ALLOWED_CHANNELS,
     ALLOWED_MOCK_PAGES,
     ALLOWED_REQUESTS,
@@ -41,7 +42,7 @@ def run_scenario(session_id: str, facts: list[dict]) -> dict:
         return _fallback(facts)
 
     allowed = mentioned_organizations(facts)
-    system_prompt = _build_prompt()
+    system_prompt = _build_prompt(facts)
     system_prompt += "\n사용자가 언급해 재사용할 수 있는 기관명: " + ", ".join(allowed or ["없음"])
     system_prompt += "\n목록에 있는 기관은 사용자 맥락에 맞는 경우 그 이름을 유지하세요. 그 밖의 기관은 가상 이름을 쓰세요."
     user_content = "사용자가 앞선 대화에서 말한 사실 목록입니다.\n\n" + "\n".join(
@@ -57,7 +58,17 @@ def run_scenario(session_id: str, facts: list[dict]) -> dict:
             continue
 
         result, errors = validate_and_normalize(data, allowed)
+        expected_subtypes = {CATEGORY_TO_SUBTYPE[fact["category"]] for fact in facts if fact["category"] in CATEGORY_TO_SUBTYPE}
+        if result and expected_subtypes and result["scenario"]["fraudSubtype"] not in expected_subtypes:
+            errors = ["사용자 활동 분류와 맞지 않는 시나리오"]
+            result = None
+        expected_channels = {fact["channel"] for fact in facts if fact.get("channel") in ALLOWED_CHANNELS}
+        if result and expected_channels and result["scenario"]["channel"] not in expected_channels:
+            errors = ["사용자가 제공한 연락 경로와 맞지 않는 시나리오"]
+            result = None
         if result:
+            result["scenario"]["sourceFacts"] = facts[-10:]
+            result["analysis"]["usedFacts"] = [fact["detail"] for fact in facts[:3]]
             result["scenario"]["maxTurns"] = settings.training_max_turns
             result["fallback_used"] = False
             logger.info("session=%s 시나리오 생성: %s", session_id, result["scenario"]["fraudSubtype"])
@@ -68,7 +79,8 @@ def run_scenario(session_id: str, facts: list[dict]) -> dict:
     return _fallback(facts)
 
 
-def _build_prompt() -> str:
+def _build_prompt(facts: list[dict] | None = None) -> str:
+    relevant = {CATEGORY_TO_SUBTYPE[fact["category"]] for fact in (facts or []) if fact.get("category") in CATEGORY_TO_SUBTYPE}
     return (
         PROMPT_PATH.read_text(encoding="utf-8")
         .replace("{{RISK_TYPES}}", ", ".join(RISK_TYPES))
@@ -76,7 +88,7 @@ def _build_prompt() -> str:
         .replace("{{CHANNELS}}", ", ".join(ALLOWED_CHANNELS))
         .replace("{{REQUESTS}}", ", ".join(ALLOWED_REQUESTS))
         .replace("{{MOCK_PAGES}}", ", ".join(ALLOWED_MOCK_PAGES))
-        .replace("{{CASES}}", cases_for_prompt())
+        .replace("{{CASES}}", cases_for_prompt(relevant or None))
     )
 
 
@@ -87,7 +99,7 @@ def _clean_input_facts(facts: list[dict]) -> list[dict]:
         if v is None or str(v).strip() == "":
             return None
         text, _ = mask_sensitive(" ".join(str(v).split()))
-        return text[:100]
+        return text[:200] if camel == "detail" else text[:100]
 
     cleaned = []
     for f in facts[:30]:
@@ -96,6 +108,8 @@ def _clean_input_facts(facts: list[dict]) -> list[dict]:
             continue
         risk = f.get("riskFactors", f.get("risk_factors")) or []
         cleaned.append({
+            **({"factId": f["factId"]} if isinstance(f.get("factId"), str) and f["factId"].startswith("fact-") else {}),
+            **({"sourceTurn": f["sourceTurn"]} if isinstance(f.get("sourceTurn"), int) and not isinstance(f["sourceTurn"], bool) and f["sourceTurn"] > 0 else {}),
             "category": str(f.get("category", "기타")).strip() or "기타",
             "detail": detail,
             "channel": get(f, "channel", "channel"),
@@ -112,7 +126,7 @@ def _fact_line(f: dict) -> str:
     if f.get("channel"):
         extras.append(f"채널: {f['channel']}")
     if f.get("impersonatedIdentity"):
-        extras.append(f"사칭: {f['impersonatedIdentity']}")
+        extras.append(f"상대가 밝힌 신분: {f['impersonatedIdentity']}")
     if f.get("requestedAction"):
         extras.append(f"요구: {f['requestedAction']}")
     if f.get("riskFactors"):
@@ -129,9 +143,21 @@ def _fallback(facts: list[dict]) -> dict:
         if pick_subtype([f]) == subtype
     ][:3]
     allowed = mentioned_organizations(facts)
+    if subtype == "채용·아르바이트 사기" and allowed:
+        organization = max(allowed, key=len)
+        raw["scenario"]["persona"]["organization"] = organization
+        raw["scenario"]["persona"]["role"] = "채용 담당자"
+        raw["scenario"]["openingMessage"] = f"안녕하세요. {organization} 채용 담당자입니다. 지원자 확인을 위해 연락드렸습니다."
+    channel = next((fact["channel"] for fact in reversed(facts) if fact.get("channel") in ALLOWED_CHANNELS), None)
+    if channel:
+        raw["scenario"]["channel"] = channel
+    if facts:
+        summary = "; ".join(fact["detail"] for fact in facts[:2])[:160]
+        raw["scenario"]["background"] = f"알려주신 상황은 ‘{summary}’입니다. 이 상황과 관련한 가상의 연락을 받았다고 가정하고 대응을 연습합니다."
     result, errors = validate_and_normalize(raw, allowed)  # 기본 시나리오도 같은 검증을 거침
     if result is None:
         raise RuntimeError(f"기본 시나리오 '{subtype}' 가 검증을 통과하지 못함: {errors}")
+    result["scenario"]["sourceFacts"] = facts[-10:]
     result["scenario"]["maxTurns"] = settings.training_max_turns
     result["fallback_used"] = True
     return result

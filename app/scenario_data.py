@@ -20,6 +20,12 @@ SUBTYPE_TO_RISK_TYPE = {
     "중고거래 사기": "기타",
     "채용·아르바이트 사기": "기타",
 }
+# Public training codes are independent from the user's everyday activity categories.
+SUBTYPE_TO_FRAUD_CODE = {
+    "지인·가족 사칭": "MESSENGER_PHISHING", "택배 사칭": "SMISHING", "부고·청첩장 사칭": "SMISHING",
+    "대출 사기": "LOAN_FRAUD", "공공기관 사칭": "INSTITUTION_IMPERSONATION",
+    "투자 리딩방": "INVESTMENT_FRAUD", "중고거래 사기": "SECONDHAND_TRADE", "채용·아르바이트 사기": "JOB_SCAM",
+}
 ALLOWED_SUBTYPES = list(SUBTYPE_TO_RISK_TYPE)
 
 ALLOWED_CHANNELS = ["문자", "메신저", "중고거래 앱 채팅", "이메일", "SNS 메시지"]

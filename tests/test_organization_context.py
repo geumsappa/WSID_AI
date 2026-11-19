@@ -5,8 +5,8 @@ from app.scenario_data import FALLBACK_SCENARIOS
 from app.services import scenario as scenario_service, training_turn
 
 
-def scenario_output():
-    output = copy.deepcopy(FALLBACK_SCENARIOS["중고거래 사기"])
+def scenario_output(subtype="중고거래 사기"):
+    output = copy.deepcopy(FALLBACK_SCENARIOS[subtype])
     output["scenario"]["persona"]["organization"] = "기업은행"
     output["scenario"]["persona"]["role"] = "채용 담당자"
     output["scenario"]["openingMessage"] = "기업은행 채용 담당자입니다. 응시 확인을 위해 연락드렸습니다."
@@ -43,7 +43,7 @@ def test_generation_keeps_user_organization_and_stores_allowed_names(monkeypatch
 
     def generate(system, content, **kwargs):
         captured.append(system)
-        return scenario_output()
+        return scenario_output("채용·아르바이트 사기")
 
     monkeypatch.setattr(scenario_service, "generate_json", generate)
     result = scenario_service.run_scenario("context", [{"category": "구직·아르바이트", "detail": "기업은행 역량검사를 봤어요"}])

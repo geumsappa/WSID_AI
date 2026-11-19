@@ -7,7 +7,7 @@ def test_recruitment_link_gets_internal_page_even_without_financial_template(mon
     scenario = _fallback([])["scenario"]
     scenario["mockPage"] = "채용"
     monkeypatch.setattr(training_api, "run_scenario", lambda *args: {"scenario": scenario})
-    result = training_api.scenario(ScenarioRequest(facts={}, fraudTypeCode="SECONDHAND_TRADE"))
+    result = training_api.scenario(ScenarioRequest(facts={"activity": "채용 지원"}, fraudTypeCode="SECONDHAND_TRADE"))
     assert result.mockPageTemplateCode == "BANK_NOTICE"
 
 

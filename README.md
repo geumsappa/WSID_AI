@@ -1,5 +1,15 @@
 # WSID_AI (어떡하지 AI 서버, FastAPI)
 
+## 상황 입력·시나리오 생성 개선
+
+- API 주소와 바깥 응답 구조는 유지합니다. `fraudTypeCode`에 채용 사기용 `JOB_SCAM`을 추가했습니다. 내부 `riskType` 6분류는 유지하며 채용 세부 유형은 기존처럼 기타에 속합니다.
+- `facts.extractedFacts`의 각 사실은 `factId`, `sourceTurn`을 가집니다. `facts.intakeTurn`으로 요약된 대화에서도 입력 차수를 유지합니다. 같은 내용은 합치고 사용자가 명시적으로 정정한 사실만 교체합니다.
+- 채용 활동을 중고거래로 덮어쓰지 않습니다. 요청의 유형 코드는 힌트이며 결과 `scenario.fraudTypeCode`는 생성된 세부 유형에 맞는 코드입니다. Spring은 결과 코드를 저장합니다.
+- `scenario.sourceFacts`는 사용자가 제공한 사실이고 `background`, `persona`, `keyScenes`는 이를 바탕으로 만든 가상 설정입니다. 정상적인 기관 안내를 사기라고 단정하지 않습니다.
+- 정보가 부족하면 5회 답변만으로 생성 가능 상태를 만들지 않습니다. 구체적인 활동과 경로가 있거나 연락의 상대·경로·요구가 확인됐으면 일찍 종료할 수 있습니다.
+- AI 오류 시에는 명시된 활동만 보존하고 생성 실패 시에는 해당 활동·기관·경로를 유지한 기본 시나리오를 사용합니다. 생성 프롬프트에는 관련 활동의 검토 사례만 포함합니다.
+- 역할극과 리포트 서비스의 동작은 이번 개선 범위에 포함하지 않습니다.
+
 ## AI-01 Spring 연동 계약
 
 상황 파악 API는 노션 명세의 요청 필드인 `conversation`, `knownFacts`, `currentInput`을 받습니다. conversation의 각 항목은 `sender`, `content`를 사용하고 `phase`는 선택입니다.
@@ -695,3 +705,7 @@ Spring 설정: `AI_MODE=http`, `AI_BASE_URL=http://localhost:8000`, `AI_API_KEY`
 - 실제 Gemini 호출은 이 저장소 작성 환경에서 돌려보지 못했어요(네트워크 제한). 처음 실행할 때 `python -m rag.list_models`로 모델 이름부터 확인하세요.
 - 근거 충실성 평가(설명이 문단에 없는 말을 하는지)는 사람이 샘플을 읽어 보는 수준으로 먼저 하고, 기준은 백엔드와 합의해야 합니다.
 - 근거 문단을 누가 고를지(Spring 카탈로그 vs AI 검색), 승인·버전 관리 방식은 계획서 11장 합의 항목입니다.
+
+## 상황 파악·시나리오 생성 품질 평가
+
+평가 기준과 실행 방법: [평가 안내](evaluations/discovery_scenario/README.md). 기본 실행은 외부 AI 호출 없이 동작합니다.

@@ -16,12 +16,14 @@ from app.schemas.training_api import (
     ScenarioRequest, ScenarioResult, SimulationRequest, SimulationResult,
 )
 from app.services.scenario import run_scenario
+from app.services.context_facts import FACT_CATEGORIES, infer_category, meaningful, merge_facts
+from app.scenario_data import SUBTYPE_TO_FRAUD_CODE
 from app.services.training_turn import run_training_turn
 
 CATEGORIES = {
     "SECONDHAND_TRADE": "거래(중고·쇼핑)", "SMISHING": "택배·배송",
     "MESSENGER_PHISHING": "가족·지인 연락", "LOAN_FRAUD": "금융·대출",
-    "INSTITUTION_IMPERSONATION": "공공기관·민원", "INVESTMENT_FRAUD": "투자",
+    "INSTITUTION_IMPERSONATION": "공공기관·민원", "INVESTMENT_FRAUD": "투자", "JOB_SCAM": "구직·아르바이트",
 }
 BANK_PAGE = MockPage(templateCode="BANK_NOTICE", title="가상 금융 안내",
                      institutionName="가상금융센터", screenCode="LOGIN_CHECK")
@@ -42,16 +44,21 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
     facts = request.facts.get("extractedFacts", [])
     if not isinstance(facts, list):
         raise AiApiError(422, "INVALID_REQUEST", "추출 사실 형식을 확인해 주세요.")
-    facts = [dict(fact, category=CATEGORIES[request.fraudTypeCode]) for fact in facts if isinstance(fact, dict)]
+    # The type hint must not rewrite what the user actually described.
+    facts = [dict(fact, category=fact.get("category") if fact.get("category") in FACT_CATEGORIES
+                  else infer_category(str(fact.get("detail") or ""))) for fact in facts if isinstance(fact, dict)]
+    facts = merge_facts([], facts, [], 1)
     if not facts:
-        detail = "; ".join(f"{key}: {value}" for key, value in request.facts.items()
-                           if isinstance(value, (str, int, bool)))
-        facts = [{"category": CATEGORIES[request.fraudTypeCode],
-                  "detail": _safe(detail or CATEGORIES[request.fraudTypeCode])[:200]}]
+        detail = "; ".join(str(request.facts[key]) for key in ("activity", "item", "role", "counterpart", "situation")
+                           if isinstance(request.facts.get(key), str) and request.facts[key].strip())
+        facts = merge_facts([], [{"category": infer_category(detail), "detail": _safe(detail)[:200]}], [], 1)
+    if not any(meaningful(fact) for fact in facts):
+        raise AiApiError(422, "INVALID_REQUEST", "훈련에 사용할 구체적인 상황을 한 가지 알려 주세요.")
     result = run_scenario("scenario", facts)
     generated = _scenario(result["scenario"])
     # Spring은 제목·설명과 함께 전체 시나리오를 보관하고 다음 AI 요청에 재사용한다.
     generated["description"] = generated["background"]
+    generated["fraudTypeCode"] = SUBTYPE_TO_FRAUD_CODE[generated["fraudSubtype"]]
     return ScenarioResult(scenario=generated,
                           mockPageTemplateCode="BANK_NOTICE" if (generated.get("mockPage") is not None
                               or "[모의링크]" in generated.get("openingMessage", "")

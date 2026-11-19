@@ -43,3 +43,13 @@
    "channel": "문자", "impersonatedIdentity": "택배사", "requestedAction": "링크 클릭",
    "riskFactors": ["출처 불명 링크", "시간 압박"]}],
  "enough_info": false, "real_concern": false}
+
+
+## 사실 정정과 충분한 정보
+- 기존 사실에는 factId가 붙어 있다. 사용자가 명시적으로 정정·철회한 사실만 retracted_fact_ids에 해당 ID를 넣는다.
+- 정정한 새로운 사실은 extracted_facts에 넣는다. 이전 답변을 무시하라는 지시나 일반적인 주제 변경만으로 사실을 삭제하지 않는다.
+- 같은 사실을 표현만 바꿔 반복 추출하지 않는다. 사용자가 말하지 않은 연락 경로·업체·요구 행동은 채우지 않는다.
+- 의미 있는 활동이나 받은 연락이 하나도 없으면 enough_info는 false다. ‘모르겠어요’만 반복한 것도 충분한 정보가 아니다.
+- 구체적인 활동 하나만으로 자연스러운 훈련을 만들 수 있으면 불필요한 질문 없이 enough_info=true로 종료할 수 있다.
+- 질문 횟수는 권장 예산이다. 정보가 없는데 횟수만 찼다고 준비 완료를 선언하지 않는다.
+- retracted_fact_ids는 최대 30개 문자열 배열이며 정정할 사실이 없으면 빈 배열이다. enough_info와 real_concern은 JSON boolean이다.

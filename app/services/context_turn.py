@@ -16,13 +16,13 @@ from pathlib import Path
 from app import fallback
 from app.config import settings
 from app.guard.sensitive import mask_sensitive
+from app.guard.scenario_guard import mentioned_organizations
 from app.llm.llm_client import LLMError, generate_json
 from app.scenario_data import ALLOWED_REQUESTS
 
-FACT_CATEGORIES = [
-    "거래(중고·쇼핑)", "구직·아르바이트", "택배·배송", "금융·대출", "투자",
-    "가족·지인 연락", "공공기관·민원", "여행·이동", "기타",
-]
+from pydantic import ValidationError
+from app.schemas.discovery import ContextModelOutput
+from app.services.context_facts import FACT_CATEGORIES, followup, infer_category, meaningful, merge_facts, sufficient_context, text_key
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,9 @@ PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "context_turn
 def run_context_turn(session_id: str, history: list[dict], known_facts: dict | None = None) -> dict:
     """history 예: [{"role": "ai", "text": "..."}, {"role": "user", "text": "..."}]"""
     max_turns = settings.max_context_turns
-    user_answer_count = sum(1 for m in history if m["role"] == "user")
+    previous_turn = (known_facts or {}).get("intakeTurn", 0)
+    previous_turn = previous_turn if isinstance(previous_turn, int) and not isinstance(previous_turn, bool) and 0 <= previous_turn < 1000000 else 0
+    user_answer_count = max(sum(1 for m in history if m["role"] == "user"), previous_turn + 1) if history else 0
 
     # 1) 아직 아무 대화도 없으면 첫 질문
     if not history:
@@ -64,17 +66,33 @@ def run_context_turn(session_id: str, history: list[dict], known_facts: dict | N
 
     try:
         data = generate_json(system_prompt, transcript)
-        next_question = str(data.get("next_question", "")).strip()
-        facts = _clean_facts(data.get("extracted_facts", []))
-        enough_info = bool(data.get("enough_info", False))
-        real_concern = bool(data.get("real_concern", False))
+        parsed = ContextModelOutput.model_validate(data)
+        next_question = parsed.next_question.strip()
+        facts = _clean_facts(parsed.extracted_facts)
+        user_source = " ".join(message["text"] for message in history if message["role"] == "user")
+        source = [{"detail": user_source}, *((known_facts or {}).get("extractedFacts", []))]
+        allowed_names = set(mentioned_organizations(source))
+        facts = [fact for fact in facts if set(mentioned_organizations([fact])).issubset(allowed_names)]
+        enough_info = parsed.enough_info
+        real_concern = parsed.real_concern
+        known_ids = {fact.get("factId") for fact in (known_facts or {}).get("extractedFacts", []) if isinstance(fact, dict)}
+        correction = any(word in history[-1]["text"] for word in ("아니고", "아니라", "아니었", "정정", "잘못", "실은", "사실은", "바꿔", "취소"))
+        retracted = [fact_id for fact_id in parsed.retracted_fact_ids if correction and fact_id in known_ids]
         used_fallback = False
-    except LLMError:
+    except (LLMError, ValidationError):
         logger.warning("session=%s LLM 실패 → 기본 질문 사용", session_id)
         next_question = fallback.fallback_question(user_answer_count)
-        facts = []
+        category = infer_category(masked_last)
+        facts = _clean_facts([{"category": category, "detail": masked_last}]) if category != "기타" and meaningful({"detail": masked_last}) else []
         enough_info = False
         real_concern = False
+        used_fallback = True
+        retracted = []
+
+    accumulated = merge_facts((known_facts or {}).get("extractedFacts", []), facts, retracted, user_answer_count)
+    previous_questions = [message["text"] for message in history if message["role"] == "ai"]
+    if not next_question or text_key(next_question) in {text_key(question) for question in previous_questions}:
+        next_question = followup(accumulated, previous_questions)
         used_fallback = True
 
     # 4) 질문이 비어 있으면 기본 질문으로 (질문 내용은 막지 않음)
@@ -83,9 +101,13 @@ def run_context_turn(session_id: str, history: list[dict], known_facts: dict | N
         used_fallback = True
 
     # 5) 종료 판단
-    done = reached_limit or enough_info
+    done = any(meaningful(fact) for fact in accumulated) and (sufficient_context(accumulated) or reached_limit or enough_info)
     if done:
         next_question = fallback.DONE_MESSAGE
+    elif enough_info or not next_question.endswith(("?", "？")):
+        next_question = followup(accumulated, previous_questions)
+    elif next_question.count("?") > 1:
+        next_question = next_question.split("?", 1)[0] + "?"
 
     logger.info("session=%s answers=%d done=%s fallback=%s",
                 session_id, user_answer_count, done, used_fallback)
@@ -100,6 +122,7 @@ def run_context_turn(session_id: str, history: list[dict], known_facts: dict | N
         done=done,
         real_concern=real_concern,
         fallback_used=used_fallback,
+        retracted_fact_ids=retracted,
     )
 
 
@@ -153,7 +176,7 @@ def _masked(value, limit: int) -> str:
 
 def _result(next_question: str, extracted_facts=None, sensitive_detected=False,
             sensitive_types=None, masked_text=None, done=False, real_concern=False,
-            fallback_used=False) -> dict:
+            fallback_used=False, retracted_fact_ids=None) -> dict:
     return {
         "next_question": next_question,
         "extracted_facts": extracted_facts or [],
@@ -163,4 +186,5 @@ def _result(next_question: str, extracted_facts=None, sensitive_detected=False,
         "done": done,
         "real_concern": real_concern,
         "fallback_used": fallback_used,
+        "retracted_fact_ids": retracted_fact_ids or [],
     }

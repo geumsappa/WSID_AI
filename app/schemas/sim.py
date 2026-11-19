@@ -45,6 +45,8 @@ class Fact(CamelModel):
     """SIM-002 입력 정보 분석 결과: 사실 1개"""
     category: str = Field(description="거래(중고·쇼핑) | 구직·아르바이트 | 택배·배송 | 금융·대출 | 투자 | 가족·지인 연락 | 공공기관·민원 | 여행·이동 | 기타")
     detail: str = Field(description="사실 한 문장")
+    fact_id: str | None = None
+    source_turn: int | None = Field(default=None, ge=1)
     channel: str | None = Field(default=None, description="채널: 문자, 메신저, 중고거래 앱 채팅, 이메일 등")
     impersonated_identity: str | None = Field(default=None, description="사칭 신분: 상대가 자신을 누구라고 했는지")
     requested_action: str | None = Field(default=None, description="요구 행동: 링크 클릭 | 개인정보 제공 | 송금 | 앱 설치 | 대화 지속")
@@ -149,6 +151,7 @@ class Scenario(CamelModel):
     persona: Persona
     background: str = Field(description="훈련 시작 시 사용자에게 보여줄 상황 설명")
     opening_message: str = Field(description="가상 인물의 첫 메시지 (훈련 채팅 첫 말풍선)")
+    source_facts: list[Fact] = Field(default_factory=list, max_length=30, description="사용자가 제공한 사실. 가상 시나리오 설정과 구분")
     allowed_organizations: list[str] = Field(default_factory=list, max_length=50,
                                            description="입력 사실에서 확인해 이 훈련에 허용한 기관명")
     key_scenes: list[KeyScene]

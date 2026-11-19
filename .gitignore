@@ -18,3 +18,6 @@ venv/
 .vscode/
 .idea/
 .DS_Store
+
+# Local AI quality reports
+evaluation-results/

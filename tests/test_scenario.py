@@ -134,7 +134,7 @@ def test_사실의_채널_사칭_요구정보가_LLM에_전달됨(monkeypatch):
     scenario_service.run_scenario("s1", [{
         "category": "택배·배송", "detail": "반송 문자 받음", "channel": "문자",
         "impersonatedIdentity": "택배사", "requestedAction": "링크 클릭", "riskFactors": ["시간 압박"]}])
-    assert "채널: 문자" in seen["user"] and "사칭: 택배사" in seen["user"]
+    assert "채널: 문자" in seen["user"] and "상대가 밝힌 신분: 택배사" in seen["user"]
     assert "요구: 링크 클릭" in seen["user"] and "위험 요소: 시간 압박" in seen["user"]
 
 

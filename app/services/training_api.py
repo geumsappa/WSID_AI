@@ -103,9 +103,12 @@ def simulation(request: SimulationRequest) -> SimulationResult:
                  else "확인 정보가 접수되었습니다. " + _fallback_line(current, current.get("request", "대화 지속")))
     if page is not None and "[모의링크]" not in reply:
         reply += " [모의링크]"
+    masked = (result.get("maskedText") or "").strip()
+    masked_input = masked[:300] if masked and masked != request.userInput.strip() else None
     return SimulationResult(reply=reply, recognizedActions=actions,
                             shouldFinish=result["done"] or request.turnCount >= data["maxTurns"], mockPage=page,
-                            nextScene=min(max(scene, result.get("currentScene", scene)), max(1, len(data["keyScenes"]))))
+                            nextScene=min(max(scene, result.get("currentScene", scene)), max(1, len(data["keyScenes"]))),
+                            maskedInput=masked_input)
 
 
 def evaluate(request: EvaluationRequest) -> EvaluationResult:

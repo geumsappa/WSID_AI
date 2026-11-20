@@ -41,6 +41,9 @@ class SimulationResult(BaseModel):
     shouldFinish: bool
     mockPage: MockPage | None
     nextScene: int | None = Field(default=None, ge=1, le=15)
+    # 사용자 답변에서 이름·주소처럼 패턴이 없는 개인정보를 AI가 찾아 가린 문장 (예: "[이름, 주소 입력함]").
+    # 가릴 게 없으면 None. Spring은 원문 대신 이 값을 저장하고 화면에도 이 값을 보여 줘요.
+    maskedInput: str | None = Field(default=None, max_length=300)
 
 
 class EvaluationAction(BaseModel):

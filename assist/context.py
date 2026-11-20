@@ -18,6 +18,10 @@ HISTORY_FOR_MODEL = 6
 HISTORY_CHARS = 600
 
 TOPIC_REFS = [
+    # 제도 이름을 콕 집어 물으면 그 제도 문단을 가장 먼저 (그룹 안 순서보다 우선)
+    (re.compile(r"배상 ?명령"), ["REF_EASYLAW_COMPENSATION_ORDER_V1_P1"]),
+    (re.compile(r"지급 ?명령"), ["REF_EASYLAW_PAYMENT_ORDER_V1_P1"]),
+    (re.compile(r"소액 ?(사건|소송|심판|재판)"), ["REF_EASYLAW_SMALL_CLAIMS_V1_P1"]),
     (re.compile(r"(더|또|추가로?) ?(돈|입금|송금|보내)|수수료|보증금|선입금|환불.{0,6}(하려면|조건|먼저)"),
      ["REF_FSS_2024_28_ALERT_V1_P1"]),
     (re.compile(r"고소|형사|어디(에|로|서)? ?(신고|접수|가)|경찰서|접수 ?(방법|절차)"),
@@ -74,11 +78,19 @@ def topic_text(request: PlanRequest | AnswerRequest) -> str:
     return " ".join(p for p in parts if p).strip()
 
 
-def topic_codes(text: str) -> list[str]:
+def topic_codes(text: str, question: str = "") -> list[str]:
+    """주제별 필수 근거 code. 근거 판정에는 상위 5개만 가므로 순서가 중요해요.
+    - 이번 질문(question)에 걸린 주제를 이전 대화로만 걸린 주제보다 앞에 둬요.
+    - 주제가 여러 개면 각 주제의 첫 문단부터 돌아가며 넣어요 (한 주제가 자리를 다 차지하지 않게)."""
+    matched = [refs for pattern, refs in TOPIC_REFS if pattern.search(text)]
+    if question:
+        first = [refs for pattern, refs in TOPIC_REFS if pattern.search(question)]
+        matched = first + [g for g in matched if g not in first]
     codes: list[str] = []
-    for pattern, refs in TOPIC_REFS:
-        if pattern.search(text):
-            codes += [c for c in refs if c not in codes]
+    for i in range(max((len(g) for g in matched), default=0)):
+        for group in matched:
+            if i < len(group) and group[i] not in codes:
+                codes.append(group[i])
     return codes
 
 

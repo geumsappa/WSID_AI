@@ -199,3 +199,13 @@ def test_referential_question_uses_previous_ai_answer_topics():
     # 앞 답변을 가리키지 않는 질문에는 도우미 답변을 붙이지 않아요
     req2 = PlanRequest.model_validate(plan(question="앱도 지워야 하나요?", history=[{"role": "AI", "content": "민사소송"}]))
     assert "민사소송" not in topic_text(req2)
+
+
+def test_topic_codes_put_current_question_topics_in_top_five():
+    # 이전 질문(신고 이후)보다 이번 질문의 제도(배상명령·민사소송)를 앞에, 주제별로 번갈아
+    codes = topic_codes("경찰에 신고했고 뭘 더 해야해? 배상명령이랑 민사소송 알려줘", "배상명령이랑 민사소송 알려줘")
+    top5 = codes[:5]
+    assert top5[0] == "REF_EASYLAW_COMPENSATION_ORDER_V1_P1"
+    assert "REF_EASYLAW_CIVIL_FILING_V1_P1" in top5
+    assert codes.index("REF_EASYLAW_VICTIM_INFO_V1_P1") >= 3  # 이전 질문으로만 걸린 주제는 뒤로
+    assert topic_codes("지급명령은 어떻게 해요?", "지급명령은 어떻게 해요?")[0] == "REF_EASYLAW_PAYMENT_ORDER_V1_P1"

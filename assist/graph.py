@@ -121,7 +121,7 @@ class AssistService:
         references = await self.retriever.search(state["query"], request.facts.model_dump(), **extra)
         # 질문 주제로 꼭 넣을 근거를 앞에 두고(검색 결과와 합쳐 최대 10개), 중고거래면 환급 안내 문단은 빼요
         text = topic_text(request)
-        forced = self.retriever.by_codes(topic_codes(text)) if hasattr(self.retriever, "by_codes") else []
+        forced = self.retriever.by_codes(topic_codes(text, request.question or "")) if hasattr(self.retriever, "by_codes") else []
         if forced:
             seen = {ref["code"] for ref in forced}
             references = (forced + [ref for ref in references if ref["code"] not in seen])[:10]

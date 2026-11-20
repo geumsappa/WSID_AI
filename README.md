@@ -3,7 +3,7 @@
 ## 빠른 실행
 
 ```bash
-cp .env.example .env      # GEMINI_API_KEY 입력. AI_API_KEY는 Spring과 같은 값(로컬 기본 local-dev-key)
+cp .env.example .env      # LLM_API_KEY와 LLM_MODEL 입력. AI_API_KEY는 Spring과 같은 값(로컬 기본 local-dev-key)
 pip install -r requirements.txt
 python -m rag.index       # 피해 대응 근거 인덱스. 없으면 solutions API가 503
 python -m uvicorn app.main:app --port 8000
@@ -38,9 +38,9 @@ AI-04는 선택 입력 `currentScene`과 응답 `nextScene`으로 장면을 이�
 AI-05의 현 요청에는 턴별 행동 판정 이력이 없어, 설명은 전달된 대화와 모의 페이지 행동만 바탕으로 생성합니다. 이전 세부 판정을 완전히 재현해야 한다면 평가 요청에 포함할 기록을 추가 합의해야 합니다.
 
 
-AI-02(`POST /internal/ai/ocr/extract`)는 이 FastAPI 앱의 훈련용 OCR API예요. Tesseract와 한국어·영어 언어 데이터를 설치하고, Spring과 같은 `AI_API_KEY`를 설정해 `X-Internal-Api-Key` 헤더로 호출해요.
+AI-02(`POST /internal/ai/ocr/extract`)는 피해 대응 사진에서 텍스트를 읽는 내부 API예요. 기본 엔진은 서버 시작 시 로드하는 PaddleOCR 한국어 모델이며 `OCR_ENGINE=tesseract`로 전환할 수 있어요. Spring과 같은 `AI_API_KEY`를 설정해 `X-Internal-Api-Key` 헤더로 호출해요. 사진 분류에는 `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL` 설정을 사용하고 정규식으로 가린 텍스트를 보내요.
 
-요청은 multipart `images`이며 PNG/JPEG 최대 3장, 장당 5MB까지 받을 수 있어요. 원본은 별도로 저장하지 않아요. 성공 응답은 `{"success":true,"data":{"recognizedText":"...","usable":true}}`예요. 읽은 문자에 민감정보나 연락처·링크 패턴이 있으면 원문 없이 `usable:false`를 반환해요.
+요청은 multipart `images`이며 PNG/JPEG 최대 3장, 장당 5MB까지 받을 수 있어요. 원본은 별도로 저장하지 않아요. 성공 응답에는 `recognizedText`, `usable`, `imageType`, `summary`가 들어가요. 인식 원문에는 민감정보가 포함될 수 있어 Spring에서도 저장·로그 정책을 적용해야 해요. 분류가 실패하거나 시간 제한에 걸리면 `imageType`은 `OTHER`, `summary`는 `null`이에요. 글자를 못 읽으면 기존처럼 `OCR_FAILED`를 반환해요.
 
 훈련(시뮬레이션) 흐름 5단계 중 지금 들어있는 것:
 
@@ -311,7 +311,7 @@ LLM이 설명 글만 작성: 한 줄 요약, 총평, 턴별 피드백, 놓친 �
 | 피해 대응 | 가안 | `POST /internal/ai/solutions/answer` | SOL-03 질문(QUESTION)·되물음 답변(CLARIFICATION_ANSWER) | 사용자가 질문할 때 | 25초 |
 | - | - | `GET /health` | - | 서버 상태 확인 (Docker 등) | - |
 
-- **AI-02 이미지 OCR**(`/internal/ai/ocr/extract`)은 아직 이 서버에 없어요.
+- **AI-02 이미지 OCR**(`/internal/ai/ocr/extract`)은 사진에서 텍스트를 추출해요.
 - **피해 대응 API**(`/internal/ai/solutions/*`)는 아래 [피해 대응 API](#피해-대응-api-spring-연동) 절을 보세요. 근거 인덱스(`python -m rag.index`)를 먼저 만들어야 해요.
 - TRN-10 모의 페이지 행동 기록은 Spring이 저장만 하고, 훈련 종료 때 AI-05 요청의 `mockPageEvents`로 넘기면 돼요.
 
@@ -571,7 +571,7 @@ Spring이 할 일
 ### 피해 대응 API (Spring 연동)
 
 서버 켜기 전에 근거 인덱스를 한 번 만들어 두세요: `python -m rag.index` (키 없이 확인만 할 땐 `.env`에 `RAG_FAKE=1`).
-인덱스가 없거나 Gemini가 실패하면 **503**을 돌려줘요. Spring은 이때 AI 문장 없이 대응 카드만 보여 주면 돼요.
+인덱스가 없거나 OpenAI 호출이 실패하면 **503**을 돌려줘요. Spring은 이때 AI 문장 없이 대응 카드만 보여 주면 돼요.
 입력 형식이 틀리면 400/422예요. 모든 필드는 camelCase, 전체 설명은 `/docs`에서 볼 수 있어요.
 
 **AI-06 `POST /internal/ai/solutions/extract`** — 상황 설명 → 사실 4개
@@ -582,7 +582,7 @@ Spring이 할 일
       "fraudType": "SECONDHAND_TRADE"}
 ```
 - `fraudType`은 계약 추가 제안이에요. Spring이 저장해 두었다가 질문 답변 API에 넘기면, 중고거래에 "지급정지·환급"을 잘못 안내하는 걸 막아요.
-- 설명은 AI 서버에서도 개인정보를 한 번 더 가린 뒤 Gemini에 보내요.
+- 설명은 AI 서버에서도 개인정보를 한 번 더 가린 뒤 OpenAI에 보내요.
 
 **AI-07 `POST /internal/ai/solutions/explain`** — 사실 + 검토된 근거 → 설명 (기존 Spring 계약 그대로)
 ```json
@@ -630,10 +630,10 @@ python -m venv .venv
 pip install -r requirements.txt
 
 cp .env.example .env      # Windows: copy .env.example .env
-# .env 를 열어 GEMINI_API_KEY=받은키 입력. .env 는 .gitignore 에 있어서 깃에 안 올라가요.
+# .env 를 열어 LLM_PROVIDER=openai, LLM_API_KEY와 LLM_MODEL을 입력. .env 는 .gitignore 에 있어서 깃에 안 올라가요.
 ```
 
-**API 키는 절대 코드나 깃에 넣지 마세요.** 실수로 올렸다면 Google AI Studio에서 키를 삭제하고 새로 받으세요.
+**API 키는 절대 코드나 깃에 넣지 마세요.** 실수로 올렸다면 OpenAI에서 키를 폐기하고 새로 받으세요.
 
 ### 실행
 
@@ -645,11 +645,11 @@ cp .env.example .env      # Windows: copy .env.example .env
 # 1) 근거 문단 만들기: 코퍼스 → 연락처·링크 문장 제거 → data/references/references.jsonl
 python scripts/build_references.py
 
-# 2) 쓸 수 있는 모델 이름 확인 (GEMINI_CHAT_MODEL 이 안 맞으면 .env 에서 바꾸기)
+# 2) 쓸 수 있는 모델 이름 확인 (LLM_MODEL 이 안 맞으면 .env 에서 바꾸기)
 python -m rag.list_models
 
-# 3) 인덱스 만들기 (Gemini 임베딩 → data/index/). 문단을 바꾸면 다시 실행
-python -m rag.index
+# 3) 승인된 문단만 인덱싱 (OpenAI 임베딩 → data/index/). 검토 후 실행
+python -m rag.index --reviewed-only
 
 # 4) 돌려보기
 python try_rag.py --money YES --app UNKNOWN
@@ -674,7 +674,7 @@ python ask.py
 | `data/corpus/seed_chunks.jsonl` | 공식 자료 31건 요약 청크 38개 (연락처 포함 원본, 카드·검수용) |
 | `data/references/references.jsonl` | AI-07에 넣을 근거 문단 (`code`·`title`·`excerpt` + 검색용 태그). 모두 `reviewed: false` |
 | `data/index/` | 임베딩 인덱스 (자동 생성, 깃에 안 올림) |
-| `rag/` | `config` 설정 · `guard` 연락처/링크 금지 규칙 · `facts` 사실→상황 코드 · `gemini` API 호출 · `index` 인덱스 · `retrieve` 검색 · `explain` 설명 생성·검증 |
+| `rag/` | `config` 설정 · `guard` 연락처/링크 금지 규칙 · `facts` 사실→상황 코드 · `openai_client` API 호출 · `index` 인덱스 · `retrieve` 검색 · `explain` 설명 생성·검증 |
 | `scripts/` | `hana_fraud_crawler.py` PDF 수집 → `parse_pdfs.py` 청크 → `merge_corpus.py` 병합 → `build_references.py` 근거 문단 |
 | `tests/test_rag.py` | 키 없이 도는 테스트 (Spring 금지 규칙과 같은지, 코드 대조, 파이프라인) |
 | `app/routers/solutions.py` · `app/services/solution.py` · `app/schemas/solution.py` | 피해 대응 API (AI-06·AI-07·질문 답변) |
@@ -715,6 +715,6 @@ Spring 설정: `AI_MODE=http`, `AI_BASE_URL=http://localhost:8000`, `AI_API_KEY`
 
 ### 아직 안 된 것
 
-- 실제 Gemini 호출은 이 저장소 작성 환경에서 돌려보지 못했어요(네트워크 제한). 처음 실행할 때 `python -m rag.list_models`로 모델 이름부터 확인하세요.
+- 모델 접근 권한과 인덱스 생성 여부를 배포 환경에서 확인하세요.
 - 근거 충실성 평가(설명이 문단에 없는 말을 하는지)는 사람이 샘플을 읽어 보는 수준으로 먼저 하고, 기준은 백엔드와 합의해야 합니다.
 - 근거 문단을 누가 고를지(Spring 카탈로그 vs AI 검색), 승인·버전 관리 방식은 계획서 11장 합의 항목입니다.

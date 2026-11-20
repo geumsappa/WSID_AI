@@ -11,7 +11,7 @@ import numpy as np
 
 from .config import MAX_REFERENCES
 from .facts import query_text, situations_for, validate_facts
-from .gemini import embed
+from .openai_client import embed
 from .index import load
 
 # 통신사기피해환급법(지급정지·환급) 절차 문단. 중고거래 등 재화·용역 사기는 법 적용 대상이 아니므로

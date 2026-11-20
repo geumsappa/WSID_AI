@@ -10,22 +10,25 @@ try:  # python-dotenv 가 있으면 .env 를 자동으로 읽음
 except ImportError:
     pass
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-# 임베딩 모델: 텍스트 전용이면 gemini-embedding-001 로 충분
-EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
-EMBED_DIM = int(os.getenv("GEMINI_EMBED_DIM", "768"))
-# 답변 생성 모델: 쓸 수 있는 이름은 `python -m rag.list_models` 로 확인 후 .env 에서 바꾸세요
-CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.8-flash")
-# 기본 모델이 503(과부하)·429(사용량 초과)일 때 차례로 쓸 예비 모델 (쉼표로 구분)
-FALLBACK_MODELS = [m.strip() for m in os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.7-flash,gemini-3.5-flash-lite").split(",") if m.strip()]
-# Gemini 한 번 호출에 기다리는 최대 시간(초)
+# OpenAI 검색 임베딩. 변경 시 인덱스를 다시 만들어야 합니다.
+EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
+EMBED_DIM = int(os.getenv("OPENAI_EMBED_DIM", "1536"))
+# 모델 호출 대기 상한(초)
 TIMEOUT_SEC = int(os.getenv("RAG_TIMEOUT_SEC", "30"))
-# assist의 각 HTTP 단계 예산. CLI/Gemini 기본 timeout과 독립적이다.
+# assist의 각 HTTP 단계 예산. CLI/OpenAI 기본 timeout과 독립적이다.
 ASSIST_PLAN_TIMEOUT_SEC = float(os.getenv("ASSIST_PLAN_TIMEOUT_SEC", "15"))
 ASSIST_ANSWER_TIMEOUT_SEC = float(os.getenv("ASSIST_ANSWER_TIMEOUT_SEC", "15"))
+ASSIST_MAX_RESEARCHES = int(os.getenv("ASSIST_MAX_RESEARCHES", "1"))
+ASSIST_RETRY_MIN_SECONDS = float(os.getenv("ASSIST_RETRY_MIN_SECONDS", "7"))
+ASSIST_LLM_MODEL = os.getenv("ASSIST_LLM_MODEL", "").strip()
+ASSIST_REASONING_EFFORT = os.getenv("ASSIST_REASONING_EFFORT", "").strip().lower()
+if not 0 <= ASSIST_MAX_RESEARCHES <= 2 or not 0 < ASSIST_RETRY_MIN_SECONDS < float("inf"):
+    raise ValueError("invalid assist retry settings")
+if ASSIST_REASONING_EFFORT not in ("", "low"):
+    raise ValueError("ASSIST_REASONING_EFFORT must be empty or low")
 if not (0 < ASSIST_PLAN_TIMEOUT_SEC < float("inf") and 0 < ASSIST_ANSWER_TIMEOUT_SEC < float("inf")):
     raise ValueError("assist timeout must be a finite positive number")
-# 1 이면 Gemini 를 부르지 않는 가짜 임베딩·가짜 설명으로 동작 (키 없이 파이프라인 확인용)
+# 1 이면 외부 모델을 부르지 않는 가짜 임베딩·가짜 설명으로 동작 (키 없이 파이프라인 확인용)
 FAKE = os.getenv("RAG_FAKE", "0") == "1"
 
 REFERENCES_PATH = ROOT / "data" / "references" / "references.jsonl"

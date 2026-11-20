@@ -12,7 +12,7 @@ import json
 import numpy as np
 
 from . import config
-from .gemini import embed
+from .openai_client import embed
 
 
 def _embed_text(r: dict) -> str:
@@ -29,7 +29,7 @@ def build(reviewed_only: bool = False) -> int:
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-12
     config.INDEX_DIR.mkdir(parents=True, exist_ok=True)
     np.save(config.INDEX_DIR / "vectors.npy", vecs)
-    meta = {"embed_model": "FAKE" if config.FAKE else config.EMBED_MODEL, "dim": int(vecs.shape[1]), "refs": refs}
+    meta = {"embed_model": "FAKE" if config.FAKE else config.EMBED_MODEL, "provider": "fake" if config.FAKE else "openai", "dim": int(vecs.shape[1]), "refs": refs}
     (config.INDEX_DIR / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
     return len(refs)
 
@@ -40,9 +40,12 @@ def load() -> tuple[np.ndarray, list[dict], str]:
         raise SystemExit("인덱스가 없어요. `python -m rag.index` 를 먼저 실행하세요.")
     meta = json.loads(p.read_text(encoding="utf-8"))
     want = "FAKE" if config.FAKE else config.EMBED_MODEL
-    if meta["embed_model"] != want:
+    if meta["embed_model"] != want or meta.get("provider") != ("fake" if config.FAKE else "openai") or meta.get("dim") != config.EMBED_DIM:
         raise SystemExit(f"인덱스 임베딩({meta['embed_model']})과 현재 설정({want})이 달라요. 인덱스를 다시 만드세요.")
-    return np.load(config.INDEX_DIR / "vectors.npy"), meta["refs"], meta["embed_model"]
+    vectors = np.load(config.INDEX_DIR / "vectors.npy")
+    if vectors.ndim != 2 or vectors.shape != (len(meta["refs"]), config.EMBED_DIM):
+        raise SystemExit("인덱스 벡터 크기가 설정 또는 근거 목록과 달라요. 인덱스를 다시 만드세요.")
+    return vectors, meta["refs"], meta["embed_model"]
 
 
 if __name__ == "__main__":

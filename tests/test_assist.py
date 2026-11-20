@@ -257,7 +257,7 @@ def test_repeated_clarification_after_reassessment_is_no_evidence():
     assert result.status == "UNABLE_TO_ANSWER" and result.reasonCode == "NO_EVIDENCE"
 
 
-def test_research_is_bounded_to_initial_plus_two_and_can_recover():
+def test_research_is_bounded_to_initial_plus_one_and_can_recover():
     class RetryModel(SearchModel):
         def __init__(self, recover=False):
             self.evaluations = 0
@@ -270,7 +270,7 @@ def test_research_is_bounded_to_initial_plus_two_and_can_recover():
                                       referenceCodes=[REFERENCE["code"]] if sufficient else [],
                                       retryQuery=None if sufficient else f"재검색 조건 {self.evaluations}")
 
-    for recover, count, expected in [(False, 3, "UNABLE_TO_ANSWER"), (True, 2, "EVIDENCE_READY")]:
+    for recover, count, expected in [(False, 2, "UNABLE_TO_ANSWER"), (True, 2, "EVIDENCE_READY")]:
         retriever = Retriever()
         model = RetryModel(recover)
         result = run(plan_request(), model=model, retriever=retriever)
@@ -523,18 +523,19 @@ def test_model_failure_and_validation_do_not_leak_raw_data(client, caplog):
 
 
 def test_upstream_status_is_logged_without_response_body(client, caplog):
-    from google.genai.errors import APIError
+    from openai import APIStatusError
+    import httpx
 
     class BrokenModel(FakeAssistModel):
         async def assess(self, request):
-            raise APIError(429, {"error": {"message": "PRIVATE_RESPONSE_MARKER"}})
+            raise APIStatusError("PRIVATE_RESPONSE_MARKER", response=httpx.Response(429, request=httpx.Request("POST", "https://example.test")), body=None)
 
     http, retriever = client
     app.dependency_overrides[get_service] = lambda: AssistService(BrokenModel(), retriever)
     with caplog.at_level(logging.INFO):
         response = post(http, plan_request())
     assert response.status_code == 503
-    assert "GEMINI_429" in caplog.text
+    assert "OPENAI_429" in caplog.text
     assert "PRIVATE_RESPONSE_MARKER" not in caplog.text + response.text
 
 
@@ -599,3 +600,90 @@ def test_model_question_text_is_ignored_and_fixed_for_both_paths():
         assert result.status == "NEED_USER_INPUT"
         assert result.clarification.content == "상대방이 알려준 앱을 설치한 적이 있나요?"
         assert result.clarification.options == ["YES", "NO", "UNKNOWN"]
+
+
+def test_eligible_clarifications_respect_intent_unknown_and_history():
+    from assist.model import allowed_fact_keys
+    req = PlanRequest.model_validate(plan_request(question="신분증 사진을 보냈어요", facts={
+        "transferredMoney": "UNKNOWN", "sharedInformation": "UNKNOWN",
+        "installedApp": "UNKNOWN", "contactContinues": "UNKNOWN"}))
+    assert allowed_fact_keys(req, "INFO_LEAK_RESPONSE") == ["sharedInformation"]
+    req = req.model_copy(update={"askedFactKeys": ["sharedInformation"]})
+    assert allowed_fact_keys(req, "INFO_LEAK_RESPONSE") == []
+    req = req.model_copy(update={"remainingClarifications": 0})
+    assert allowed_fact_keys(req, "INFO_LEAK_RESPONSE") == []
+
+
+def test_evaluate_receives_only_five_shortened_references():
+    refs = [{**REFERENCE, "code": f"REF_{i}", "excerpt": "가" * 1000} for i in range(10)]
+    class CheckModel(SearchModel):
+        async def evaluate(self, request, intent, references):
+            assert len(references) == 5
+            assert all(len(ref["excerpt"]) == 600 for ref in references)
+            return EvidenceAssessment(sufficient=True, referenceCodes=[references[0]["code"]], retryQuery=None)
+    assert run(plan_request(), model=CheckModel(), retriever=Retriever(refs)).status == "EVIDENCE_READY"
+
+
+def test_no_research_when_time_budget_is_insufficient(monkeypatch):
+    from rag import config
+    monkeypatch.setattr(config, "ASSIST_RETRY_MIN_SECONDS", 20)
+    class RetryModel(SearchModel):
+        async def evaluate(self, request, intent, references):
+            return EvidenceAssessment(sufficient=False, referenceCodes=[], retryQuery="다른 검색")
+    retriever = Retriever()
+    result = run(plan_request(), model=RetryModel(), retriever=retriever)
+    assert result.status == "UNABLE_TO_ANSWER" and result.reasonCode == "NO_EVIDENCE"
+    assert len(retriever.queries) == 1
+
+
+def test_stage_logs_exclude_private_input_and_evidence(caplog):
+    secret = "PRIVATE_QUERY_MARKER"
+    refs = [{**REFERENCE, "excerpt": "PRIVATE_EVIDENCE_MARKER"}]
+    with caplog.at_level(logging.INFO, logger="uvicorn.error.assist"):
+        result = run(plan_request(question=secret), model=SearchModel(), retriever=Retriever(refs))
+    assert result.status == "EVIDENCE_READY"
+    assert all(f"stage={name}" in caplog.text for name in ("assess", "search", "evaluate"))
+    assert secret not in caplog.text and "PRIVATE_EVIDENCE_MARKER" not in caplog.text
+
+
+def test_openai_evaluation_receives_explicit_allowed_keys(monkeypatch):
+    from assist.model import OpenAIAssistModel
+    payloads = []
+    async def generate(self, system, payload, schema):
+        payloads.append(payload)
+        return EvidenceAssessment(sufficient=False, referenceCodes=[], retryQuery=None)
+    monkeypatch.setattr(OpenAIAssistModel, "_generate", generate)
+    request = PlanRequest.model_validate(plan_request(askedFactKeys=["installedApp"]))
+    asyncio.run(OpenAIAssistModel().evaluate(request, "DEVICE_SAFETY", [REFERENCE]))
+    assert payloads[0]["allowedFactKeys"] == []
+    assert payloads[0]["allowClarification"] is False
+
+
+def test_openai_assist_model_override_and_low_option(monkeypatch):
+    from app import config as app_config
+    from rag import config, openai_client
+    from assist.model import OpenAIAssistModel
+    calls = []
+    class Client:
+        async def __aenter__(self):
+            return self
+        async def __aexit__(self, *args):
+            pass
+        @property
+        def chat(self):
+            return SimpleNamespace(completions=SimpleNamespace(create=self.complete))
+        async def complete(self, **kwargs):
+            calls.append(kwargs)
+            text = '{"decision":"SEARCH","questionIntent":"GENERAL","factKey":null}'
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=text))])
+    monkeypatch.setattr(app_config, "settings", SimpleNamespace(llm_model="default-model"))
+    monkeypatch.setattr(openai_client, "async_client", Client)
+    monkeypatch.setattr(config, "ASSIST_LLM_MODEL", "")
+    monkeypatch.setattr(config, "ASSIST_REASONING_EFFORT", "")
+    asyncio.run(OpenAIAssistModel()._generate("system", {}, Assessment))
+    assert calls[0]["model"] == "default-model" and "reasoning_effort" not in calls[0]
+    monkeypatch.setattr(config, "ASSIST_LLM_MODEL", "assist-model")
+    monkeypatch.setattr(config, "ASSIST_REASONING_EFFORT", "low")
+    result = asyncio.run(OpenAIAssistModel()._generate("system", {}, Assessment))
+    assert result.decision == "SEARCH" and calls[1]["model"] == "assist-model"
+    assert calls[1]["reasoning_effort"] == "low"

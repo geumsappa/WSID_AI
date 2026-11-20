@@ -186,12 +186,12 @@ sequenceDiagram
 - LangSmith 추적은 실행 컨텍스트에서 비활성화한다. Ragas·Langfuse도 연동하지 않는다.
 - Python은 로그에 검증한 요청 UUID·phase·상태·소요 시간과 사전 정의 오류 코드만 기록한다.
   요청 오류나 SDK 예외의 원문/traceback도 로그와 오류 응답에 넣지 않는다.
-- API 키는 `AI_API_KEY`이며 Gemini 키와 별개다. 미설정 시 503, 불일치 시 401.
+- API 키는 `AI_API_KEY`이며 OpenAI 키(`LLM_API_KEY`)와 별개다. 미설정 시 503, 불일치 시 401.
 - 누락·타입·코드 오류는 422, 모델 출력 계약 위반은 502,
   의존 서비스·인덱스 오류는 503, 전체 처리 시간 초과는 504다.
   실패 본문은 `{"success":false,"error":{"code":"...","message":"..."}}`이며 Spring은 HTTP 상태로 실패 판정한다.
-- 초기 요청 예산은 `ASSIST_PLAN_TIMEOUT_SEC` 및 `ASSIST_ANSWER_TIMEOUT_SEC`(각 기본 15초)이다. `RAG_TIMEOUT_SEC`는 기존 Gemini 호출 제한으로 유지한다.
-  Gemini 생성·임베딩의 429·500·503은 0.25초 대기 후 호출당 한 번 재시도한다.
+- 초기 요청 예산은 `ASSIST_PLAN_TIMEOUT_SEC` 및 `ASSIST_ANSWER_TIMEOUT_SEC`(각 기본 15초)이다. `RAG_TIMEOUT_SEC`는 OpenAI 호출 한 번의 제한으로 유지한다.
+  OpenAI 생성·임베딩의 429·500·503은 0.25초 대기 후 호출당 한 번 재시도한다.
   재시도와 대기는 같은 요청 시간 예산에 포함되고 예비 모델로 자동 전환하지 않는다.
 - 라우터는 `app/routers/assist.py`이며 기존 `/extract`·`/explain`·`/answer`(feature/solutions-api)와 공존한다.
   `/answer`(가안)와 `/assist` 중 SOL-03이 쓸 경로는 팀 합의 항목이다.
@@ -227,23 +227,15 @@ python -m pytest -q
 python scripts/export_assist_openapi.py
 ```
 
-Gemini HTTP 오류에 대한 로컬 대역 검증:
-
-```bash
-postman simulation run postman/simulations/gemini-assist.sim.yaml --port 8768 --no-history
-# 별도 터미널: 합성 입력과 테스트 키만 사용
-python tests/simulate_gemini_retry.py
-```
-
-이 검증은 로컬 대역 서버를 상대로 SDK·재시도 동작을 확인한다. 실제 Gemini의
-가용성이나 답변 품질을 보장하지 않는다.
+2026-11-19 피해 대응 AI를 Gemini에서 OpenAI로 전환하면서 Gemini 전용 로컬 대역
+(postman/·tests/simulate_gemini_retry.py)은 삭제했다. 재시도 동작은 tests/test_upstream.py가 검증한다.
 
 모델 대역 테스트는 정보 부족, 후보 근거, 범위 밖, 상한, 재검색 복구/소진,
 인용 범위, 키 누락·타입·금지 표현, 인증, UUID, 요청 격리, 전체 시간 제한,
 민감 원문 오류/로그 비노출을 검증한다. 사용자 로컬 인덱스는 임시 인덱스로 격리한다.
 
 서버 실행은 README의 assist 절을 따른다. `RAG_FAKE=1`은 계약·연동 확인용 모델 대역이며
-의미 검색 성능·근거 충실성·실제 Gemini 호환성이나 Spring 통합 검증을 대신하지 않는다.
+의미 검색 성능·근거 충실성·실제 OpenAI 호환성이나 Spring 통합 검증을 대신하지 않는다.
 OpenAPI는 FastAPI DTO에서 생성한 [assist-openapi.json](assist-openapi.json)이다.
 표와 본문의 상태별·요청별 교차 제약도 함께 적용한다.
 
@@ -257,3 +249,31 @@ OpenAPI는 FastAPI DTO에서 생성한 [assist-openapi.json](assist-openapi.json
 | 실제 Gemini·Spring | 호출/통합 미검증. 의미 품질·응답 시간·승인 목록 매핑 확인 필요 |
 
 2026-11-18: 단계별 시간 제한과 고정 질문 변경 후 pytest 101개 통과(모델 대역). 실제 Gemini 및 Spring 연동은 검증하지 않았다.
+
+## v1.1 제안: 선택 필드 `history`·`fraudType` (2026-11-19, 합의 전)
+
+PLAN·ANSWER 요청에 아래 두 필드를 **선택**으로 추가한다. 보내지 않거나 null이면 v1과 똑같이 동작하므로
+Spring이 v1 그대로 호출해도 깨지지 않는다.
+
+| 필드 | 타입·규칙 | 쓰임 |
+| --- | --- | --- |
+| history | null 또는 `[{"role":"USER"\|"AI","content":"1~2000자"}]` 최대 10개 | 이번 질문 **앞**의 대화(가린 글 safe_content). 확인 질문 뒤 후속 PLAN·ANSWER에서는 원래 질문·확인 질문·대답까지 포함 |
+| fraudType | null 또는 AI-06 `/extract`의 `fraudType` 값 (`MESSENGER_PHISHING`, `SMISHING`, `LOAN_FRAUD`, `INSTITUTION_IMPERSONATION`, `INVESTMENT_FRAUD`, `SECONDHAND_TRADE`) | 유형에 맞는 근거 고르기 |
+
+Python 동작 (`assist/context.py`):
+
+- 질문이 없거나 짧으면(40자 미만, 예: "둘 다 알려줘") history의 최근 사용자 질문을 검색어에 붙인다.
+  확인 질문에 대한 짧은 대답("네", "아니요, 안 보냈어요")은 건너뛴다.
+- 후속 PLAN(question=null)에서 추가 질문 허용 여부(질문에 언급된 행동)를 history의 원래 질문으로 판단한다.
+- 질문 주제(추가 송금 요구, 고소·신고 접수, 민사소송·소액·지급명령, 배상·피해 회복, 신고 이후)별로
+  꼭 넣을 근거 code를 검색 결과 앞에 둔다. 후보는 여전히 최대 10개이고 Spring 승인 원칙은 같다.
+- `SECONDHAND_TRADE`면 환급법 전용 문단은 후보에서 빼고, 환급을 묻지 않았으면 '환급 대상 아님' 안내 문단도 뺀다.
+  유형이 맞는 문단은 검색 점수를 조금(+0.04) 올린다.
+- 모델에는 history 최근 6턴·턴당 600자만 넘기고, 사실의 근거로 쓰지 않도록 프롬프트에 명시한다.
+  history는 로그에 남기지 않는다(기존 로그 정책과 동일).
+- ANSWER 프롬프트에 답변 규칙(첫 문장이 답, 근거의 절차·기간·제출처를 구체적으로, 신고 이후 다음 단계,
+  추가 송금 요구 시 '더 보내지 말 것' 우선, 이전 대화 반복 금지)을 추가했다. 이 규칙은 v1 요청에도 적용된다.
+
+Spring에 필요한 변경: SOL-03 QUESTION·CLARIFICATION_ANSWER에서 상담의 최근 메시지(safe_content)와
+상담 시작 때 AI-06이 준 `fraudType`을 함께 보낸다. 테스트: `tests/test_assist_context.py`,
+체험: `python scripts/try_assist.py` (`--v1`이면 두 필드 없이 호출).

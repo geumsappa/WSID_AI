@@ -18,9 +18,9 @@ UNKNOWN = {k: "UNKNOWN" for k in FACTS}
 
 @pytest.fixture(scope="module", autouse=True)
 def fake_index(tmp_path_factory):
-    # 가짜 임베딩 인덱스는 임시 폴더에 만들어요. data/index(실제 Gemini 인덱스)를 덮어쓰지 않게요.
+    # 가짜 임베딩 인덱스는 임시 폴더에 만들어요. data/index(실제 OpenAI 인덱스)를 덮어쓰지 않게요.
     # 다른 테스트가 rag.config 를 먼저 불러왔으면 .env 의 RAG_FAKE=0 이 이미 적용돼 있어요.
-    # 그래서 여기서 가짜 모드를 직접 켜요 (실제 Gemini 를 부르면 무료 한도 429 에러가 나요).
+    # 그래서 여기서 가짜 모드를 직접 켜요 (실제 OpenAI 를 부르면 비용·한도를 써요).
     from rag import config
     original = (config.INDEX_DIR, config.FAKE)
     config.INDEX_DIR = tmp_path_factory.mktemp("index")

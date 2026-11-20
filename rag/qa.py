@@ -7,7 +7,7 @@ AI-07 계약 변경(질문 필드 추가) 또는 별도 API 를 백엔드와 합
 from __future__ import annotations
 
 from .explain import ExplainError, validate_result
-from .gemini import generate_json
+from .openai_client import generate_json
 
 SYSTEM = """너는 금융사기 피해자의 질문에 답하는 상담 도우미다.
 
@@ -65,7 +65,7 @@ def answer(question: str, facts: dict, refs: list[dict], fraud_type: str | None 
     try:
         raw = generate_json(SYSTEM, user, fake)
     except Exception as e:  # 503·429·JSON 오류 등
-        raise ExplainError(f"Gemini 호출 실패: {type(e).__name__}") from e
+        raise ExplainError(f"OpenAI 호출 실패: {type(e).__name__}") from e
     if not isinstance(raw, dict):
         raise ExplainError("결과가 객체가 아니에요.")
     checked = validate_result(refs, {"explanation": raw.get("answer"), "referenceCodes": raw.get("referenceCodes")})

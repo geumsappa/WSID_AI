@@ -14,6 +14,9 @@ QuestionIntent = Literal[
     "TRANSFER_RESPONSE", "DEVICE_SAFETY", "INFO_LEAK_RESPONSE", "CONTACT_RESPONSE", "GENERAL"
 ]
 ReasonCode = Literal["OUT_OF_SCOPE", "NO_EVIDENCE", "LIMIT_REACHED"]
+# AI-06(/extract)이 돌려주는 fraudType과 같은 값 (계약 v1.1 선택 필드)
+FraudType = Literal["MESSENGER_PHISHING", "SMISHING", "LOAN_FRAUD", "INSTITUTION_IMPERSONATION",
+                    "INVESTMENT_FRAUD", "SECONDHAND_TRADE"]
 
 
 def nonblank(value: str) -> str:
@@ -73,6 +76,16 @@ class VerifiedReference(ContractModel):
     excerpt: Annotated[str, Field(min_length=1, max_length=2000), AfterValidator(nonblank)]
 
 
+class ChatTurn(ContractModel):
+    """이전 대화 한 턴. Spring이 저장한 가린 글(safe_content)을 그대로 보낸다."""
+    role: Literal["USER", "AI"]
+    content: Annotated[str, Field(min_length=1, max_length=2000), AfterValidator(nonblank)]
+
+
+# v1.1 선택 필드: 보내지 않으면(null) v1과 똑같이 동작한다.
+History = Annotated[list[ChatTurn] | None, Field(default=None, max_length=10)]
+
+
 def unique_codes(refs: list) -> None:
     codes = [r.code for r in refs]
     if len(set(codes)) != len(codes):
@@ -86,6 +99,8 @@ class PlanRequest(ContractModel):
     facts: Facts
     askedFactKeys: Annotated[list[FactKey], Field(max_length=4)]
     remainingClarifications: Annotated[int, Field(ge=0, le=3)]
+    history: History = None
+    fraudType: FraudType | None = None
 
     @model_validator(mode="after")
     def check_state(self) -> Self:
@@ -102,6 +117,8 @@ class AnswerRequest(ContractModel):
     questionIntent: QuestionIntent
     facts: Facts
     verifiedReferences: Annotated[list[VerifiedReference], Field(min_length=1, max_length=10)]
+    history: History = None
+    fraudType: FraudType | None = None
 
     @model_validator(mode="after")
     def check_references(self) -> Self:

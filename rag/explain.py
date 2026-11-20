@@ -14,7 +14,7 @@ import re
 
 from .config import CODE_PATTERN, MAX_EXCERPT, MAX_EXPLANATION, MAX_REFERENCES, MAX_TITLE
 from .facts import validate_facts
-from .gemini import generate_json
+from .openai_client import generate_json
 from .guard import has_forbidden
 
 SYSTEM = """너는 금융사기 피해자에게 대응 단계의 '이유'를 설명하는 도우미다.
@@ -99,5 +99,5 @@ def explain(facts: dict, verified_references: list[dict]) -> dict:
     except (json.JSONDecodeError, ValueError) as e:
         raise ExplainError("모델 응답이 JSON 이 아니에요.") from e
     except Exception as e:  # 503 과부하, 429 사용량 초과, 네트워크 오류 등
-        raise ExplainError(f"Gemini 호출 실패: {type(e).__name__}") from e
+        raise ExplainError(f"OpenAI 호출 실패: {type(e).__name__}") from e
     return validate_result(verified_references, raw)

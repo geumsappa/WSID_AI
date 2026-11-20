@@ -86,9 +86,30 @@ def test_시나리오에_없는_행동_id는_버림(monkeypatch):
 
 
 def test_마지막_장면_끝나면_종료():
-    r = training.run_training_turn("s1", _scenario(), 3, _history("안 보낼게요, 공식 앱에서 확인할게요"))
+    sc = _scenario()
+    sc["minTurns"] = 1  # 최소 답변 수를 채운 경우
+    r = training.run_training_turn("s1", sc, 3, _history("안 보낼게요, 공식 앱에서 확인할게요"))
     assert r["done"] and r["endReason"] == "scenario_complete"
     assert r["choices"] == []
+
+
+def test_최소_답변_수_전에는_시나리오가_끝나도_이어감(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "risky"}, "personaMessage": "확인됐어요. 이제 재배송비만 결제하시면 돼요.",
+        "nextScene": 3, "scenarioComplete": True})
+    sc = _scenario()
+    sc["minTurns"] = 6
+    r = training.run_training_turn("s1", sc, 3, _history("네", "박아무개, 강남구"))
+    assert not r["done"]
+
+
+def test_사용자가_확실히_끊으면_일찍_종료(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "safe"}, "personaMessage": "아, 네...", "nextScene": 1})
+    sc = _scenario()
+    sc["minTurns"] = 6
+    r = training.run_training_turn("s1", sc, 1, _history("누구세요?", "이 번호 차단하고 신고할게요"))
+    assert r["done"] and r["endReason"] == "user_exit"
 
 
 def test_최대_턴이면_종료():

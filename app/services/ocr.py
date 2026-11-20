@@ -28,9 +28,17 @@ OCR_QUEUE_WAIT_SECONDS = settings.ocr_queue_wait_seconds
 logger = logging.getLogger(__name__)
 IMAGE_TYPES = {"SMS", "MESSENGER_CHAT", "TRANSFER_RECEIPT", "WEB_PAGE", "OTHER"}
 _URL = re.compile(r"(?i)(?:https?://|www\.)[^\s<>]+|\b[\w-]+\.(?:com|net|org|kr|co|io|me|ly)(?:/[^\s<>]*)?")
-_SYSTEM = ("사진 속 텍스트의 종류를 SMS, MESSENGER_CHAT, TRANSFER_RECEIPT, WEB_PAGE, OTHER 중 "
-           "하나로 선택하고, 내용을 두 문장 이내로 요약하세요. 연락처, 링크, 계좌번호 및 "
-           "기타 개인정보를 요약에 쓰지 마세요. imageType과 summary를 가진 JSON만 반환하세요.")
+# 요약은 사용자에게 "사진을 확인했어요" 말풍선으로 보여요. 상황별 해석 규칙(예: 계좌번호=송금 요구)을 넣지 않고
+# 사진에 보이는 행동만 쓰게 해요. 해석·조언은 사실 추출과 상담 답변 단계가 맡아요.
+_SYSTEM = ("사진 속 텍스트의 종류를 SMS, MESSENGER_CHAT, TRANSFER_RECEIPT, WEB_PAGE, OTHER 중 하나로 선택하고, "
+           "두 문장 이내로 요약하세요. 요약에는 사진에 보이는 사실만 쓰세요: "
+           "상대가 자신을 누구라고 했는지, 상대가 보낸 것(계좌번호, 링크, 파일, 사진 등)과 요구한 것, "
+           "사용자가 이미 한 행동(송금, 정보 입력 등), 사진 속에 드러난 위험 신호. "
+           "사진에 없는 항목은 생략하고, 없다고 쓰지 마세요. 사진에 없는 의도나 사실을 추측하지 마세요. "
+           "상대의 신원은 '판매자라며'처럼 상대가 한 말로 쓰세요. "
+           "조언, 해야 할 일, 대화 분위기나 감정은 쓰지 마세요. "
+           "연락처, 링크 주소, 계좌번호, 이름 및 기타 개인정보는 쓰지 마세요. "
+           "'~예요', '~해요' 말투로 쓰세요. imageType과 summary를 가진 JSON만 반환하세요.")
 _paddle = None
 _ocr_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="paddle-ocr")
 _classify_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ocr-classify")

@@ -14,6 +14,7 @@
 """
 import json
 import logging
+import re
 from pathlib import Path
 
 from app import fallback
@@ -168,10 +169,19 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         choices = list(fallback.TRAINING_CHOICES.get(request_type, fallback.TRAINING_CHOICES["대화 지속"]))
 
     # 6) 종료 판단
+    #  - 최대 답변 수에 닿으면 끝
+    #  - 사용자가 확실하게 끊으면(차단·신고·공식 채널 확인·대화 중단) 끝: 잘 막은 경우라 더 끌지 않아요
+    #  - 시나리오 마지막 장면이 끝나도 최소 답변 수 전에는 끝내지 않고 사기범이 추가 요구로 이어가요
+    min_turns = min(int(scenario.get("minTurns") or settings.training_min_turns), max_turns)
+    last_user_text = history[-1]["text"] if history and history[-1].get("role") == "user" else ""
+    decisive_exit = judgment["outcome"] == "safe" and user_turns >= 2 and bool(DECISIVE_EXIT.search(last_user_text))
     end_reason = None
     if user_turns >= max_turns:
         end_reason = "max_turns"
-    elif bool(data.get("scenarioComplete")) and current_scene >= total_scenes and not type_it:
+    elif decisive_exit:
+        end_reason = "user_exit"
+    elif (bool(data.get("scenarioComplete")) and current_scene >= total_scenes and not type_it
+          and user_turns >= min_turns):
         end_reason = "scenario_complete"
     done = end_reason is not None
     if done:
@@ -220,6 +230,12 @@ def _str_list(value) -> list[str]:
     return [str(x).strip() for x in value if str(x).strip()] if isinstance(value, list) else []
 
 
+# 사용자가 대화를 확실하게 끊는 말 (차단·신고·공식 채널로 직접 확인·대화 중단)
+DECISIVE_EXIT = re.compile(
+    r"차단|신고|112|1332|대화(를)?\s*(그만|중단|끝)|더\s*(이상|는)\s*(연락|대화|답)"
+    r"|공식\s*(앱|홈페이지|사이트|번호|고객센터|채널)|고객센터에\s*(직접|전화|확인)|직접\s*(전화|확인)해\s*볼")
+
+
 def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns) -> str:
     # 근거 사례 출처 같은 내부 값은 빼고, 연기·판정에 필요한 것만 보여줌
     shown = {k: scenario.get(k) for k in
@@ -231,6 +247,7 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns) 
         .replace("{{TOTAL_SCENES}}", str(total_scenes))
         .replace("{{USER_TURNS}}", str(user_turns))
         .replace("{{MAX_TURNS}}", str(max_turns))
+        .replace("{{MIN_TURNS}}", str(min(int(scenario.get("minTurns") or settings.training_min_turns), max_turns)))
         .replace("{{REQUESTS}}", ", ".join(ALLOWED_REQUESTS))
     )
 

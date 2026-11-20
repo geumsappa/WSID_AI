@@ -5,6 +5,7 @@
     python scripts/try_assist.py --compare    # 예전 /answer 답변도 나란히 보기
     python scripts/try_assist.py --v1         # /assist에 history·fraudType을 안 보내기 (v1.1 효과 비교)
     python scripts/try_assist.py --serve      # 프론트 mock이 붙는 개발용 Spring 대역 서버 (http://localhost:8001)
+                                              # 채팅 답(/assist)과 사진 OCR(/dev/ocr → /internal/ai/ocr/extract)
 
 --serve: 프론트(mock 모드)의 VITE_AI_DEV_URL을 http://localhost:8001 로 두면, 채팅 질문이
   이 대역 서버 → /assist PLAN → (근거 승인) → ANSWER 로 가서 실제 서비스와 같은 흐름의 답을 화면에서 볼 수 있어요.
@@ -224,7 +225,33 @@ def serve(api: Client, refs: dict, port: int, origin: str) -> None:
             except (urllib.error.URLError, OSError):
                 return self._send(503, {"ai": "down"})
 
+        def _ocr(self) -> None:
+            """사진(multipart images)을 그대로 AI OCR(/internal/ai/ocr/extract)로 넘기고 키만 붙여요."""
+            length = int(self.headers.get("Content-Length", 0))
+            if length <= 0 or length > 16 * 1024 * 1024:
+                return self._send(413, {"error": "too large"})
+            req = urllib.request.Request(
+                api.base + "/internal/ai/ocr/extract", data=self.rfile.read(length), method="POST",
+                headers={"Content-Type": self.headers.get("Content-Type", ""), "X-Internal-Api-Key": api.key,
+                         "X-Request-Id": str(uuid.uuid4())},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=60) as res:
+                    body = json.loads(res.read().decode("utf-8"))
+                    data = body.get("data") or {}
+                    print(f"[대역] OCR {data.get('imageType')} usable={data.get('usable')} 글자 {len(data.get('recognizedText') or '')}자")
+                    return self._send(200, body)
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode("utf-8", errors="replace")[:300]
+                print(f"[대역] OCR 실패 {e.code} {detail}")
+                return self._send(e.code, {"error": detail})
+            except (urllib.error.URLError, OSError) as e:
+                print(f"[대역] OCR 연결 실패 {type(e).__name__}")
+                return self._send(502, {"error": "ocr unavailable"})
+
         def do_POST(self) -> None:
+            if self.path == "/dev/ocr":
+                return self._ocr()
             if self.path != "/internal/ai/solutions/answer":
                 return self._send(404)
             try:

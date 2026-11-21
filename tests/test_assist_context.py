@@ -209,3 +209,9 @@ def test_topic_codes_put_current_question_topics_in_top_five():
     assert "REF_EASYLAW_CIVIL_FILING_V1_P1" in top5
     assert codes.index("REF_EASYLAW_VICTIM_INFO_V1_P1") >= 3  # 이전 질문으로만 걸린 주제는 뒤로
     assert topic_codes("지급명령은 어떻게 해요?", "지급명령은 어떻게 해요?")[0] == "REF_EASYLAW_PAYMENT_ORDER_V1_P1"
+
+
+def test_court_venue_question_puts_venue_reference_first():
+    q = "그럼 민사소송 진행하려는데 아무법원이나 가면돼?"
+    assert topic_codes(q, q)[0] == "REF_EASYLAW_CIVIL_VENUE_V1_P1"
+    assert topic_codes("소장은 어느 법원에 내요?", "소장은 어느 법원에 내요?")[0] == "REF_EASYLAW_CIVIL_VENUE_V1_P1"

@@ -31,3 +31,18 @@ def test_앱_링크를_누른_뒤에는_다시_보내지_않음():
     history = _persona("앱 [모의앱]") + [{"role": "event", "text": APP_CLICK_EVENT}]
     reply = _place_links({"personaMessage": "설치 확인됐어요 [모의앱]", "requestType": "앱 설치"}, history, False)
     assert "[모의앱]" not in reply
+
+
+def test_리포트_타임라인은_있는_답변_번호와_안전한_문장만_남김():
+    from app.services.training_api import _turn_feedback
+    raw = [
+        {"turn": 2, "outcome": "risky", "userAction": "계좌번호를 적음", "feedback": "공식 앱에서 먼저 확인하세요."},
+        {"turn": 1, "outcome": "safe", "userAction": "어디냐고 물음", "feedback": "상대를 확인하려 한 좋은 대응이에요."},
+        {"turn": 9, "outcome": "risky", "userAction": "없는 답변", "feedback": "없는 턴"},
+        {"turn": 3, "outcome": "risky", "userAction": "전화함", "feedback": "1588-1234 로 전화하세요"},
+        {"turn": 3, "outcome": "maybe", "userAction": "x", "feedback": "y"},
+        "이상한 값",
+    ]
+    result = _turn_feedback(raw, user_turns=3)
+    assert [item.turn for item in result] == [1, 2]
+    assert _turn_feedback(None, user_turns=3) == []

@@ -98,12 +98,6 @@ TASK: training
 - scenarioComplete: 마지막 장면까지 끝났고 **사용자 답변 수가 최소 {{MIN_TURNS}}번 이상일 때만** true. 그 전이면 false 로 두고 대화를 이어간다.
   true 일 때 personaMessage 는 사기범의 마지막 한마디로 자연스럽게 쓴다 (예: "네, 처리해 두겠습니다.").
 
-## 할 일 3: 사용자 답변 선택지 (choices)
-사용자가 고를 수 있는 짧은 답변 3개를 만든다 (각 30자 이내).
-- 1개는 안전한 대응, 1개는 위험한 대응(요구에 응함), 1개는 애매한 반응. **순서는 섞는다.**
-- 선택지에 실제 번호·정보를 쓰지 않는다. 인증번호·OTP를 알려 주겠다는 선택지도 만들지 않는다. 위험한 대응은 "네, 계좌번호 알려드릴게요"처럼 행동만 쓴다.
-  (사용자가 그 선택지를 고르면, 다음 턴에 실제 값을 직접 입력하도록 요구하게 된다)
-
 ## 반드시 지킬 안전 규칙
 1. 시나리오의 기관명과 역할을 유지한다. allowedOrganizations에 있는 실존 기관명은 사용할 수 있다.
    그 밖의 실존 기관은 추가하지 않는다. 실제 로고·인증 표시·공식 페이지·실제 링크를 만들지 않는다.
@@ -117,7 +111,7 @@ TASK: training
 설명이나 코드블록 없이 아래 JSON **하나만** 출력한다.
 {"judgment": {"outcome": "safe", "userAction": "...", "achievedActionIds": ["A1"], "violatedActionIds": [], "reason": "...", "disclosedInfo": []},
  "personaMessage": "...", "nextScene": 1, "requestType": "링크 클릭",
- "choices": ["...", "...", "..."], "scenarioComplete": false, "realConcern": false}
+ "scenarioComplete": false, "realConcern": false}
 
 
 ## 사진 요청 예외

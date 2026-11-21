@@ -671,8 +671,10 @@ python ask.py
 
 | 경로 | 내용 |
 | --- | --- |
-| `data/corpus/seed_chunks.jsonl` | 공식 자료 31건 요약 청크 38개 (연락처 포함 원본, 카드·검수용) |
-| `data/references/references.jsonl` | AI-07에 넣을 근거 문단 (`code`·`title`·`excerpt` + 검색용 태그). 모두 `reviewed: false` |
+| `data/corpus/seed_chunks.jsonl` | 공식 자료 62건 요약 청크 80개 (연락처 포함 원본, 카드·검수용). `scripts/build_seed.py`가 만드는 결과 파일이라 직접 고치지 마세요 |
+| `data/corpus/manual_chunks.jsonl` | 나중에 추가한 공식 자료 청크. **새 자료는 여기에 한 줄씩 추가**하고 `build_seed.py` → `build_references.py` → `rag.index` 순서로 다시 만들어요 |
+| `data/references/references.jsonl` | AI-07에 넣을 근거 문단 77개 (`code`·`title`·`excerpt` + 검색용 태그). 모두 `reviewed: false` |
+| `data/references/official_channels.jsonl` | 공식 접수 창구 목록(창구·기관·쓰임·URL·확인일·상태). RAG에는 넣지 않고 대응 카드 버튼 링크 검증용 |
 | `data/index/` | 임베딩 인덱스 (자동 생성, 깃에 안 올림) |
 | `rag/` | `config` 설정 · `guard` 연락처/링크 금지 규칙 · `facts` 사실→상황 코드 · `openai_client` API 호출 · `index` 인덱스 · `retrieve` 검색 · `explain` 설명 생성·검증 |
 | `scripts/` | `hana_fraud_crawler.py` PDF 수집 → `parse_pdfs.py` 청크 → `merge_corpus.py` 병합 → `build_references.py` 근거 문단 |

@@ -24,6 +24,7 @@ REFUND_ONLY_PREFIXES = (
     "REF_LAW_2026_AMEND_",              # 환급법 개정
     "REF_FSC_2026_10_ALERT_V1_P4",      # 지급정지 후 14일 내 피해구제 신청서
     "REF_KB_PHISHING_REFUND_",          # 전기통신금융사기 피해구제 신청과 환급 절차
+    "REF_BANK_NONFACE_LIABILITY_V1_P1", # 비대면 금융사고 책임분담 신청 절차 (중고거래 등은 제외 대상)
 )
 NON_TELECOM_TYPES = {"SECONDHAND_TRADE"}
 

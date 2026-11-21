@@ -23,6 +23,7 @@ REFUND_ONLY_PREFIXES = (
     "REF_FSC_2023_11_FACE_",            # 대면편취형 피해구제
     "REF_LAW_2026_AMEND_",              # 환급법 개정
     "REF_FSC_2026_10_ALERT_V1_P4",      # 지급정지 후 14일 내 피해구제 신청서
+    "REF_KB_PHISHING_REFUND_",          # 전기통신금융사기 피해구제 신청과 환급 절차
 )
 NON_TELECOM_TYPES = {"SECONDHAND_TRADE"}
 

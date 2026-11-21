@@ -16,13 +16,16 @@ from app.schemas.training_api import (
     ScenarioRequest, ScenarioResult, SimulationRequest, SimulationResult,
 )
 from app.services.scenario import run_scenario
-from app.services.training_turn import run_training_turn
+from app.services.training_turn import APP_CLICK_EVENT, run_training_turn
 
 CATEGORIES = {
     "SECONDHAND_TRADE": "거래(중고·쇼핑)", "SMISHING": "택배·배송",
     "MESSENGER_PHISHING": "가족·지인 연락", "LOAN_FRAUD": "금융·대출",
     "INSTITUTION_IMPERSONATION": "공공기관·민원", "INVESTMENT_FRAUD": "투자",
 }
+LINK = "[모의링크]"
+APP_LINK = "[모의앱]"
+MAX_LINKS = 2  # 같은 링크를 계속 붙이면 대화가 기계적으로 보여서 대화 전체에서 2번까지만 보내요
 BANK_PAGE = MockPage(templateCode="BANK_NOTICE", title="가상 금융 안내",
                      institutionName="가상금융센터", screenCode="LOGIN_CHECK")
 
@@ -60,7 +63,7 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
 
 def simulation(request: SimulationRequest) -> SimulationResult:
     data = _scenario(request.scenario)
-    known_events = {"[훈련 행동: 본인 확인 정보 제출 완료]", "[훈련 행동: 공식 경로 확인]"}
+    known_events = {"[훈련 행동: 본인 확인 정보 제출 완료]", "[훈련 행동: 공식 경로 확인]", APP_CLICK_EVENT}
     history = [{"role": "event" if message.sender == "SYSTEM" else "user" if message.sender == "USER" else "persona",
                 "text": message.content} for message in request.messages
                if message.sender != "SYSTEM" or message.content in known_events]
@@ -92,23 +95,47 @@ def simulation(request: SimulationRequest) -> SimulationResult:
     if fresh_submission:
         actions = [action for action in actions if action != "SAFE_RESPONSE"]
         actions = list(dict.fromkeys([*actions, "RISKY_RESPONSE", "SENSITIVE_INFO_SHARED", "MOCK_LOGIN_ATTEMPT"]))
-    has_link = result.get("requestType") in ("링크 클릭", "앱 설치") or "[모의링크]" in result["personaMessage"]
+    reply = _place_links(result, history, submitted)
+    has_link = LINK in reply
     page = BANK_PAGE if has_link and not result["done"] and not submitted else None
-    reply = result["personaMessage"]
     if submitted and has_link:
         # A generated instruction to repeat the same form is invalid once its submission is recorded.
         current = data["keyScenes"][min(scene - 1, len(data["keyScenes"]) - 1)] if data["keyScenes"] else {}
         from app.services.training_turn import _fallback_line
-        reply = ("확인 정보가 접수되었습니다. 다음 안내를 이어가겠습니다." if current.get("request") in ("링크 클릭", "앱 설치")
+        reply = ("확인 정보가 접수되었습니다. 다음 안내를 이어가겠습니다." if current.get("request") == "링크 클릭"
                  else "확인 정보가 접수되었습니다. " + _fallback_line(current, current.get("request", "대화 지속")))
-    if page is not None and "[모의링크]" not in reply:
-        reply += " [모의링크]"
+        reply = reply.replace(LINK, "").strip()
     masked = (result.get("maskedText") or "").strip()
     masked_input = masked[:300] if masked and masked != request.userInput.strip() else None
     return SimulationResult(reply=reply, recognizedActions=actions,
                             shouldFinish=result["done"] or request.turnCount >= data["maxTurns"], mockPage=page,
                             nextScene=min(max(scene, result.get("currentScene", scene)), max(1, len(data["keyScenes"]))),
                             maskedInput=masked_input)
+
+
+def _place_links(result: dict, history: list[dict], submitted: bool) -> str:
+    """모의 링크·모의 앱 표시를 장면에 맞게 정리해요.
+
+    - 링크는 '링크 클릭' 장면, 앱 설치 링크는 '앱 설치' 장면에서만 새로 붙여요.
+    - 바로 앞 대사에 이미 같은 링크가 있거나 대화 전체에서 2번 보냈으면 다시 붙이지 않아요.
+    """
+    reply = result["personaMessage"]
+    if result.get("done"):
+        return reply.replace(APP_LINK, "").strip()
+    request_type = result.get("requestType")
+    persona_lines = [message["text"] for message in history if message["role"] == "persona"]
+    last_persona = persona_lines[-1] if persona_lines else ""
+    app_clicked = any(message["role"] == "event" and message["text"] == APP_CLICK_EVENT for message in history)
+    if request_type == "앱 설치":
+        reply = reply.replace(LINK, APP_LINK)  # 앱 설치 장면의 링크는 앱 설치 링크로 보여줘요
+    for token, wanted in ((LINK, request_type == "링크 클릭" and not submitted),
+                          (APP_LINK, request_type == "앱 설치" and not app_clicked)):
+        sent = sum(line.count(token) for line in persona_lines)
+        if token in reply and (sent >= MAX_LINKS or (token == APP_LINK and app_clicked)):
+            reply = reply.replace(token, "").strip()
+        elif wanted and token not in reply and sent < MAX_LINKS and token not in last_persona:
+            reply = f"{reply.rstrip()} {token}"
+    return reply
 
 
 def evaluate(request: EvaluationRequest) -> EvaluationResult:
@@ -118,6 +145,7 @@ def evaluate(request: EvaluationRequest) -> EvaluationResult:
         openedPage="MOCK_PAGE_OPEN" in actions,
         attemptedMockLogin="MOCK_LOGIN_ATTEMPT" in actions,
         checkedOfficialChannel="OFFICIAL_CHANNEL_CHECK" in actions,
+        clickedAppLink="MOCK_APP_CLICK" in actions,
     )
     # 평가하는 모델이 "AI"를 자기 쪽으로 착각해 사기범을 평가하지 않도록, 보낸 사람을 역할 이름으로 바꿔서 넘겨요.
     role_names = {"USER": "훈련자(평가 대상)", "AI": "가상 사기범(평가 대상 아님)", "SYSTEM": "시스템 기록"}
@@ -137,7 +165,10 @@ def evaluate(request: EvaluationRequest) -> EvaluationResult:
 JSON으로 overallFeedback(1000자 이하), strengths, improvements, recommendations를 반환하세요.
 각 목록은 최대 10개, 항목당 500자 이하의 한국어 문장입니다.
 SEND_MOCK_ID_CARD, SEND_MOCK_BANKBOOK, SEND_MOCK_PHOTO는 훈련 중 사진 제공 요청에 응한 행동입니다.
-가상 사진 제공은 위험 행동으로 평가하되 실제 사진이 전송됐다고 쓰지 마세요."""
+가상 사진 제공은 위험 행동으로 평가하되 실제 사진이 전송됐다고 쓰지 마세요.
+MOCK_APP_CLICK은 가상 사기범이 보낸 앱 설치 링크([모의앱])를 누른 행동입니다. 위험 행동으로 평가하되 실제로 앱이 설치됐다고 쓰지 마세요.
+가상 사기범이 알려준 번호로 전화해 확인하겠다는 것은 공식 확인이 아닙니다. 공식 앱·공식 홈페이지·대표번호를 훈련자가 직접 찾아 확인해야 올바른 대응입니다.
+대화의 [모의링크]는 '링크', [모의앱]은 '앱 설치 링크'라고 부르세요. [화자: ...] 표시는 사기범 쪽 담당자가 바뀐 연출입니다."""
     content = json.dumps({"scenarioTitle": request.scenario.get("title"), "conversation": conversation,
                           "mockPageEvaluation": page.model_dump(),
                           "actions": [{"actionCode": code} for code in sorted(actions)]}, ensure_ascii=False)
@@ -157,6 +188,8 @@ SEND_MOCK_ID_CARD, SEND_MOCK_BANKBOOK, SEND_MOCK_PHOTO는 훈련 중 사진 제�
                          "SEND_MOCK_PHOTO": "사진"}
         required_feedback = [f"{subject} 제공 요청에 응했어요. 실제 상황에서는 출처를 확인하기 전 자료를 보내지 마세요."
                              for code, subject in photo_actions.items() if code in actions]
+        if "MOCK_APP_CLICK" in actions:
+            required_feedback.append("문자·메신저로 받은 앱 설치 링크를 눌렀어요. 앱은 공식 앱 마켓에서 직접 검색해 설치하세요.")
         result.improvements = list(dict.fromkeys([*required_feedback, *result.improvements]))[:10]
         return result
     except (LLMError, KeyError, TypeError, ValueError) as error:

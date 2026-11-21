@@ -60,6 +60,7 @@ class MockPageEvaluation(BaseModel):
     openedPage: bool
     attemptedMockLogin: bool
     checkedOfficialChannel: bool
+    clickedAppLink: bool = False
 
 
 class EvaluationResult(BaseModel):

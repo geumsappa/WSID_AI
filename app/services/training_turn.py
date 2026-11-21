@@ -22,7 +22,7 @@ from app.config import settings
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
 from app.guard.sensitive import mask_requested_numbers, mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
-from app.scenario_data import ALLOWED_REQUESTS
+from app.scenario_data import ALLOWED_REQUESTS, is_unavailable_info
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,14 @@ PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "training_tur
 OUTCOMES = {"safe", "risky", "neutral"}
 INFO_REQUEST = "개인정보 제공"
 TYPE_IT_MARK = "여기에 적어 주세요"  # '직접 입력하라'는 재요구를 이미 했는지 알아보는 표시
+# 실제 사기범은 처음 몇 마디는 신뢰를 쌓는 데 써요. 이 답변 수까지는 요구 문장을 억지로 덧붙이지 않아요.
+WARMUP_TURNS = 2
+APP_CLICK_EVENT = "[훈련 행동: 가상 앱 설치 링크 누름]"
+# 훈련은 실제 문자·앱 화면을 보내지 않아요. 사용자가 알 수 없는 코드를 꺼내는 대사는 바꿔요.
+# ("인증번호는 앱 설치 후 표시돼요"처럼 요구가 아닌 말도 다음 턴에 그 번호를 묻게 만들어서 함께 바꿔요)
+UNAVAILABLE_THING = re.compile(r"인증\s*(번호|코드)|OTP|보안\s*카드|승인\s*번호|확인\s*코드|앱\s*(화면)?에\s*(표시|뜬|나온|나타난)", re.I)
+# 사용자가 앱 링크를 누르지 않았는데 설치가 끝났다고 말하는 대사
+INSTALL_DONE = re.compile(r"설치(가|는|를)?\s*(확인|완료)\s*(됐|되었|했|하셨|되셨)|설치(하셨|해\s*주셨)(군요|네요|으니|으면)")
 
 
 def run_training_turn(session_id: str, scenario: dict, current_scene: int, history: list[dict]) -> dict:
@@ -157,9 +165,21 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         persona_message = _fallback_line(scene_next, request_type)
         used_fallback = True
 
+    # 5-b) 훈련에서 일어나지 않은 일을 전제로 한 대사 바로잡기
+    #  - 인증번호·OTP·앱 화면 속 번호처럼 사용자가 받을 수 없는 값을 요구하면
+    #  - 앱 설치 링크를 누르지도 않았는데 설치가 확인됐다고 하면
+    app_clicked = any(m["role"] == "event" and m["text"] == APP_CLICK_EVENT for m in history)
+    false_install = not app_clicked and bool(INSTALL_DONE.search(persona_message))
+    if false_install or _asks_unavailable(persona_message):
+        logger.info("session=%s 훈련과 맞지 않는 대사 교체 (app_clicked=%s)", session_id, app_clicked)
+        persona_message, request_type = _consistent_line(
+            scene_next, "앱 설치" if false_install else request_type, app_clicked)
+        choices = [c for c in choices if not UNAVAILABLE_THING.search(c)]
+
     # 4-b) 개인정보 요구 장면에 들어왔는데 아직 한 번도 요구하지 않았다면 → 요구 문장을 덧붙임
+    #      (처음 몇 마디는 신뢰를 쌓는 단계라 덧붙이지 않아요. 사기범이 스스로 요구하는 건 그대로 둬요)
     next_info = _requested(scene_next)
-    if scene_next.get("request") == INFO_REQUEST and next_info and not type_it:
+    if scene_next.get("request") == INFO_REQUEST and next_info and not type_it and user_turns > WARMUP_TURNS:
         asked_before = any(m["role"] == "persona" and _mentions(m["text"], next_info) for m in history)
         if not asked_before and not _mentions(persona_message, next_info):
             persona_message = f"{persona_message.rstrip()} {_request_info_line(next_info)}"
@@ -218,7 +238,23 @@ def _scene(scenes: list[dict], order: int) -> dict:
 
 
 def _requested(scene: dict) -> list[str]:
-    return [str(x) for x in (scene.get("requestedInfo") or []) if str(x).strip()]
+    # 예전에 저장된 시나리오에 인증번호 같은 값이 남아 있어도 요구하지 않아요
+    return [str(x) for x in (scene.get("requestedInfo") or []) if str(x).strip() and not is_unavailable_info(str(x))]
+
+
+def _asks_unavailable(text: str) -> bool:
+    return bool(UNAVAILABLE_THING.search(text))
+
+
+def _consistent_line(scene: dict, request_type: str, app_clicked: bool) -> tuple[str, str]:
+    """훈련에서 실제로 할 수 있는 요구로 바꾼 대사와 요구 종류."""
+    if request_type == "앱 설치" and not app_clicked:
+        return "아직 설치가 확인되지 않네요. 아까 보내드린 앱부터 설치해 주셔야 다음 처리가 됩니다.", "앱 설치"
+    if request_type in ("송금", "링크 클릭"):
+        return _fallback_line(scene, request_type), request_type
+    info = [item for item in _requested(scene) if not _is_photo_info(item)] or ["성함", "계좌번호"]
+    lead = "설치는 확인됐습니다. " if app_clicked else "확인을 마무리하려면 "
+    return f"{lead}{', '.join(info)} {TYPE_IT_MARK}.", INFO_REQUEST
 
 
 def _mentions(text: str, info: list[str]) -> bool:
@@ -287,7 +323,7 @@ def _clean_choices(raw) -> list[str]:
     for c in raw[:3]:
         text = str(c).strip()[:40]
         _, found = mask_sensitive(text)
-        if text and not found and not find_unsafe_text(text):
+        if text and not found and not find_unsafe_text(text) and not UNAVAILABLE_THING.search(text):
             out.append(text)
     return out
 

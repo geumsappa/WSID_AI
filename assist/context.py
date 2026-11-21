@@ -22,6 +22,8 @@ TOPIC_REFS = [
     (re.compile(r"배상 ?명령"), ["REF_EASYLAW_COMPENSATION_ORDER_V1_P1"]),
     (re.compile(r"지급 ?명령"), ["REF_EASYLAW_PAYMENT_ORDER_V1_P1"]),
     (re.compile(r"소액 ?(사건|소송|심판|재판)"), ["REF_EASYLAW_SMALL_CLAIMS_V1_P1"]),
+    # "아무 법원에나 가면 돼?", "어느 법원에 내?"처럼 소장을 낼 법원(관할)을 물을 때
+    (re.compile(r"관할|(어느|어떤|어디|아무|무슨) ?법원|법원.{0,6}(어디|아무|어느)"), ["REF_EASYLAW_CIVIL_VENUE_V1_P1", "REF_EASYLAW_CIVIL_FILING_V1_P1"]),
     (re.compile(r"(더|또|추가로?) ?(돈|입금|송금|보내)|수수료|보증금|선입금|환불.{0,6}(하려면|조건|먼저)"),
      ["REF_FSS_2024_28_ALERT_V1_P1"]),
     (re.compile(r"고소|형사|어디(에|로|서)? ?(신고|접수|가)|경찰서|접수 ?(방법|절차)"),

@@ -63,10 +63,18 @@ class MockPageEvaluation(BaseModel):
     clickedAppLink: bool = False
 
 
+class TurnFeedback(BaseModel):
+    """리포트 타임라인 한 칸: 훈련자의 몇 번째 답변에서 무슨 일이 있었는지."""
+    turn: int = Field(ge=1, le=30)
+    outcome: Literal["safe", "risky"]
+    userAction: str = Field(min_length=1, max_length=150)
+    feedback: str = Field(min_length=1, max_length=300)
+
+
 class EvaluationResult(BaseModel):
     overallFeedback: str = Field(min_length=1, max_length=1000)
     strengths: list[str] = Field(max_length=10)
     improvements: list[str] = Field(max_length=10)
-    turnFeedback: list = Field(default_factory=list, max_length=0)
+    turnFeedback: list[TurnFeedback] = Field(default_factory=list, max_length=8)
     mockPageEvaluation: MockPageEvaluation
     recommendations: list[str] = Field(max_length=10)

@@ -157,7 +157,7 @@ def run_case(case, repeat):
     from app.schemas.discovery import DiscoveryRequest
     from app.schemas.training_api import ScenarioRequest
 
-    row = {"case_id": case["id"], "repeat": repeat, "checks": {}, "calls": [], "model_calls": [], "reviews": [], "verified_context": None, "intake_decisions": [], "turns": [], "scenario": None, "error": None}
+    row = {"case_id": case["id"], "repeat": repeat, "checks": {}, "calls": [], "model_calls": [], "reviews": [], "verified_context": None, "intake_decisions": [], "candidate_comparisons": [], "turns": [], "scenario": None, "error": None}
     facts, conversation, questions, ready = {}, [], [], False
     started = time.perf_counter()
 
@@ -176,8 +176,12 @@ def run_case(case, repeat):
         def wrapped(system, content, **kwargs):
             task = system.splitlines()[0].removeprefix("TASK: ")
             result = measure_call(row["model_calls"], task, lambda: original(system, content, **kwargs))
-            if task == "intake_plan":
+            if task == "discovery_brief":
+                row.setdefault("discovery_decisions", []).append(scenario_planner.safe_tree(result))
+            if task in ("intake_plan", "candidate_plan"):
                 row["intake_decisions"].append(scenario_planner.safe_tree(result))
+            if task == "candidate_compare":
+                row["candidate_comparisons"].append(scenario_planner.safe_tree(result))
             return result
         return wrapped
 
@@ -326,10 +330,10 @@ def main(argv=None):
     report = {"created_at": stamp, "mode": "live" if args.live else "mock", "provider": settings.llm_provider,
               "model": settings.llm_model if args.live else "mock", "results": rows, "summary": summarize(rows),
               "repeats": args.repeats, "cases_sha256": hashlib.sha256(CASES.read_bytes()).hexdigest(),
-              "protocol": "deferred-discovery-v1", "pipeline_reasoning_effort": settings.pipeline_reasoning_effort or "provider-default",
+              "protocol": "candidate-selection-v1", "pipeline_reasoning_effort": settings.pipeline_reasoning_effort or "provider-default",
               "discovery_reasoning_effort": settings.discovery_reasoning_effort or "provider-default",
               "prompt_sha256": {name: hashlib.sha256((Path(__file__).resolve().parents[2] / "app" / "prompts" / name).read_bytes()).hexdigest()
-                                for name in ("discovery_brief.md", "intake_plan.md", "semantic_review.md", "scenario.md")}}
+                                for name in ("discovery_brief.md", "candidate_plan.md", "candidate_compare.md", "intake_plan.md", "generation_plan.md", "context_facts.md", "semantic_review.md", "scenario.md", "scenario_classify.md")}}
     folder = args.output / stamp
     write_report(folder, report)
     print(f"Report: {folder.resolve()}")

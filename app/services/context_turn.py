@@ -42,10 +42,8 @@ def run_context_turn(session_id, history, known_facts=None):
                  "verification": verdict.checks.model_dump(),
                  "verificationIssues": [issue.code for issue in verdict.issues]}
         if ready:
-            from app.scenario_data import SUBTYPE_TO_FRAUD_CODE
             state["scenarioPlan"] = selected.model_dump()
             state["planContextHash"] = fingerprint(graph)
-            state["fraudTypeCode"] = SUBTYPE_TO_FRAUD_CODE[selected.fraudSubtype]
         question = fallback.DONE_MESSAGE if ready else scenario_planner.safe_question(verdict.followupQuestion or extraction.followupQuestion)
         return _result(question, state, done=ready, masked_text=masked_last, sensitive_types=sensitive,
                        real_concern=extraction.realConcern, review=verdict.model_dump())

@@ -64,8 +64,7 @@ def check_claims(claims, graph):
 
 
 def check_plan(plan: ScenarioPlan, graph):
-    from app.case_db import get_case
-    from app.scenario_data import ALLOWED_CHANNELS, SUBTYPE_TO_RISK_TYPE
+    from app.scenario_data import ALLOWED_CHANNELS
     check_claims(plan.anchorClaims, graph)
     if not plan.personalizationBasis:
         raise ContextIntegrityError("missing_personalization_basis")
@@ -82,13 +81,8 @@ def check_plan(plan: ScenarioPlan, graph):
         raise ContextIntegrityError("wrong_training_recipient")
     if plan.impersonatedActorId is not None and plan.impersonatedActorId not in entities:
         raise ContextIntegrityError("unknown_impersonated_actor")
-    risk = SUBTYPE_TO_RISK_TYPE.get(plan.fraudSubtype)
-    if risk is None or plan.channel not in ALLOWED_CHANNELS:
-        raise ContextIntegrityError("unsupported_routing_classification")
-    for case_id in plan.caseIds:
-        case = get_case(case_id)
-        if case is None or case["riskType"] != risk:
-            raise ContextIntegrityError("unrelated_reference")
+    if plan.channel not in ALLOWED_CHANNELS:
+        raise ContextIntegrityError("unsupported_channel")
 
 
 def fingerprint(graph):

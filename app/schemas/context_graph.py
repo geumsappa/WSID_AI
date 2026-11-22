@@ -1,10 +1,9 @@
 """Domain-independent facts, scenario plans and semantic verification contracts."""
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
-from app.scenario_data import ALLOWED_CHANNELS, ALLOWED_SUBTYPES, ALLOWED_REQUESTS, RISK_TYPES
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, StrictBool, StrictInt
+from app.scenario_data import ALLOWED_CHANNELS, ALLOWED_REQUESTS
 
-FraudSubtype = Literal[tuple(ALLOWED_SUBTYPES)]
 DeliveryChannel = Literal[tuple(ALLOWED_CHANNELS)]
 
 
@@ -64,7 +63,25 @@ class PersonalizationBasis(Model):
         description="How this detail changes the counterpart, pretext, interaction or user response in the training")
 
 
+class PatternUse(Model):
+    caseId: str
+    technique: str = Field(min_length=1, max_length=160)
+    adaptationReason: str = Field(min_length=1, max_length=250)
+
+
+class ContactSetup(Model):
+    contactBasis: Literal["CONFIRMED_CONTEXT", "FICTIONAL_FIRST_CONTACT"]
+    senderRole: str = Field(min_length=1, max_length=100)
+    contactPremise: str = Field(min_length=1, max_length=220)
+    knowledgePremise: str = Field(min_length=1, max_length=220)
+    evidenceIds: list[str] = Field(default_factory=list, max_length=4)
+    fictionalAssumptions: list[str] = Field(default_factory=list, max_length=3)
+
+
 class ScenarioPlan(Model):
+    contactSetup: ContactSetup | None = None
+    referenceUses: list[PatternUse] = Field(default_factory=list, max_length=3)
+    _retrieval_trace: dict = PrivateAttr(default_factory=dict)
     id: str = Field(min_length=1, max_length=50)
     anchorClaims: list[ClaimBinding] = Field(min_length=1, max_length=6)
     recipientActorId: str
@@ -74,9 +91,10 @@ class ScenarioPlan(Model):
     recipientReason: str = Field(min_length=1, max_length=350)
     personalizationBasis: list[PersonalizationBasis] = Field(default_factory=list, max_length=3)
     fictionalEvents: list[str] = Field(min_length=1, max_length=4)
-    fraudSubtype: FraudSubtype
     channel: DeliveryChannel
-    caseIds: list[str] = Field(min_length=1, max_length=2)
+    requestedActions: list[Literal[tuple(ALLOWED_REQUESTS)]] = Field(default_factory=list, max_length=4)
+    desiredOutcome: str = Field(default="", max_length=160)
+    escalation: str = Field(default="", max_length=600)
     missingInformation: list[str] = Field(default_factory=list, max_length=4)
 
 
@@ -103,14 +121,17 @@ class ReviewChecks(Model):
     focusPreserved: StrictBool
     fictionSeparated: StrictBool
     sufficientContext: StrictBool
+    contextDrivesPlot: StrictBool
+    nonGenericProgression: StrictBool
 
 
 class ReviewIssue(Model):
-    code: Literal["UNSUPPORTED_FACT", "ACTOR_CHANGED", "EVENT_CHANGED", "RECIPIENT_MISMATCH", "FOCUS_DRIFT", "FICTION_AS_FACT", "INSUFFICIENT_CONTEXT", "NARRATIVE_MISMATCH", "OTHER"]
+    code: Literal["UNSUPPORTED_FACT", "ACTOR_CHANGED", "EVENT_CHANGED", "RECIPIENT_MISMATCH", "FOCUS_DRIFT", "FICTION_AS_FACT", "INSUFFICIENT_CONTEXT", "NARRATIVE_MISMATCH", "FORCED_CONNECTION", "REPETITIVE_PATTERN", "OTHER"]
     detail: str = Field(min_length=1, max_length=350)
 
 
 class SemanticReview(Model):
+    referencesSupported: StrictBool = False
     approved: StrictBool
     checks: ReviewChecks
     issues: list[ReviewIssue] = Field(max_length=8)
@@ -135,9 +156,7 @@ class RiskSignal(BaseModel):
     reason: str
 
 
-class DraftAnalysis(BaseModel):
-    riskType: Literal[tuple(RISK_TYPES)] | None = None
-    riskTypeReason: str = ""
+class DraftAnalysis(Model):
     usedFacts: list[str] = Field(default_factory=list)
     riskSignals: list[RiskSignal] = Field(default_factory=list)
     judgmentPoints: list[JudgmentPoint] = Field(min_length=1, max_length=4)
@@ -152,10 +171,13 @@ class Persona(BaseModel):
 
 class Scene(BaseModel):
     judgmentPointId: str
-    goal: str = Field(max_length=200)
-    tactic: str = Field(max_length=200)
+    goal: str = Field(max_length=200, description="The impersonator's goal in this scene, not the user's safe response")
+    tactic: str = Field(max_length=200, description="How the impersonator tries to induce the requested action; must not contradict request")
     request: Literal[tuple(ALLOWED_REQUESTS)]
     requestedInfo: list[str]
+    onCompliance: str = Field(default="", max_length=180, description="Next narrative beat after compliance; not a runtime termination rule")
+    onSuspicion: str = Field(default="", max_length=180)
+    onRefusal: str = Field(default="", max_length=180)
 
 
 class ExpectedAction(BaseModel):
@@ -163,9 +185,7 @@ class ExpectedAction(BaseModel):
     description: str
 
 
-class DraftScenario(BaseModel):
-    fraudSubtype: FraudSubtype
-    basedOnCaseIds: list[str] = Field(min_length=1, max_length=2)
+class DraftScenario(Model):
     title: str = Field(min_length=1, max_length=60)
     channel: DeliveryChannel
     persona: Persona
@@ -180,3 +200,53 @@ class GeneratedScenario(Model):
     analysis: DraftAnalysis
     scenario: DraftScenario
     preservedClaims: list[ClaimBinding] = Field(min_length=1, max_length=6)
+
+
+class CaseMatch(Model):
+    caseId: str
+    technique: str = Field(min_length=1, max_length=160)
+
+
+class ScenarioClassification(Model):
+    fraudSubtype: str = Field(min_length=1, max_length=80, description="Free descriptive label, not a fixed scenario template")
+    fraudTypeCode: Literal["SECONDHAND_TRADE", "SMISHING", "MESSENGER_PHISHING", "LOAN_FRAUD", "INSTITUTION_IMPERSONATION", "INVESTMENT_FRAUD", "JOB_SCAM"]
+    classificationFit: Literal["EXACT", "APPROXIMATE"]
+    reason: str = Field(min_length=1, max_length=250)
+    tags: list[str] = Field(min_length=1, max_length=6)
+    references: list[CaseMatch] = Field(default_factory=list, max_length=2)
+
+
+class Approach(Model):
+    contactSetup: ContactSetup | None = None
+    referenceUses: list[PatternUse] = Field(default_factory=list, max_length=3)
+    id: str = Field(min_length=1, max_length=50)
+    impersonatedActorId: str | None
+    impersonatedRole: str = Field(min_length=1, max_length=100)
+    pretext: str = Field(min_length=1, max_length=250)
+    recipientReason: str = Field(min_length=1, max_length=350)
+    fictionalEvents: list[str] = Field(min_length=1, max_length=4)
+    channel: DeliveryChannel
+    requestedActions: list[Literal[tuple(ALLOWED_REQUESTS)]] = Field(min_length=1, max_length=4)
+    desiredOutcome: str = Field(min_length=1, max_length=160)
+    escalation: str = Field(min_length=1, max_length=600)
+
+
+class CandidateProposal(Extraction):
+    anchorClaims: list[ClaimBinding] = Field(min_length=1, max_length=6)
+    personalizationBasis: list[PersonalizationBasis] = Field(min_length=1, max_length=3)
+    candidates: list[Approach] = Field(min_length=2, max_length=2)
+
+
+class CandidateAssessment(Model):
+    candidateId: str
+    review: SemanticReview
+    grounding: StrictInt = Field(ge=0, le=2)
+    plausibility: StrictInt = Field(ge=0, le=2)
+    originality: StrictInt = Field(ge=0, le=2)
+    reason: str = Field(min_length=1, max_length=200)
+
+
+class CandidateComparison(Model):
+    alternativesDistinct: StrictBool
+    distinctionReason: str = Field(min_length=1, max_length=250)
+    assessments: list[CandidateAssessment] = Field(min_length=2, max_length=2)

@@ -134,12 +134,12 @@ def test_근거_사례가_없거나_유형이_다르면_폐기():
     assert validate_and_normalize(data)[0] is None
 
 
-def test_개인정보를_요구하는_장면이_없으면_폐기():
+def test_개인정보_요구가_없어도_다른_위험_요구가_있으면_허용():
     data = _good_llm_output()
     for sc in data["scenario"]["keyScenes"]:
         sc["request"], sc["requestedInfo"] = "링크 클릭", []
     result, errors = validate_and_normalize(data)
-    assert result is None and any("개인정보를 요구하는 장면" in e for e in errors)
+    assert result is not None and not errors
 
 
 def test_기본_시나리오는_전부_개인정보_요구_장면이_있음():
@@ -162,3 +162,20 @@ def test_단계별_절차_대본이나_너무_긴_대본은_폐기():
     data = _good_llm_output()
     data["scenario"]["openingMessage"] = "안녕하세요 " * 60
     assert validate_and_normalize(data)[0] is None
+
+
+def test_개인정보_요구를_선택하면_대상정보는_명시해야함():
+    data = _good_llm_output()
+    for scene in data["scenario"]["keyScenes"]:
+        if scene["request"] == "개인정보 제공":
+            scene["requestedInfo"] = []
+    result, errors = validate_and_normalize(data)
+    assert result is None and any("requestedInfo" in error for error in errors)
+
+
+def test_위험요구없이_대화만_계속하는_장면은_충분하지않음():
+    data = _good_llm_output()
+    for scene in data["scenario"]["keyScenes"]:
+        scene.update(request="대화 지속", requestedInfo=[])
+    result, errors = validate_and_normalize(data)
+    assert result is None and any("위험 요구" in error for error in errors)

@@ -5,7 +5,7 @@ LLM 이 만든 시나리오가
   2) 실제 사기에 그대로 쓸 수 있는 내용(실존 기관명, 진짜 URL, 진짜 전화번호)이 없는지
   3) 근거 사례(caseId)가 사례 DB 에 실제로 있고 위험 유형이 맞는지
   4) 모방범죄 우려(범행 운영 요령, 단계별 절차 안내, 지나치게 구체적인 대본)가 없는지
-  5) 사기범이 개인정보를 직접 요구하는 장면이 있는지 (훈련의 핵심)
+  5) 상황에 맞는 위험 요구가 있고 개인정보 요구 시 대상 항목이 명시되는지
 검사한다. 문제가 있으면 errors 에 이유를 담아 돌려주고, 서비스가 재시도 또는 기본 시나리오로 대체한다.
 """
 import re
@@ -107,7 +107,7 @@ def _s(value, limit: int = 300) -> str:
     return str(value or "").strip()[:limit]
 
 
-def validate_and_normalize(data: dict, allowed_organizations: list[str] | None = None) -> tuple[dict | None, list[str]]:
+def validate_and_normalize(data: dict, allowed_organizations: list[str] | None = None, *, classified: bool = True) -> tuple[dict | None, list[str]]:
     """LLM 결과를 검사하고, 통과하면 깔끔하게 정리한 dict 를 돌려준다.
 
     반환: (정리된 결과 또는 None, 문제 목록)
@@ -134,11 +134,11 @@ def validate_and_normalize(data: dict, allowed_organizations: list[str] | None =
     # ---- SIM-003 위험 유형 분류 ----
     # 세부 유형이 정해지면 대분류는 표에서 자동으로 정함 (LLM 이 대분류를 잘못 적어도 바로잡음)
     subtype = _s(raw_s.get("fraudSubtype"))
-    if subtype not in ALLOWED_SUBTYPES:
+    if classified and subtype not in ALLOWED_SUBTYPES:
         errors.append(f"허용되지 않은 세부 유형: {subtype}")
     risk_type = SUBTYPE_TO_RISK_TYPE.get(subtype, "기타")
     llm_risk_type = _s(raw_a.get("riskType")) or _s(raw_s.get("riskType"))
-    if llm_risk_type and llm_risk_type not in RISK_TYPES:
+    if classified and llm_risk_type and llm_risk_type not in RISK_TYPES:
         errors.append(f"허용되지 않은 위험 유형: {llm_risk_type}")
 
     analysis = {
@@ -180,12 +180,14 @@ def validate_and_normalize(data: dict, allowed_organizations: list[str] | None =
             "tactic": _s(sc.get("tactic")),
             "request": request,
             "requestedInfo": [_s(x, 30) for x in (sc.get("requestedInfo") or []) if _s(x)][:5],
+            **{key: _s(sc.get(key), 180) for key in ("onCompliance", "onSuspicion", "onRefusal")},
         })
     if not 1 <= len(key_scenes) <= 4:
         errors.append(f"핵심 장면 수가 1~4개가 아님: {len(key_scenes)}")
-    # 훈련의 핵심: 사기범이 개인정보를 '직접 요구'하는 장면이 반드시 있어야 함
-    if not any(sc["request"] == "개인정보 제공" and sc["requestedInfo"] for sc in key_scenes):
-        errors.append("개인정보를 요구하는 장면(request=개인정보 제공, requestedInfo 있음)이 없음")
+    if not any(sc["request"] in {"링크 클릭", "개인정보 제공", "송금", "앱 설치"} for sc in key_scenes):
+        errors.append("훈련에서 판단할 위험 요구 행동이 없음")
+    if any(sc["request"] == "개인정보 제공" and not sc["requestedInfo"] for sc in key_scenes):
+        errors.append("개인정보 요구 장면의 requestedInfo가 없음")
     # 대본이 지나치게 길고 구체적인지 (자르기 전 원본 길이로 확인)
     if len(str(raw_s.get("openingMessage") or "")) > MAX_OPENING_CHARS:
         errors.append("모방범죄 우려: 첫 메시지가 지나치게 길고 구체적")
@@ -197,9 +199,9 @@ def validate_and_normalize(data: dict, allowed_organizations: list[str] | None =
     # ---- SIM-005/006 근거 사례: DB 에 실제로 있고, 위험 유형이 맞아야 함 ----
     case_ids = [str(c).strip() for c in (raw_s.get("basedOnCaseIds") or []) if str(c).strip()][:3]
     based_on = []
-    if not case_ids:
+    if classified and not case_ids:
         errors.append("근거 사례(basedOnCaseIds)가 없음")
-    for cid in case_ids:
+    for cid in case_ids if classified else []:
         case = get_case(cid)
         if case is None:
             errors.append(f"사례 DB 에 없는 caseId: {cid}")
@@ -250,5 +252,10 @@ def validate_and_normalize(data: dict, allowed_organizations: list[str] | None =
 
     if errors:
         return None, errors
+    if not classified:
+        analysis.pop("riskType", None)
+        analysis.pop("riskTypeReason", None)
+        for field in ("riskType", "fraudSubtype", "basedOnCases"):
+            scenario.pop(field, None)
     scenario["allowedOrganizations"] = [name for name in (allowed_organizations or []) if name in REAL_NAMES]
     return {"analysis": analysis, "scenario": scenario}, []

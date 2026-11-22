@@ -26,7 +26,7 @@ def test_full_verification_moves_to_generation(grounded_model, graph_data):
     generated = training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="SMISHING"))
     assert generated.scenario["fraudTypeCode"] == "MESSENGER_PHISHING"
     assert generated.scenario["sourceFacts"][0]["actorId"] == "actor_peer"
-    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "intake_plan", "semantic_review", "scenario_generate", "semantic_review"]
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "candidate_plan", "candidate_compare", "scenario_generate", "semantic_review", "scenario_classify"]
 
 
 def test_fast_ready_does_not_bypass_later_semantic_rejection(grounded_model, graph_data, review_data):
@@ -41,23 +41,23 @@ def test_fast_ready_does_not_bypass_later_semantic_rejection(grounded_model, gra
 
 
 def test_one_question_for_incomplete_context_without_planning(grounded_model):
-    grounded_model[1]["discovery_brief"] = {"ready": False, "question": "주문은 어떤 방식으로 하셨나요?", "detail": None}
+    grounded_model[1]["discovery_brief"] = {"updates": [{"topic": "ACTIVITY", "turn": 1, "quote": "아아 사왔어"}], "nextTopic": "ACCESS", "requiredTopics": ["ACCESS"]}
     result = ask("아까 카페가서 아아 사왔어")
     assert not result.canGenerateScenario
-    assert result.nextQuestion == "주문은 어떤 방식으로 하셨나요?"
+    assert result.nextQuestion == "그 서비스는 어떤 경로로 이용하셨어요?"
     assert len(grounded_model[0]) == 1
     assert result.facts["discoveryEvidence"][0]["text"] == "아까 카페가서 아아 사왔어"
 
 
 def test_unknown_readiness_quote_is_not_accepted(grounded_model):
-    grounded_model[1]["discovery_brief"] = {"ready": True, "question": "", "detail": {"turn": 1, "quote": "직원이 내 돈을 돌려줬어요"}}
+    grounded_model[1]["discovery_brief"] = {"updates": [{"topic": "ACTIVITY", "turn": 1, "quote": "직원이 내 돈을 돌려줬어요"}], "nextTopic": None}
     with pytest.raises(AiApiError):
         ask("카페에 갔어요")
-    assert len(grounded_model[0]) == 1
+    assert len(grounded_model[0]) == 2
 
 
 def test_history_compaction_keeps_user_evidence_and_current_turn(grounded_model):
-    grounded_model[1]["discovery_brief"] = {"ready": False, "question": "어떻게 진행됐나요?", "detail": None}
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": "ACTIVITY"}
     first = ask("제가 주문했어요")
     second = ask("수령은 동료가 했어요", first.facts)
     assert second.facts["discoveryEvidence"] == [{"turn": 1, "text": "제가 주문했어요"}, {"turn": 2, "text": "수령은 동료가 했어요"}]
@@ -65,7 +65,7 @@ def test_history_compaction_keeps_user_evidence_and_current_turn(grounded_model)
 
 
 def test_sensitive_details_are_masked_in_quick_input_and_stored_evidence(grounded_model):
-    grounded_model[1]["discovery_brief"] = {"ready": False, "question": "어떻게 진행됐나요?", "detail": None}
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": "ACTIVITY"}
     result = ask("010-1234-5678로 연락했고 https://example.com/secret 도 봤어요")
     assert "010-1234-5678" not in str(grounded_model[0]) + str(result.facts)
     assert "example.com" not in str(grounded_model[0]) + str(result.facts)
@@ -73,7 +73,7 @@ def test_sensitive_details_are_masked_in_quick_input_and_stored_evidence(grounde
 
 def test_new_answer_does_not_reuse_a_stale_approved_plan(grounded_model, graph_data):
     known = {"intakeTurn": 8, "scenarioPlan": {"id": "stale"}, "planContextHash": "old"}
-    grounded_model[1]["discovery_brief"] = {"ready": False, "question": "조금 더 알려주시겠어요?", "detail": None}
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": "ACTIVITY"}
     result = ask("정정할게요", known)
     assert not result.canGenerateScenario
     assert "scenarioPlan" not in result.facts and "planContextHash" not in result.facts
@@ -101,10 +101,10 @@ def test_generation_requires_ready_and_valid_original_evidence(grounded_model):
 def test_generation_preserves_all_masked_user_sources_for_fact_extraction(grounded_model, graph_data):
     result = ask(graph_data["evidence"][0]["quote"])
     training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="SMISHING"))
-    payload = next(payload for task, payload in grounded_model[0] if task == "intake_plan")
+    payload = next(payload for task, payload in grounded_model[0] if task == "candidate_plan")
     assert payload["messages"] == result.facts["discoveryEvidence"]
-    assert payload["generationRequested"] is True
     assert payload["readinessEvidence"] == result.facts["readinessEvidence"]
+    assert payload["confirmedTopics"] == result.facts["knownTopics"]
 
 
 def test_generation_rejects_a_readiness_hint_not_in_user_sources(grounded_model):
@@ -117,13 +117,18 @@ def test_generation_rejects_a_readiness_hint_not_in_user_sources(grounded_model)
 
 
 def test_generation_repairs_a_missing_candidate_but_review_can_still_veto(grounded_model, graph_data, plan_data, review_data):
+    from app.schemas.context_graph import Approach
+    first = {key: value for key, value in plan_data.items() if key in Approach.model_fields}
+    first.update(desiredOutcome="정보 요구", escalation="안내 뒤 요청 확대")
+    second = {**first, "id": "plan_b", "pretext": "이용권 안내", "requestedActions": ["송금"],
+              "desiredOutcome": "예약금 요구", "escalation": "기한을 내세워 송금을 재촉"}
     count = []
     def candidate(payload):
         count.append(payload)
-        return {"context": graph_data, "realConcern": False,
-                "selectedPlan": None if len(count) == 1 else plan_data,
-                "alternativeApproaches": [], "followupQuestion": ""}
-    grounded_model[1]["intake_plan"] = candidate
+        return {"context": graph_data, "realConcern": False, "anchorClaims": plan_data["anchorClaims"],
+                "personalizationBasis": plan_data["personalizationBasis"],
+                "candidates": [first] if len(count) == 1 else [first, second]}
+    grounded_model[1]["candidate_plan"] = candidate
     result = ask(graph_data["evidence"][0]["quote"])
     review_data["approved"] = False
     review_data["checks"]["recipientPlausible"] = False
@@ -132,5 +137,23 @@ def test_generation_repairs_a_missing_candidate_but_review_can_still_veto(ground
         training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="SMISHING"))
     assert error.value.status == 422
     assert len(count) == 2
-    assert count[1]["schemaErrors"][0]["path"] == "selectedPlan"
+    assert count[1]["schemaErrors"][0]["path"] == "candidates"
     assert not any(task == "scenario_generate" for task, _ in grounded_model[0])
+
+
+def test_generation_uses_writer_instructions_with_shared_grounding_rules(monkeypatch, graph_data, plan_data):
+    from app.services import scenario_planner
+    captured = []
+    def model(system, content, **kwargs):
+        captured.append(system)
+        return {"context": graph_data, "realConcern": False, "selectedPlan": plan_data,
+                "alternativeApproaches": [], "followupQuestion": ""}
+    monkeypatch.setattr(scenario_planner, "generate_json", model)
+    messages = [{"turn": 1, "text": graph_data["evidence"][0]["quote"]}]
+    scenario_planner.intake(messages, generation_requested=True)
+    scenario_planner.intake(messages)
+    assert "지금은 대화 질문자가 아니라" in captured[0]
+    assert "정보가 부족하면 selectedPlan=null" not in captured[0]
+    assert "정보가 부족하면 selectedPlan=null" in captured[1]
+    assert all("messages의 사용자 발언만 근거" in prompt for prompt in captured)
+    assert all("{{CONTEXT_FACTS}}" not in prompt for prompt in captured)

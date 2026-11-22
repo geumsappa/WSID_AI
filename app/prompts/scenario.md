@@ -6,11 +6,13 @@ TASK: scenario_generate
 - anchorClaims의 실제 사건과 actorId를 보존한다. 남이 한 행동을 사용자 행동으로 바꾸지 않는다.
 - 실제 사건과 fictionalEvents를 구분한다. 사기범의 거짓 대사는 가능하지만 background에 없는 실제 거래·약속·가입을 추가하지 않는다.
 - preservedClaims에는 사용한 실제 이벤트 ID와 원래 actorId를 정확히 반환한다.
-- fraudSubtype/channel/basedOnCaseIds는 검증된 계획과 정확히 일치한다. 분류를 이유로 실제 활동을 바꾸지 않는다.
-- analysis: riskType, riskTypeReason, usedFacts, riskSignals[{signal,reason}], judgmentPoints[{id,description}].
-- scenario: fraudSubtype, basedOnCaseIds, title, channel, persona{name,role,organization,tone}, background, openingMessage,
-  keyScenes[{judgmentPointId,goal,tactic,request,requestedInfo}], expectedActions[{judgmentPointId,description}], mockPage.
-- request는 링크 클릭/개인정보 제공/송금/앱 설치/대화 지속 중 하나. 장면 2~3개. 개인정보 제공 장면 하나 이상과 종류가 필요하다.
+- channel과 계획의 requestedActions를 유지한다. 사기 유형·분류 코드·참고 사례는 작성하지 않는다.
+- analysis: usedFacts, riskSignals[{signal,reason}], judgmentPoints[{id,description}].
+- scenario: title, channel, persona{name,role,organization,tone}, background, openingMessage,
+  keyScenes[{judgmentPointId,goal,tactic,request,requestedInfo,onCompliance,onSuspicion,onRefusal}], expectedActions[{judgmentPointId,description}], mockPage.
+- keyScenes의 goal/tactic/request는 사기범이 상대를 속여 유도하려는 행동이다. 사용자의 안전한 대응 목표를 섞지 않는다.
+- 개인정보 거절·별도 확인·대화 중단 같은 사용자 대응은 expectedActions와 judgmentPoints에 기록한다. 사기범 tactic에 정보를 보내지 말라고 쓰거나 개인정보 요구와 반대되는 행동을 적지 않는다.
+- request는 링크 클릭/개인정보 제공/송금/앱 설치/대화 지속 중 하나. 장면 3~4개. 상황과 계획에 맞는 위험 요구가 하나 이상 있어야 한다. 개인정보 제공은 필수가 아니며, 해당 장면이 있을 때만 종류를 명시한다.
 - background는 화면에 보여줄 자연스러운 사건 도입 1~2문장이다. 원문 인용·사실 나열·‘가정하고 연습합니다’ 같은 진행 안내는 쓰지 않는다.
 - title에만 사용자 단어를 붙여 개인화한 것처럼 만들지 않는다. 본문·인물·접근 이유도 같은 계획을 따른다.
 - 실제 URL·전화번호·계좌번호·인증값을 생성하지 않는다. 링크는 [모의링크]로만 표현한다.
@@ -21,3 +23,31 @@ TASK: scenario_generate
 - mockPage는 금융/공공민원/채용/null 중 하나다. 참고 자료에 같은 장소·인물의 실제 사건이 있었다고 단정하지 않는다.
 
 retryIssues가 있으면 같은 오류를 반복하지 않는다. JSON 하나만 출력한다.
+
+이 단계는 분류 목록과 예시 시나리오를 받지 않는다. 계획의 인물·구실·요구 행동을 자연스럽게 전개한다.
+유형 분류와 생성 후 유사 사례 매칭은 이 본문이 검증된 이후 수행되므로, 분류에 맞추기 위해 이야기를 바꾸지 않는다.
+
+계획의 desiredOutcome과 escalation에 맞게 장면을 전개한다. 모든 이야기를 확인→링크→정보 입력으로 만들지 않는다.
+원문 단어를 제목에 복사하는 대신, 왜 이 인물이 이 사용자에게 이 요청을 하는지와 압박/부탁의 진행을 본문에 반영한다.
+개인정보 요구 없이 송금·앱 설치·기타 지원되는 위험 요구로 진행하는 계획도 그대로 따른다.
+
+실제 사칭 인물에 대해 confirmedPersonName이 제공되면 persona.name은 그 값과 정확히 같아야 한다. openingMessage에도 그 이름/별명으로 자연스럽게 자신을 밝힌다. 관계 호칭으로 이름을 대체하거나 임의 이름으로 바꾸지 않는다. 이름을 안다는 사실은 정산·약속의 증거가 아니다.
+
+plan.referenceUses의 수법을 참고한 경우 해당 요구 행동과 접근 논리를 장면에 반영하되 사용자 사실·실제 사례 사실·새 가상 설정을 섞지 않는다. retrievedPatterns의 원문을 재현하거나 출처 사건의 피해자가 사용자라고 쓰지 않는다. 참고하지 않은 자료를 근거로 추가하지 않는다. 사례 ID와 출처는 서버가 별도 저장하므로 대사·제목에는 넣지 않는다.
+
+장면별 전개 계획:
+- 3~4개의 장면은 서로 다른 판단 기회다. 첫 연락/신뢰 형성, 중간 요구, 후속 위험 요구가 인과적으로 이어지게 한다. 대사만 바꾼 같은 개인정보 요구를 반복하지 않는다.
+- 이름·전화번호·생년월일을 제공하는 장면은 중간 단계다. 그 협조를 명분으로 더 민감한 가상 인증/자료, 앱 설치 또는 금전 요구 등 계획에 맞는 다음 위험 요구로 이어지게 한다. 모든 이야기에 송금을 억지로 추가하지 않는다.
+- 각 장면 onCompliance에는 응했을 때의 다음 전개, onSuspicion에는 의심하거나 별도 확인할 때의 전개, onRefusal에는 거절할 때의 전개를 각각 180자 이내로 작성한다. 마지막 장면은 후속 요구 대신 최종 위험 행동과 판단 기회를 명시한다.
+- 이 필드들은 대화 담당자에게 전달하는 서사 계획이다. 실제 사용자 행동을 예단하거나 자동 종료/최소 턴 수를 선언하지 않는다. 명확한 대화 중단·차단 의사는 존중한다.
+- 실제 돈·실제 인증값·실제 신분증을 받는 절차나 외부 링크는 만들지 않는다. 가상 행동만으로 판단을 연습하도록 구성한다.
+
+확인된 SERVICE/SETTING/TIME/INTERACTION을 접근 인물·명분·첫 연락에 재사용한다. 확인된 상호·지점과 대략적 방문 시점을 업종명으로 불필요하게 뭉개지 않는다. 단, 실제 기관명 안전 정책과 허용 목록을 따른다. ACCESS에 연락 경로가 확인되지 않았으면 업체가 실제로 사용자 연락처를 받았다고 서술하지 않는다. 사기범의 가상 주장을 실제 거래 이력과 구분한다. 모름/거절한 정보에 임의 상호·날짜·가입 이력을 사실처럼 추가하지 않는다.
+
+
+연락·지식 설정 보존:
+plan.contactSetup이 있으면 senderRole/contactPremise/knowledgePremise를 고정한 채 작성한다. 매장 직원→본사 고객지원, 지인→외부 안내업체로 바꾸거나, 역할 사이 정보 전달을 새로 추가하지 않는다.
+FICTIONAL_FIRST_CONTACT는 배경에서 '그 매장 직원을 자처하는 상대에게 메시지가 도착한다'처럼 이후 가정한 사칭 연락으로 표현한다. 실제 카페 직원의 정상 사후 서비스로 서술하지 않는다. openingMessage에서 사기범이 그 직원이라고 주장할 수 있지만 서술자가 이를 사실로 보증하지 않는다.
+연락처 취득·정보 공유 경로를 모른다면 모르는 상태를 유지한다. 사용자에게 이미 연락처/문의 내용을 본사에 등록했다고 추가하지 않는다. 사기범은 실제 사건을 아는 척할 수 있으며, 그 근거 없는 아는 척은 가상 주장과 위험 신호로 구분한다.
+
+confirmedServiceNames가 비어 있지 않으면 해당 확인된 업체명을 persona 또는 background/openingMessage에 최소 한 번 실제로 사용한다. 허용 목록에 있으며 사용자 확인 근거가 있는 이름이므로 업종명으로 지우지 않는다. title에만 복사하는 것으로 충족되지 않는다. 해당 기관의 진짜 연락이라는 보증 없이 사칭 주장으로 구별한다.

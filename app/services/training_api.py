@@ -48,11 +48,16 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
                           plan=request.facts.get("scenarioPlan"), context_hash=request.facts.get("planContextHash"),
                           discovery_evidence=request.facts.get("discoveryEvidence"),
                           discovery_ready=request.facts.get("discoveryReady", False),
-                          readiness_evidence=request.facts.get("readinessEvidence"))
+                          readiness_evidence=request.facts.get("readinessEvidence"),
+                          discovery_topics=request.facts.get("knownTopics"),
+                          discovery_requirements=request.facts.get("intakeRequirements"))
     generated = _scenario(result["scenario"])
     # Spring은 제목·설명과 함께 전체 시나리오를 보관하고 다음 AI 요청에 재사용한다.
     generated["description"] = generated["background"]
-    generated["fraudTypeCode"] = SUBTYPE_TO_FRAUD_CODE[generated["fraudSubtype"]]
+    code = result["scenario"].get("fraudTypeCode") or SUBTYPE_TO_FRAUD_CODE.get(generated["fraudSubtype"])
+    if code is None:
+        raise AiApiError(503, "AI_SERVICE_UNAVAILABLE", "시나리오의 호환용 분류 코드를 확인하지 못했어요.")
+    generated["fraudTypeCode"] = code
     return ScenarioResult(scenario=generated,
                           mockPageTemplateCode="BANK_NOTICE" if (generated.get("mockPage") is not None
                               or "[모의링크]" in generated.get("openingMessage", "")

@@ -2,7 +2,7 @@
 
 ## 현재 상황 파악·시나리오 생성 구조
 
-최신 구현은 [사실·관계 기반 생성 흐름](docs/grounded-scenario-pipeline.md)을 따릅니다. 대화 중에는 짧은 질문·맥락 준비 판단을 한 번만 호출하고, 시나리오 만들기를 요청할 때 사실 구조화·계획 → 별도 의미 검증 → 생성 → 본문 재검증을 수행합니다. 활동별 키워드 보정이나 실패 시 기본 시나리오 반환은 사용하지 않습니다.
+최신 구현은 [사실·관계 기반 생성 흐름](docs/grounded-scenario-pipeline.md)을 따릅니다. 대화 중에는 짧은 질문·맥락 준비 판단을 한 번만 호출하고, 시나리오 만들기를 요청할 때 사실 구조화·계획 → 별도 의미 검증 → 생성 → 본문 재검증 → 사후 분류를 수행합니다. 생성 전에 고정 유형을 선택하지 않습니다. 활동별 키워드 보정이나 실패 시 기본 시나리오 반환은 사용하지 않습니다.
 
 
 ## 상황 입력·시나리오 생성 개선
@@ -161,7 +161,7 @@ LLM_MODEL=...
 
 | 파일 | 하는 일 | 자주 고치게 될까? |
 |---|---|---|
-| `app/prompts/intake_plan.md` · `semantic_review.md` | ① **상황 파악 AI 지시문** | ⭐ 제일 많이 고침 |
+| `app/prompts/candidate_plan.md` · `candidate_compare.md` · `semantic_review.md` | ① **상황 파악 AI 지시문** | ⭐ 제일 많이 고침 |
 | `app/prompts/scenario.md` | ② **시나리오 설계 AI 지시문** | ⭐ 제일 많이 고침 |
 | `app/prompts/training_turn.md` | ③ **사기범 연기 + 대응 판정 + 선택지 AI 지시문** | ⭐ 제일 많이 고침 |
 | `app/fallback.py` | ① 첫 질문·기본 질문, ③ 사기범 기본 대사·기본 선택지 | 가끔 |
@@ -169,7 +169,7 @@ LLM_MODEL=...
 | `app/data/fraud_cases.yaml` | **근거 사례 DB** (공개 주의 안내 15건 요약 + 출처 링크) | 사례 추가·검토할 때 |
 | `app/case_db.py` | 사례 DB 읽기 | 거의 안 고침 |
 | `app/guard/sensitive.py` | 사용자가 입력한 개인정보 탐지·가림 (AI의 질문은 막지 않음) | 가끔 |
-| `app/guard/scenario_guard.py` | ② 시나리오 검증: 실존 기관명·URL·전화번호·보이스피싱 차단, 근거 사례 확인, 모방범죄 검사, 개인정보 요구 장면 필수 | 가끔 (차단 표현 추가) |
+| `app/guard/scenario_guard.py` | ② 시나리오 검증: 실존 기관명·URL·전화번호·보이스피싱 차단, 근거 사례 확인, 모방범죄 검사, 위험 행동 요구 확인 (개인정보 제공은 선택) | 가끔 (차단 표현 추가) |
 | `app/services/context_turn.py` | ① 전체 흐름 | 기능 바꿀 때 |
 | `app/services/scenario.py` | ② 전체 흐름 (생성 → 검사 → 재생성 → 기본 시나리오) | 기능 바꿀 때 |
 | `app/services/training_turn.py` | ③ 전체 흐름 (판정 → 대사 → 가드레일 → 장면 진행 → 종료) | 기능 바꿀 때 |
@@ -714,3 +714,10 @@ Spring 설정: `AI_MODE=http`, `AI_BASE_URL=http://localhost:8000`, `AI_API_KEY`
 ## 상황 파악·시나리오 생성 품질 평가
 
 평가 기준과 실행 방법: [평가 안내](evaluations/discovery_scenario/README.md). 기본 실행은 외부 AI 호출 없이 동작합니다.
+
+
+## 시나리오 생성용 사례 검색
+
+시나리오 생성은 `app/services/scenario_retrieval.py`가 `app/data/scenario_patterns.json`을 로컬 TF-IDF로 검색해 계획에 전달합니다. 기존 `rag/`의 피해 대응 검색과 별도 기능이며, 추가 벡터 DB·임베딩 키·인덱스 생성은 필요 없습니다. 코드를 pull한 뒤 기존 LLM 설정으로 FastAPI를 재시작하면 됩니다.
+
+수집 원문(`research-originals/`)과 측정 결과(`evaluation-results/`)는 Git에서 제외되며 실행에 필요하지 않습니다. 검색 JSON, 새 프롬프트·서비스 코드, 출처 검증 기록(`docs/research/`)은 함께 커밋합니다. 사용한 참고 자료의 결과 화면/PDF 표시는 별도 BE·FE 출처 표시 코드와 함께 반영해야 합니다. 구조와 검증 범위는 `docs/grounded-scenario-pipeline.md`를 참고하세요.

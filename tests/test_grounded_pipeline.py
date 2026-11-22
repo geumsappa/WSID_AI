@@ -27,7 +27,7 @@ def test_legacy_detailed_flow_extracts_plans_reviews_generates_and_reviews_again
     assert generated.scenario["fraudTypeCode"] == "MESSENGER_PHISHING"
     assert "동료가 비용을 지불" in generated.scenario["background"]
     assert generated.scenario["sourceFacts"][0]["actorId"] == "actor_peer"
-    assert [task for task, _ in calls] == ["intake_plan", "semantic_review", "scenario_generate", "semantic_review"]
+    assert [task for task, _ in calls] == ["intake_plan", "semantic_review", "scenario_generate", "semantic_review", "scenario_classify"]
 
 
 @pytest.mark.parametrize("action", ["비용을 지불함", "예약을 취소함", "서류를 제출함", "물건을 수령함", "일정을 변경함"])
@@ -202,7 +202,7 @@ def test_new_unseen_domain_uses_same_graph_checks(graph_data, plan_data):
     check_plan(ScenarioPlan.model_validate(plan_data), graph)
 
 
-def test_routing_label_is_an_enum_not_a_free_form_story_title(plan_data):
+def test_plan_rejects_classification_fields(plan_data):
     plan_data["fraudSubtype"] = "누군가를 사칭한 새로운 이야기 제목"
     with pytest.raises(ValidationError):
         ScenarioPlan.model_validate(plan_data)
@@ -214,7 +214,7 @@ def test_invalid_output_format_is_repaired_without_changing_user_evidence(pipeli
         candidate = deepcopy(plan_data)
         outputs.append(deepcopy(payload))
         if len(outputs) == 1:
-            candidate["fraudSubtype"] = "자유롭게 쓴 이야기 제목"
+            candidate["channel"] = "알 수 없는 경로"
         return {"context": graph_data, "realConcern": False, "selectedPlan": candidate, "alternativeApproaches": [], "followupQuestion": ""}
     pipeline_model[1]["intake_plan"] = proposal
     result = discover_fixture(graph_data)
@@ -223,7 +223,7 @@ def test_invalid_output_format_is_repaired_without_changing_user_evidence(pipeli
     assert outputs[0]["messages"] == outputs[1]["messages"]
 
 
-def test_reference_mismatch_gets_bounded_structural_repair(pipeline_model, graph_data, plan_data):
+def test_early_reference_injection_gets_bounded_structural_repair(pipeline_model, graph_data, plan_data):
     seen = []
     def proposal(payload):
         candidate = deepcopy(plan_data)
@@ -233,7 +233,7 @@ def test_reference_mismatch_gets_bounded_structural_repair(pipeline_model, graph
         return {"context": graph_data, "realConcern": False, "selectedPlan": candidate, "alternativeApproaches": [], "followupQuestion": ""}
     pipeline_model[1]["intake_plan"] = proposal
     assert discover_fixture(graph_data).canGenerateScenario
-    assert len(seen) == 2 and seen[1]["schemaErrors"][0]["type"] == "unrelated_reference"
+    assert len(seen) == 2 and seen[1]["schemaErrors"][0]["type"] == "extra_forbidden"
     assert seen[0]["messages"] == seen[1]["messages"]
 
 
@@ -295,14 +295,56 @@ def test_new_context_detail_must_also_be_preserved_as_a_claim(graph_data, plan_d
     check_plan(ScenarioPlan.model_validate(plan_data), ContextGraph.model_validate(graph_data))
 
 
-def test_review_has_actual_reference_mechanics_and_explicit_draft_scope(pipeline_model, graph_data, plan_data):
-    from app.case_db import get_case
+def test_story_review_does_not_receive_or_require_classification(pipeline_model, graph_data):
     result = discover_fixture(graph_data)
     training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="MESSENGER_PHISHING"))
     reviews = [payload for task, payload in pipeline_model[0] if task == "semantic_review"]
     assert reviews[0]["reviewScope"] == "CONTEXT_AND_PLAN"
     assert reviews[1]["reviewScope"] == "DRAFT_AGAINST_ACCEPTED_PLAN"
-    case = get_case(plan_data["caseIds"][0])
-    assert reviews[1]["referenceTechniques"][0]["tactics"] == case["tactics"]
-    assert reviews[1]["referenceTechniques"][0]["requestedActions"] == case["requestedActions"]
-    assert "sourceUrl" not in reviews[1]["referenceTechniques"][0]
+    assert all("referenceTechniques" not in payload for payload in reviews)
+    assert "fraudSubtype" not in reviews[1]["generated"]["scenario"]
+
+
+def test_scene_response_branches_survive_generation_and_public_roundtrip(pipeline_model, graph_data, generation_data):
+    from app.schemas.sim import Scenario
+    answers = pipeline_model[1]
+    answers["scenario_generate"] = generation_data
+    branches = {
+        "onCompliance": "확인에 응하면 가상 추가 인증을 요청하는 다음 장면으로 이어진다.",
+        "onSuspicion": "별도 확인을 제안하면 명분을 설명하되 확인을 막지 않는다.",
+        "onRefusal": "거절 의사를 확인하고 명확한 중단 의사를 존중한다.",
+    }
+    for scene in answers["scenario_generate"]["scenario"]["keyScenes"]:
+        scene.update(branches)
+    discovery_result = discover_fixture(graph_data)
+    result = training_api.scenario(ScenarioRequest(facts=discovery_result.facts, fraudTypeCode="SECONDHAND_TRADE"))
+    restored = Scenario.model_validate(result.scenario).model_dump(by_alias=True)
+    for scene in restored["keyScenes"]:
+        for key, value in branches.items():
+            assert scene[key] == value
+
+
+def test_legacy_scene_without_response_branches_remains_readable():
+    from app.schemas.sim import KeyScene
+    scene = KeyScene.model_validate({"order": 1, "judgmentPointId": "J1", "goal": "확인", "tactic": "관계 신뢰", "request": "대화 지속", "requestedInfo": []})
+    assert scene.on_compliance == scene.on_suspicion == scene.on_refusal == ""
+
+
+@pytest.mark.parametrize("preserve", [False, True])
+def test_confirmed_service_name_is_required_in_visible_scenario(grounded_model, graph_data, generation_data, preserve):
+    text = graph_data["evidence"][0]["quote"] + " 이디야에서 이용했어요"
+    graph_data["evidence"][0]["quote"] = text
+    graph_data["entities"].append({"id": "org_shop", "label": "이디야", "kind": "ORGANIZATION"})
+    if preserve:
+        generation_data["scenario"]["background"] += " 이디야에서 있었던 일이다."
+    facts = {"discoveryReady": True, "discoveryEvidence": [{"turn": 1, "text": text}],
+             "knownTopics": {"SERVICE": {"status": "KNOWN", "turn": 1, "quote": "이디야"}}}
+    if preserve:
+        result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+        assert "이디야" in result.scenario["background"]
+    else:
+        with pytest.raises(AiApiError):
+            training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    payload = next(payload for task, payload in grounded_model[0] if task == "scenario_generate")
+    assert "이디야" in payload["allowedOrganizations"]
+    assert payload["confirmedServiceNames"] == ["이디야"]

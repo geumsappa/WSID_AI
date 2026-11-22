@@ -132,6 +132,9 @@ class KeyScene(CamelModel):
     tactic: str = Field(description="심리 압박·속임 수법")
     request: str = Field(description="링크 클릭 | 개인정보 제공 | 송금 | 앱 설치 | 대화 지속")
     requested_info: list[str] = Field(description="요구하는 개인정보 종류")
+    on_compliance: str = Field(default="", max_length=180)
+    on_suspicion: str = Field(default="", max_length=180)
+    on_refusal: str = Field(default="", max_length=180)
 
 
 class ExpectedAction(CamelModel):
@@ -153,7 +156,12 @@ class CaseRef(CamelModel):
 
 class Scenario(CamelModel):
     risk_type: str = Field(description="위험 유형 대분류 (6종)")
-    fraud_subtype: str = Field(description="세부 유형: 지인·가족 사칭, 결제·환불 사칭, 택배 사칭, 부고·청첩장 사칭, 대출 사기, 공공기관 사칭, 투자 리딩방, 중고거래 사기, 채용·아르바이트 사기")
+    fraud_subtype: str = Field(description="생성된 이야기의 자유로운 세부 분류명")
+    tags: list[str] = Field(default_factory=list)
+    classification_fit: str | None = None
+    classification_reason: str | None = None
+    reference_status: str | None = None
+    generation_evidence: dict | None = Field(default=None, description="Generation-time retrieval and used factual patterns; separate from post-generation matches")
     title: str
     channel: str = Field(description="문자 | 메신저 | 중고거래 앱 채팅 | 이메일 | SNS 메시지 → 화면 스타일 결정")
     persona: Persona

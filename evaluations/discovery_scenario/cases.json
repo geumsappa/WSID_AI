@@ -380,5 +380,31 @@
       }
     ],
     "generate_scenario": true
+  },
+  {
+    "id": "cafe-missing-identity",
+    "description": "업체명·방문 시점 없는 카페 상호작용은 준비 미완료",
+    "inputs": [
+      "혼자 카페에서 코딩하다 직원에게 충전기를 빌려달라고 했는데 못 빌렸어요."
+    ],
+    "expected": {
+      "ready": false
+    },
+    "generate_scenario": false
+  },
+  {
+    "id": "cafe-rich-contact",
+    "description": "업체·시점·요청·앱 이용이 충분한 카페 사례의 개인화 생성",
+    "inputs": [
+      "어제 이디야에서 혼자 코딩했어요. 직원에게 충전기를 빌려달라고 했는데 없다고 했어요. 주문은 이디야 멤버십 앱으로 했어요."
+    ],
+    "expected": {
+      "ready": true,
+      "scenario_contains": [
+        "이디야",
+        "어제"
+      ]
+    },
+    "generate_scenario": true
   }
 ]

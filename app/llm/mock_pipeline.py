@@ -3,8 +3,22 @@ from copy import deepcopy
 
 
 def respond(task, payload):
+    if task == "candidate_plan":
+        from app.schemas.context_graph import Approach
+        original = respond("intake_plan", payload)
+        plan = original["selectedPlan"]
+        first = {key: value for key, value in plan.items() if key in Approach.model_fields}
+        first.update(desiredOutcome="mock 정보 제공", escalation="mock 진행")
+        second = {**first, "id": "mock_other", "impersonatedRole": "mock 다른 접근", "requestedActions": ["송금"],
+                  "pretext": "mock 다른 구실", "desiredOutcome": "mock 송금", "escalation": "mock 다른 진행"}
+        return {"context": original["context"], "realConcern": False, "anchorClaims": plan["anchorClaims"],
+                "personalizationBasis": plan["personalizationBasis"], "candidates": [first, second]}
+    if task == "candidate_compare":
+        return {"alternativesDistinct": True, "distinctionReason": "mock 구조 확인",
+                "assessments": [{"candidateId": plan["id"], "review": respond("semantic_review", {"plan": plan}),
+                                 "grounding": 2, "plausibility": 2, "originality": 1, "reason": "mock 구조 확인"} for plan in payload["candidates"]]}
     if task == "discovery_brief":
-        return {"ready": False, "question": "어떤 일이 있었는지 조금 더 알려주시겠어요?", "detail": None}
+        return {"updates": [], "nextTopic": "ACTIVITY", "requiredTopics": ["ACTIVITY"]}
     if task == "intake_plan":
         extraction = respond("context_extract", payload)
         proposal = respond("scenario_plan", {"context": extraction["context"]})
@@ -29,7 +43,6 @@ def respond(task, payload):
         graph["focusEventIds"] = [event["id"] for event in graph["events"][-2:]]
         return {"context": graph, "realConcern": False}
     if task == "scenario_plan":
-        from app.case_db import case_ids_for_subtype
         graph = payload["context"]
         events = {event["id"]: event for event in graph["events"]}
         if not graph["focusEventIds"]:
@@ -38,21 +51,29 @@ def respond(task, payload):
                 "recipientActorId": graph["userActorId"], "impersonatedActorId": None, "impersonatedRole": "mock 훈련 상대",
                 "pretext": "mock 형식 확인", "recipientReason": "mock: 의미 품질을 평가하지 않는 형식 확인용",
                 "personalizationBasis": [{"eventId": graph["focusEventIds"][0], "evidenceId": events[graph["focusEventIds"][0]]["evidenceIds"][0], "detail": "mock 구조 검사용", "scenarioImpact": "mock은 실제 맥락 충분성을 평가하지 않음"}],
-                "fictionalEvents": ["mock 요청 메시지가 도착함"], "fraudSubtype": "중고거래 사기", "channel": "중고거래 앱 채팅",
-                "caseIds": case_ids_for_subtype("중고거래 사기")[:1], "missingInformation": []}
+                "fictionalEvents": ["mock 요청 메시지가 도착함"], "requestedActions": ["개인정보 제공"], "channel": "중고거래 앱 채팅", "missingInformation": []}
         return {"candidates": [plan], "selectedPlanId": plan["id"], "followupQuestion": ""}
     if task == "semantic_review":
         enough = payload.get("plan") is not None
         return {"approved": enough, "checks": {"factsSupported": True, "actorsPreserved": True, "recipientPlausible": enough,
-                "focusPreserved": True, "fictionSeparated": True, "sufficientContext": enough}, "issues": [],
+                "focusPreserved": True, "fictionSeparated": True, "sufficientContext": enough, "contextDrivesPlot": True, "nonGenericProgression": True}, "issues": [],
                 "followupQuestion": "" if enough else "어떤 상황을 겪으셨나요?"}
     if task == "scenario_generate":
         from app.scenario_data import FALLBACK_SCENARIOS
         plan = payload["plan"]
-        content = deepcopy(FALLBACK_SCENARIOS[plan["fraudSubtype"]])
+        content = deepcopy(FALLBACK_SCENARIOS["중고거래 사기"])
         content["scenario"]["title"] = "(mock) " + content["scenario"]["title"]
         content["scenario"]["channel"] = plan["channel"]
-        content["scenario"]["basedOnCaseIds"] = plan["caseIds"]
+        for field in ("fraudSubtype", "riskType", "basedOnCaseIds"):
+            content["scenario"].pop(field, None)
+        content["analysis"].pop("riskType", None)
+        content["analysis"].pop("riskTypeReason", None)
         content["preservedClaims"] = plan["anchorClaims"]
         return content
+    if task == "scenario_classify":
+        from app.case_db import case_ids_for_subtype, get_case
+        case_id = case_ids_for_subtype("중고거래 사기")[0]
+        case = get_case(case_id)
+        return {"fraudSubtype": "중고거래 사기", "fraudTypeCode": "SECONDHAND_TRADE", "classificationFit": "EXACT",
+                "reason": "mock 분류 인터페이스 점검", "tags": ["mock"], "references": [{"caseId": case_id, "technique": case["requestedActions"][0]}]}
     raise ValueError("Unknown pipeline task")

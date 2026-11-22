@@ -45,11 +45,15 @@ def test_generation_keeps_grounded_organization(pipeline_model, graph_data, plan
     graph_data["events"][0].update(actorId="actor_user", action="역량검사를 봄", object="기업은행")
     graph_data["entities"][1].update(label="기업은행", kind="ORGANIZATION")
     graph_data["evidence"][0]["quote"] = "기업은행 역량검사를 봤어요"
-    plan_data.update(fraudSubtype="채용·아르바이트 사기", channel="이메일", caseIds=case_ids_for_subtype("채용·아르바이트 사기")[:1])
+    plan_data.update(channel="이메일")
     plan_data["anchorClaims"][0]["actorId"] = "actor_user"
     generation_data.clear()
     generation_data.update(scenario_output("채용·아르바이트 사기"))
-    generation_data["scenario"].update(channel="이메일", basedOnCaseIds=plan_data["caseIds"])
+    generation_data["scenario"].update(channel="이메일")
+    for field in ("fraudSubtype", "riskType", "basedOnCaseIds"):
+        generation_data["scenario"].pop(field, None)
+    generation_data["analysis"].pop("riskType", None)
+    generation_data["analysis"].pop("riskTypeReason", None)
     generation_data["preservedClaims"] = copy.deepcopy(plan_data["anchorClaims"])
     result = scenario_service.run_scenario("s", [{"detail": "기업은행 역량검사를 봤어요"}])
     assert "기업은행" in result["scenario"]["allowedOrganizations"]

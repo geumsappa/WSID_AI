@@ -21,3 +21,6 @@ venv/
 
 # Local AI quality reports
 evaluation-results/
+
+# Local licensed source snapshots (keep originals out of Git)
+/research-originals/

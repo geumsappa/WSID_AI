@@ -40,6 +40,11 @@ TOPIC_REFS = [
     (re.compile(r"신고 ?(했|하고|한 ?뒤|후|다음|이후)|접수 ?(했|후)|수사|진행 ?상황|결과"),
      ["REF_EASYLAW_VICTIM_INFO_V1_P1", "REF_EASYLAW_VICTIM_RECOVERY_V1_P1"]),
 ]
+# "돈을 이미 보내버렸어"처럼 송금했다고만 말할 때: 지급정지·피해구제 절차 문단을 먼저.
+# 중고거래(재화 사기)는 지급정지·환급 대상이 아니라서 넣지 않아요 (그쪽은 신고·민사 문단이 맞아요)
+TRANSFER_DONE = re.compile(r"(돈|입금|송금|이체).{0,10}(보냈|보내 ?버렸|넣었|했|해 ?버렸)|보내 ?버렸")
+TRANSFER_REFS = ["REF_FSS_2023_06_GUIDE_V1_P2", "REF_FSC_2026_10_ALERT_V1_P4", "REF_LAW_REFUND_PROCEDURE_V1_P1"]
+
 # 중고거래인데 환급·지급정지를 묻지 않았으면 '환급 대상 아님' 문단은 빼요 (매 답변마다 같은 말을 반복하지 않게)
 REFUND_TOPIC = re.compile(r"환급|지급정지|피해구제|돌려받|되찾|환불")
 REFUND_NOTICE_CODES = {"REF_LAW_REFUND_PROCEDURE_V1_P2", "REF_FSS_2026_07_NONFACE_V1_P1"}
@@ -83,13 +88,14 @@ def topic_text(request: PlanRequest | AnswerRequest) -> str:
     return " ".join(p for p in parts if p).strip()
 
 
-def topic_codes(text: str, question: str = "") -> list[str]:
+def topic_codes(text: str, question: str = "", fraud_type: str | None = None) -> list[str]:
     """주제별 필수 근거 code. 근거 판정에는 상위 5개만 가므로 순서가 중요해요.
     - 이번 질문(question)에 걸린 주제를 이전 대화로만 걸린 주제보다 앞에 둬요.
     - 주제가 여러 개면 각 주제의 첫 문단부터 돌아가며 넣어요 (한 주제가 자리를 다 차지하지 않게)."""
-    matched = [refs for pattern, refs in TOPIC_REFS if pattern.search(text)]
+    rules = TOPIC_REFS if fraud_type == "SECONDHAND_TRADE" else TOPIC_REFS + [(TRANSFER_DONE, TRANSFER_REFS)]
+    matched = [refs for pattern, refs in rules if pattern.search(text)]
     if question:
-        first = [refs for pattern, refs in TOPIC_REFS if pattern.search(question)]
+        first = [refs for pattern, refs in rules if pattern.search(question)]
         matched = first + [g for g in matched if g not in first]
     codes: list[str] = []
     for i in range(max((len(g) for g in matched), default=0)):

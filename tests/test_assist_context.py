@@ -230,3 +230,9 @@ def test_app_check_question_pulls_device_refs():
     codes = topic_codes("모르는 앱이 깔린지 안깔린지 모르겠어")
     assert codes[:2] == ["REF_FSC_2026_10_ALERT_V1_P4", "REF_KISA_SMISHING_V1_P1"]
     assert topic_codes("악성앱 확인하는 법 알려줘")[:1] == ["REF_FSC_2026_10_ALERT_V1_P4"]
+
+
+def test_transfer_statement_pulls_payment_stop_refs_except_secondhand():
+    q = "돈을 이미 보내버렸어. 이제 어떻게 해야 하나요?"
+    assert topic_codes(q, q, "LOAN_FRAUD")[:1] == ["REF_FSS_2023_06_GUIDE_V1_P2"]
+    assert "REF_FSS_2023_06_GUIDE_V1_P2" not in topic_codes(q, q, "SECONDHAND_TRADE")

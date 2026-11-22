@@ -158,7 +158,7 @@ def test_model_failure_never_returns_a_template(pipeline_model, graph_data):
         raise LLMError("private-provider-detail")
     pipeline_model[1]["scenario_generate"] = offline
     with TestClient(app) as client:
-        response = client.post("/internal/ai/scenarios/generate", json={"facts": result.facts, "fraudTypeCode": "MESSENGER_PHISHING"})
+        response = client.post("/internal/ai/scenarios/generate", headers={"X-Internal-Api-Key": "test-internal-key"}, json={"facts": result.facts, "fraudTypeCode": "MESSENGER_PHISHING"})
     assert response.status_code == 503 and "data" not in response.json()
     assert "private-provider-detail" not in response.text
 

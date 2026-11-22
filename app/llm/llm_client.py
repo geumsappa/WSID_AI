@@ -64,7 +64,7 @@ def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeo
             timeout=timeout,
             max_retries=0,  # 재시도는 위의 generate_json 에서 직접 관리
         )
-        response = client.chat.completions.create(
+        request = dict(
             model=settings.llm_model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -74,6 +74,14 @@ def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeo
             response_format={"type": "json_object"},  # JSON 으로만 답하게 강제
             **({"reasoning_effort": reasoning_effort, "max_completion_tokens": max_tokens} if reasoning_effort else {}),
         )
+        try:
+            response = client.chat.completions.create(**request)
+        except Exception as e:
+            # 일부 최신 모델은 temperature 를 바꿀 수 없어서 400 으로 거절해요 → temperature 없이 한 번 더
+            if "temperature" not in str(e):
+                raise
+            request.pop("temperature")
+            response = client.chat.completions.create(**request)
         return response.choices[0].message.content or ""
 
     if provider == "anthropic":

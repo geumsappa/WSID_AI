@@ -85,7 +85,7 @@ def test_provider_failure_is_not_retried_or_replaced_with_a_fake_success(grounde
         raise LLMError("private-provider-message")
     grounded_model[1]["discovery_brief"] = offline
     with TestClient(app) as client:
-        response = client.post("/internal/ai/discovery/next", json={"conversation": [], "knownFacts": {}, "currentInput": "테스트"})
+        response = client.post("/internal/ai/discovery/next", headers={"X-Internal-Api-Key": "test-internal-key"}, json={"conversation": [], "knownFacts": {}, "currentInput": "테스트"})
     assert response.status_code == 503
     assert "private-provider-message" not in response.text
     assert len(grounded_model[0]) == 1

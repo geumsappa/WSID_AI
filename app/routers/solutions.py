@@ -8,7 +8,9 @@
 
 오류: 입력 형식 오류 400/422, AI 실패·근거 인덱스 없음 503 (Spring 은 AI 설명 없이 카드만 보여 주면 돼요)
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.dependencies import require_internal_key
 
 from app.schemas.solution import (
     SolutionAnswerRequest,
@@ -20,7 +22,8 @@ from app.schemas.solution import (
 )
 from app.services.solution import AiUnavailable, run_answer, run_explain, run_extract
 
-router = APIRouter(prefix="/internal/ai/solutions", tags=["내부 AI (피해 대응)"])
+router = APIRouter(prefix="/internal/ai/solutions", tags=["내부 AI (피해 대응)"],
+                   dependencies=[Depends(require_internal_key)])
 
 
 def _call(fn, *args, **kwargs):
@@ -45,8 +48,8 @@ def explain(req: SolutionExplainRequest):
     return _call(run_explain, req.facts, refs)
 
 
-@router.post("/answer", response_model=SolutionAnswerResult, response_model_by_alias=True,
-             summary="(가안) 피해 대응 질문 답변 — 근거 안에서 답하거나, 필요한 사실을 되묻거나, 답변 불가")
+@router.post("/answer", response_model=SolutionAnswerResult, response_model_by_alias=True, deprecated=True,
+             summary="(사용 안 함) 질문 답변은 /internal/ai/solutions/assist 사용 — Spring은 이 경로를 부르지 않음")
 def answer(req: SolutionAnswerRequest):
     refs = [r.model_dump(by_alias=True) for r in req.verified_references] if req.verified_references is not None else None
     history = [t.model_dump(by_alias=True) for t in req.history] if req.history else None

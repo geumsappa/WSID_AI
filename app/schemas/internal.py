@@ -13,3 +13,5 @@ class Success(BaseModel, Generic[Data]):
 class OcrResult(BaseModel):
     recognizedText: str
     usable: bool
+    imageType: Literal["SMS", "MESSENGER_CHAT", "TRANSFER_RECEIPT", "WEB_PAGE", "OTHER"]
+    summary: str | None

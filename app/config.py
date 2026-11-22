@@ -10,6 +10,13 @@ load_dotenv()  # 같은 폴더의 .env 파일을 읽어서 환경변수로 등�
 @dataclass(frozen=True)
 class Settings:
     internal_api_key: str = os.getenv("AI_API_KEY", "").strip()
+    ocr_engine: str = os.getenv("OCR_ENGINE", "paddle").strip().lower()
+    # 사진 분류·요약 전용 모델. 비우면 LLM_MODEL 사용 (빠른 모델로 따로 지정 가능)
+    ocr_classify_model: str = os.getenv("OCR_CLASSIFY_MODEL", "").strip()
+    # 사진 분류·요약 대기(초). 넘으면 imageType=OTHER, summary=null로 대체
+    ocr_classify_timeout_seconds: float = float(os.getenv("OCR_CLASSIFY_TIMEOUT_SECONDS", "10"))
+    # 다른 OCR 요청이 처리 중일 때 기다리는 최대 시간(초). OCR 15초 예산 안에서 차감
+    ocr_queue_wait_seconds: float = float(os.getenv("OCR_QUEUE_WAIT_SECONDS", "5"))
     ocr_executable: str = os.getenv("OCR_EXECUTABLE", "tesseract").strip()
     ocr_languages: str = os.getenv("OCR_LANGUAGES", "kor+eng").strip()
     llm_provider: str = os.getenv("LLM_PROVIDER", "mock").strip().lower()
@@ -28,6 +35,8 @@ class Settings:
     evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "25"))
     # 가상 훈련 대화 전체 최대 턴 수 (요구사항 초안: 핵심 장면 12턴 / 전체 15턴)
     training_max_turns: int = int(os.getenv("TRAINING_MAX_TURNS", "15"))
+    # 이 답변 수 전에는 시나리오가 끝나도 종료하지 않고 대화를 이어가요 (사용자가 확실히 끊으면 예외)
+    training_min_turns: int = int(os.getenv("TRAINING_MIN_TURNS", "6"))
 
 
 settings = Settings()

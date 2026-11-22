@@ -62,7 +62,7 @@ def test_사기범_대사에_실존기관이나_URL이_있으면_기본_대사�
 
 
 def test_사기범이_개인정보를_요구하는_건_허용(monkeypatch):
-    msg = "판매대금 받으시려면 계좌번호랑 인증번호 알려주세요"
+    msg = "판매대금 받으시려면 계좌번호랑 전화번호 알려주세요"
     monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
         "judgment": {"outcome": "risky"}, "personaMessage": msg, "nextScene": 2,
         "requestType": "개인정보 제공"})
@@ -86,9 +86,30 @@ def test_시나리오에_없는_행동_id는_버림(monkeypatch):
 
 
 def test_마지막_장면_끝나면_종료():
-    r = training.run_training_turn("s1", _scenario(), 3, _history("안 보낼게요, 공식 앱에서 확인할게요"))
+    sc = _scenario()
+    sc["minTurns"] = 1  # 최소 답변 수를 채운 경우
+    r = training.run_training_turn("s1", sc, 3, _history("안 보낼게요, 공식 앱에서 확인할게요"))
     assert r["done"] and r["endReason"] == "scenario_complete"
     assert r["choices"] == []
+
+
+def test_최소_답변_수_전에는_시나리오가_끝나도_이어감(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "risky"}, "personaMessage": "확인됐어요. 이제 재배송비만 결제하시면 돼요.",
+        "nextScene": 3, "scenarioComplete": True})
+    sc = _scenario()
+    sc["minTurns"] = 6
+    r = training.run_training_turn("s1", sc, 3, _history("네", "박아무개, 강남구"))
+    assert not r["done"]
+
+
+def test_사용자가_확실히_끊으면_일찍_종료(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "safe"}, "personaMessage": "아, 네...", "nextScene": 1})
+    sc = _scenario()
+    sc["minTurns"] = 6
+    r = training.run_training_turn("s1", sc, 1, _history("누구세요?", "이 번호 차단하고 신고할게요"))
+    assert r["done"] and r["endReason"] == "user_exit"
 
 
 def test_최대_턴이면_종료():
@@ -117,9 +138,17 @@ def _scenario_of(subtype):
 def test_개인정보_장면에_들어가면_사기범이_반드시_요구함(monkeypatch):
     monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
         "judgment": {"outcome": "risky"}, "personaMessage": "네 감사합니다.", "nextScene": 2})
-    r = training.run_training_turn("s1", _scenario(), 1, _history("네 눌렀어요"))
+    r = training.run_training_turn("s1", _scenario(), 1, _history("네?", "그렇군요", "네 눌렀어요"))
     assert "계좌번호" in r["personaMessage"] and "적어 주세요" in r["personaMessage"]
     assert r["inputExpected"] and r["requestedInfo"] == ["계좌번호", "전화번호"]
+
+
+def test_처음_몇_마디에는_요구_문장을_억지로_붙이지_않음(monkeypatch):
+    # 실제 사기범처럼 처음에는 신뢰를 쌓는 말만 하도록 둬요
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "neutral"}, "personaMessage": "네, 퇴근길에 바로 갈 수 있어요.", "nextScene": 2})
+    r = training.run_training_turn("s1", _scenario(), 1, _history("어디서 거래하세요?"))
+    assert r["personaMessage"] == "네, 퇴근길에 바로 갈 수 있어요."
 
 
 def test_말로만_동의하면_직접_입력하라고_다시_요구():
@@ -140,11 +169,13 @@ def test_실제로_입력하면_요구와_제공이_기록되고_값은_안_남�
     assert not r["done"]
 
 
-def test_요구받은_인증번호를_숫자로만_답해도_잡힘():
-    sc = _scenario_of("지인·가족 사칭")  # 장면2: 신분증 사진, 카드번호, 인증번호 요구
-    r = training.run_training_turn("s1", sc, 2, _history("482913"))
-    assert r["infoDisclosure"]["provided"] == ["인증번호"]
-    assert "482913" not in r["maskedText"]
+def test_요구받은_생년월일을_숫자로만_답해도_잡힘():
+    sc = _scenario_of("지인·가족 사칭")
+    sc["keyScenes"][1]["requestedInfo"] = ["생년월일"]
+    r = training.run_training_turn("s1", sc, 2, _history("900101"))
+    assert r["infoDisclosure"]["provided"] == ["생년월일"]
+    assert "900101" not in r["maskedText"]
+
 
 
 def test_이름처럼_패턴이_없는_정보는_LLM_판단으로_기록하고_답변은_통째로_가림(monkeypatch):
@@ -178,3 +209,37 @@ def test_backend_masked_card_submission_counts_as_disclosure(monkeypatch):
     assert result["infoDisclosure"]["provided"] == ["카드번호"]
     assert "[카드번호]" in seen[0]
     assert not result["done"]
+
+
+# ---------- 훈련에서 일어나지 않은 일을 전제로 한 대사 ----------
+def test_인증번호처럼_받을_수_없는_값은_요구하지_않음(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "neutral"}, "nextScene": 1, "requestType": "개인정보 제공",
+        "personaMessage": "앱에 표시된 인증번호를 이 대화창에 적어 주세요.",
+        "choices": ["네, 인증번호 알려드릴게요", "왜요?", "싫어요"]})
+    r = training.run_training_turn("s1", _scenario(), 1, _history("네?", "그렇군요", "네"))
+    assert "인증번호" not in r["personaMessage"]
+    assert all("인증번호" not in c for c in r["choices"])
+
+
+def test_앱_링크를_안_눌렀는데_설치됐다고_하지_않음(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "neutral"}, "nextScene": 1, "requestType": "개인정보 제공",
+        "personaMessage": "설치 확인됐습니다. 성함을 적어 주세요."})
+    r = training.run_training_turn("s1", _scenario(), 1, _history("네?", "그렇군요", "네"))
+    assert "설치 확인됐" not in r["personaMessage"] and "설치" in r["personaMessage"]
+    assert r["requestType"] == "앱 설치"
+
+
+def test_앱_링크를_누른_뒤에는_설치_확인을_말해도_됨(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "risky"}, "nextScene": 1, "requestType": "개인정보 제공",
+        "personaMessage": "설치 확인됐습니다. 성함이랑 계좌번호 여기에 적어 주세요."})
+    history = _history("네?", "그렇군요")
+    history.insert(-1, {"role": "event", "text": training.APP_CLICK_EVENT})
+    r = training.run_training_turn("s1", _scenario(), 1, history)
+    assert r["personaMessage"].startswith("설치 확인됐습니다")
+
+
+def test_시나리오의_인증번호_요구는_걸러짐():
+    assert training._requested({"requestedInfo": ["계좌번호", "인증번호", "OTP 번호"]}) == ["계좌번호"]

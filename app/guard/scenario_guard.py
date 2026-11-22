@@ -18,6 +18,7 @@ from app.scenario_data import (
     ALLOWED_SUBTYPES,
     RISK_TYPES,
     SUBTYPE_TO_RISK_TYPE,
+    is_unavailable_info,
 )
 
 # 시나리오에 나오면 안 되는 실존 기관·회사·서비스 이름 (필요하면 계속 추가)
@@ -179,7 +180,9 @@ def validate_and_normalize(data: dict, allowed_organizations: list[str] | None =
             "goal": _s(sc.get("goal")),
             "tactic": _s(sc.get("tactic")),
             "request": request,
-            "requestedInfo": [_s(x, 30) for x in (sc.get("requestedInfo") or []) if _s(x)][:5],
+            # 인증번호처럼 훈련에서 보내 줄 수 없는 정보는 요구 목록에서 빼요
+            "requestedInfo": [_s(x, 30) for x in (sc.get("requestedInfo") or [])
+                              if _s(x) and not is_unavailable_info(_s(x))][:5],
             **{key: _s(sc.get(key), 180) for key in ("onCompliance", "onSuspicion", "onRefusal")},
         })
     if not 1 <= len(key_scenes) <= 4:

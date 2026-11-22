@@ -17,6 +17,8 @@ def _fallback(_facts):
     return result
 
 
+INTERNAL_HEADERS = {"X-Internal-Api-Key": "test-internal-key"}  # tests/conftest.py와 같은 키
+
 def test_virtual_photo_submission_is_risky_without_any_image_in_model_input(monkeypatch):
     captured = []
 
@@ -28,7 +30,7 @@ def test_virtual_photo_submission_is_risky_without_any_image_in_model_input(monk
     scenario = _fallback([])["scenario"]
     scenario["keyScenes"][0]["request"] = "개인정보 제공"
     scenario["keyScenes"][0]["requestedInfo"] = ["신분증 사진"]
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         response = client.post("/internal/ai/simulation/reply", json={
             "scenario": scenario, "messages": [], "userInput": "[가상 신분증 사진 제공]", "turnCount": 1,
         })
@@ -73,7 +75,7 @@ def test_evaluation_receives_event_and_always_records_photo_risk(monkeypatch):
         return {"overallFeedback": "훈련을 마쳤어요.", "strengths": [], "improvements": [], "recommendations": []}
 
     monkeypatch.setattr(training_api, "generate_json", report)
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         response = client.post("/internal/ai/training/evaluate", json={
             "scenario": _fallback([])["scenario"], "conversation": [],
             "actions": [{"actionCode": "SEND_MOCK_ID_CARD"}],
@@ -86,7 +88,7 @@ def test_evaluation_receives_event_and_always_records_photo_risk(monkeypatch):
 def test_image_payload_is_rejected_before_model_call(monkeypatch):
     called = []
     monkeypatch.setattr(training_api, "run_training_turn", lambda *a, **k: called.append(True))
-    with TestClient(app) as client:
+    with TestClient(app, headers=INTERNAL_HEADERS) as client:
         response = client.post("/internal/ai/simulation/reply", json={
             "scenario": {}, "messages": [], "userInput": "사진", "turnCount": 1,
             "image": "data:image/png;base64,do-not-echo",

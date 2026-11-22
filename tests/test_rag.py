@@ -10,9 +10,9 @@ import tempfile  # noqa: E402
 
 from rag import config, index  # noqa: E402
 
-# 가짜 임베딩 인덱스는 임시 폴더에 만들어요. data/index(실제 Gemini 인덱스)를 덮어쓰지 않게요.
+# 가짜 임베딩 인덱스는 임시 폴더에 만들어요. data/index(실제 OpenAI 인덱스)를 덮어쓰지 않게요.
 config.INDEX_DIR = Path(tempfile.mkdtemp(prefix="rag_test_index_"))
-config.FAKE = True  # .env 의 RAG_FAKE=0 이 먼저 적용됐어도 테스트는 항상 가짜 모드 (Gemini 호출·한도 소모 없음)
+config.FAKE = True  # .env 의 RAG_FAKE=0 이 먼저 적용됐어도 테스트는 항상 가짜 모드 (OpenAI 호출·비용 없음)
 from rag.explain import ExplainError, explain, validate_result  # noqa: E402
 from rag.guard import has_forbidden, strip_contact_sentences  # noqa: E402
 from rag.retrieve import find_references  # noqa: E402

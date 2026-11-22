@@ -18,9 +18,9 @@ UNKNOWN = {k: "UNKNOWN" for k in FACTS}
 
 @pytest.fixture(scope="module", autouse=True)
 def fake_index(tmp_path_factory):
-    # 가짜 임베딩 인덱스는 임시 폴더에 만들어요. data/index(실제 Gemini 인덱스)를 덮어쓰지 않게요.
+    # 가짜 임베딩 인덱스는 임시 폴더에 만들어요. data/index(실제 OpenAI 인덱스)를 덮어쓰지 않게요.
     # 다른 테스트가 rag.config 를 먼저 불러왔으면 .env 의 RAG_FAKE=0 이 이미 적용돼 있어요.
-    # 그래서 여기서 가짜 모드를 직접 켜요 (실제 Gemini 를 부르면 무료 한도 429 에러가 나요).
+    # 그래서 여기서 가짜 모드를 직접 켜요 (실제 OpenAI 를 부르면 비용·한도를 써요).
     from rag import config
     original = (config.INDEX_DIR, config.FAKE)
     config.INDEX_DIR = tmp_path_factory.mktemp("index")
@@ -86,7 +86,7 @@ def test_router_contract():
     pytest.importorskip("httpx")
     from fastapi.testclient import TestClient
     from app.main import app
-    c = TestClient(app)
+    c = TestClient(app, headers={"X-Internal-Api-Key": "test-internal-key"})
     r = c.post("/internal/ai/solutions/extract", json={"description": "검찰이라고 해서 300만원 이체했어요"})
     assert r.status_code == 200 and set(r.json()) >= {"facts", "uncertainFields"}
     r = c.post("/internal/ai/solutions/answer", json={"facts": FACTS, "question": "이제 뭐 해요?", "fraudType": "SECONDHAND_TRADE"})
@@ -124,3 +124,13 @@ def test_history_resolves_referring_question():
     hist = [{"role": "USER", "content": "민사소송, 형사소송 절차를 알려줘"}, {"role": "AI", "content": "배상명령을 신청할 수 있어요."}]
     codes = [x["code"] for x in run_answer(FACTS, "그럼 둘다 알려줘", "SECONDHAND_TRADE", None, hist)["references"]]
     assert "REF_EASYLAW_COMPLAINT_V1_P1" in codes and "REF_EASYLAW_CIVIL_FILING_V1_P1" in codes
+
+
+def test_solution_routes_require_internal_key():
+    from fastapi.testclient import TestClient
+    from app.main import app
+    c = TestClient(app)
+    for path in ("extract", "explain", "answer"):
+        assert c.post(f"/internal/ai/solutions/{path}", json={}).status_code == 401
+        assert c.post(f"/internal/ai/solutions/{path}", json={},
+                      headers={"X-Internal-Api-Key": "wrong"}).status_code == 401

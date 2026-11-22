@@ -15,6 +15,9 @@ SUBTYPE_TO_RISK_TYPE = {
     "지인·가족 사칭": "메신저피싱",
     "택배 사칭": "스미싱",
     "부고·청첩장 사칭": "스미싱",
+    "보상금·환급 안내 사칭": "스미싱",
+    "금융앱 업데이트·본인인증 사칭": "스미싱",
+    "카드 배송 사칭(기관 릴레이 사칭)": "기관사칭",
     "대출 사기": "대출빙자",
     "공공기관 사칭": "기관사칭",
     "투자 리딩방": "투자·가상자산",
@@ -34,6 +37,15 @@ ALLOWED_CHANNELS = ["문자", "메신저", "중고거래 앱 채팅", "이메일
 
 # 사기범이 각 장면에서 사용자에게 시키려는 행동
 ALLOWED_REQUESTS = ["링크 클릭", "개인정보 제공", "송금", "앱 설치", "대화 지속"]
+
+# 훈련에서는 문자·앱 화면을 실제로 보내지 않아요. 사용자가 받을 수 없는 코드류는 요구하지 않게 걸러요.
+UNAVAILABLE_INFO_WORDS = ("인증번호", "인증 번호", "인증코드", "인증 코드", "OTP", "보안카드", "승인번호", "확인코드", "확인 코드")
+
+
+def is_unavailable_info(info: str) -> bool:
+    compact = str(info).replace(" ", "").upper()
+    return any(word.replace(" ", "").upper() in compact for word in UNAVAILABLE_INFO_WORDS)
+
 
 # 모의 페이지 템플릿 (SIM-014). 없으면 None
 ALLOWED_MOCK_PAGES = ["금융", "공공민원", "채용"]
@@ -178,12 +190,12 @@ FALLBACK_SCENARIOS = {
             "openingMessage": "나야, 폰 액정이 깨져서 수리 맡기고 임시폰으로 연락해. 지금 통화는 안 되는데 급하게 부탁할 게 있어.",
             "keyScenes": [
                 {"order": 1, "judgmentPointId": "J1", "goal": "가족이라고 믿게 하기", "tactic": "폰이 고장 나서 통화가 안 된다고 하며 확인을 피함", "request": "대화 지속", "requestedInfo": []},
-                {"order": 2, "judgmentPointId": "J2", "goal": "결제 정보 수집", "tactic": "온라인 결제를 대신 해달라며 정보 요구", "request": "개인정보 제공", "requestedInfo": ["신분증 사진", "카드번호", "인증번호"]},
+                {"order": 2, "judgmentPointId": "J2", "goal": "결제 정보 수집", "tactic": "온라인 결제를 대신 해달라며 정보 요구", "request": "개인정보 제공", "requestedInfo": ["신분증 사진", "카드번호"]},
                 {"order": 3, "judgmentPointId": "J2", "goal": "원격 앱 설치·송금 유도", "tactic": "보험금 신청을 도와달라며 앱 설치를 부탁하고 급한 송금 요청", "request": "송금", "requestedInfo": []},
             ],
             "expectedActions": [
                 {"id": "A1", "judgmentPointId": "J1", "description": "원래 알던 번호로 직접 전화해 본인인지 확인한다"},
-                {"id": "A2", "judgmentPointId": "J2", "description": "메시지로 신분증·카드번호·인증번호를 보내지 않는다"},
+                {"id": "A2", "judgmentPointId": "J2", "description": "메시지로 신분증·카드번호를 보내지 않는다"},
                 {"id": "A3", "judgmentPointId": "J2", "description": "확인 전에는 앱을 설치하거나 송금하지 않는다"},
             ],
             "mockPage": None,

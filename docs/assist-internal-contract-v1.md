@@ -81,7 +81,7 @@ Spring은 원문을 저장하지 않는다. Python도 복원·추측하거나 �
 
 `remainingClarifications=0`이면 NEED_USER_INPUT을 반환하지 않는다.
 실제 개인정보 값이나 파일 제출을 요구하지 않고 사실의 발생 여부만 확인한다.
-Python은 모델의 질문 문구 대신 factKey별 고정 문구를 반환한다. Spring은 허용된 질문·민감정보 요청·반복 질문 여부를 최종 검증하고 자체 고정 문구를 사용한다.
+Python은 질문 문구를 고정하지 않는다. 검색된 근거 문단과 사용자 질문으로 모델이 문장을 만들고, `assist/clarify.py`의 검증기가 다음을 모두 통과할 때만 반환한다: 검색된 문단만 인용, 인용 문단과 질문 모두 대상 사실을 다룸, 근거·질문에 없는 구체 항목(기관명·정보 종류 등) 없음, 유도·단정·재촉·부정 의문·실제 값 요구 없음, 연락처·링크·숫자 없음, 물음표로 끝나는 존댓말 한 문장(8~120자). 통과하지 못하면 묻지 않고 조건부 답변 경로(EVIDENCE_READY 또는 NO_EVIDENCE)로 진행한다. Spring은 허용된 질문·민감정보 요청·반복 질문 여부를 최종 검증한다.
 사용자가 모름으로 답한 경우에도 askedFactKeys에 포함되므로 다시 묻지 않는다.
 
 ### candidateReferences
@@ -98,7 +98,7 @@ Spring은 승인된 코드·버전인지 확인하고 승인된 원본 내용을
 후보로 반환했다는 사실 자체가 콘텐츠 승인을 의미하지 않는다.
 
 ```json
-{"success":true,"data":{"status":"NEED_USER_INPUT","questionIntent":"DEVICE_SAFETY","clarification":{"factKey":"installedApp","content":"상대방이 알려준 앱을 설치한 적이 있나요?","options":["YES","NO","UNKNOWN"]},"candidateReferences":[],"reasonCode":null}}
+{"success":true,"data":{"status":"NEED_USER_INPUT","questionIntent":"DEVICE_SAFETY","clarification":{"factKey":"installedApp","content":"상대가 알려 준 앱을 설치하셨나요?","options":["YES","NO","UNKNOWN"]},"candidateReferences":[],"reasonCode":null}}
 ```
 
 ```json
@@ -196,6 +196,41 @@ sequenceDiagram
 - 라우터는 `app/routers/assist.py`이며 기존 `/extract`·`/explain`·`/answer`(feature/solutions-api)와 공존한다.
   `/answer`(가안)와 `/assist` 중 SOL-03이 쓸 경로는 팀 합의 항목이다.
 - 실패 본문은 서버 공통 형식(`code`+`message`)을 따른다. Spring은 HTTP 상태와 `error.code`만 사용한다.
+
+## 7-1. v1.2 선택 확장: 네 사실 밖의 조건 질문
+
+네 사실(돈·앱·정보·연락)만으로는 답이 갈리는 지점을 물을 수 없다. 예를 들어 송금이 물건·서비스 거래 대금이면
+통신사기피해환급법이 적용되지 않는다. v1.2는 검색된 근거 문단에서 이런 조건을 찾아 묻는다. 모든 필드는 선택이며,
+Spring이 `confirmedConditions`를 보내지 않으면(생략·null) v1과 똑같이 네 사실만 묻고 응답 모양도 같다.
+
+**요청 (PLAN·ANSWER 공통)**
+
+| 필드 | 규칙 |
+|---|---|
+| confirmedConditions | 생략·null이면 조건 질문 비활성(v1 동작). `[]`부터는 활성. 최대 10개, conditionId 중복 불가 |
+| └ conditionId, referenceCode, quote | 응답으로 받은 condition을 **글자 그대로** 돌려준다. conditionId는 `referenceCode#sha256(referenceCode + "\n" + quote)` 앞 12자라 하나라도 바뀌면 422 |
+| └ answer | 사용자 답 `YES`/`NO`/`UNKNOWN` |
+
+**응답 clarification (조건 질문일 때만 키 추가)**
+
+```json
+{"kind":"CONDITION","factKey":null,
+ "condition":{"conditionId":"REF_LAW_REFUND_PROCEDURE_V1_P2#…",
+              "referenceCode":"REF_LAW_REFUND_PROCEDURE_V1_P2","quote":"제외: 물건·서비스를 주겠다며 속인 사기(…)"},
+ "content":"물건이나 서비스를 받기로 하고 보내신 돈인가요?","options":["YES","NO","UNKNOWN"]}
+```
+
+- 네 사실 질문은 지금처럼 `{"factKey","content","options"}`만 온다(`kind`·`condition` 키 없음).
+- Spring은 질문을 보여 주고 답을 `confirmedConditions`에 추가해 같은 질문으로 PLAN을 다시 호출한다.
+  `remainingClarifications`는 사실 질문과 조건 질문이 함께 쓴다. `askedFactKeys`에는 넣지 않는다.
+- condition에는 AI가 만든 질문 문장이 없다. 질문 문장은 `content`로 온다. Spring은 처음과 재조회에 같은 문장을 보이려고
+  답할 때까지만 대기 상태에 보관하고, 답하면 지운다(메시지 기록에는 남기지 않는다).
+  Spring은 공식 근거 문단 코드(referenceCode), 그 문단 원문 인용(quote), 사용자 답(answer)만 저장한다.
+- 질문은 항상 quote의 상황에 해당하면 `YES`가 되도록 긍정형으로 만든다(부정 의문은 Python이 거부). 그래서 질문 문장 없이도 answer의 뜻이 정해진다.
+
+**Python 보장 (`assist/clarify.py`)**: quote가 검색된 그 문단에 글자 그대로 있어야 하고(틀리면 이유를 알려 한 번만 재제안), 질문이
+인용 내용을 다루며, 근거에 없는 구체 항목·유도·값 요구·연락처가 없어야 한다. 통과하지 못하면 묻지 않고
+조건부 답변 경로로 간다. ANSWER는 확인된 조건에 따라 적용·제외되는 제도를 구분해 안내한다.
 
 ## 8. 기존 근거의 버전 매핑과 합의 항목
 

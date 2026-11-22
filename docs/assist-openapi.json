@@ -12,15 +12,33 @@
         ],
         "summary": "Context Turn",
         "operationId": "context_turn_internal_ai_discovery_next_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/DiscoveryRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -53,15 +71,33 @@
         ],
         "summary": "Generate Scenario",
         "operationId": "generate_scenario_internal_ai_scenarios_generate_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ScenarioRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -94,15 +130,33 @@
         ],
         "summary": "Reply",
         "operationId": "reply_internal_ai_simulation_reply_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SimulationRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -135,15 +189,33 @@
         ],
         "summary": "Report",
         "operationId": "report_internal_ai_training_evaluate_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/EvaluationRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -235,15 +307,33 @@
         ],
         "summary": "AI-06 피해 사실 추출 (상황 설명 → 4개 사실 YES/NO/UNKNOWN)",
         "operationId": "extract_internal_ai_solutions_extract_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SolutionExtractRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -276,15 +366,33 @@
         ],
         "summary": "AI-07 근거 기반 대응 설명 (사실 + 검토된 근거 → 설명)",
         "operationId": "explain_internal_ai_solutions_explain_post",
+        "parameters": [
+          {
+            "name": "X-Internal-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SolutionExplainRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -315,17 +423,36 @@
         "tags": [
           "내부 AI (피해 대응)"
         ],
-        "summary": "(가안) 피해 대응 질문 답변 — 근거 안에서 답하거나, 필요한 사실을 되묻거나, 답변 불가",
+        "summary": "(사용 안 함) 질문 답변은 /internal/ai/solutions/assist 사용 — Spring은 이 경로를 부르지 않음",
         "operationId": "answer_internal_ai_solutions_answer_post",
+        "deprecated": true,
+        "parameters": [
+          {
+            "name": "X-Internal-Api-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Api-Key"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SolutionAnswerRequest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -540,6 +667,55 @@
             "maxItems": 10,
             "minItems": 1,
             "title": "Verifiedreferences"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/assist__contracts__ChatTurn"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "fraudType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "MESSENGER_PHISHING",
+                  "SMISHING",
+                  "LOAN_FRAUD",
+                  "INSTITUTION_IMPERSONATION",
+                  "INVESTMENT_FRAUD",
+                  "SECONDHAND_TRADE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraudtype"
+          },
+          "confirmedConditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ConfirmedCondition"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedconditions"
           }
         },
         "type": "object",
@@ -696,12 +872,19 @@
       "Clarification": {
         "properties": {
           "factKey": {
-            "type": "string",
-            "enum": [
-              "transferredMoney",
-              "sharedInformation",
-              "installedApp",
-              "contactContinues"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "transferredMoney",
+                  "sharedInformation",
+                  "installedApp",
+                  "contactContinues"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
             "title": "Factkey"
           },
@@ -722,6 +905,25 @@
             },
             "type": "array",
             "title": "Options"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "FACT",
+              "CONDITION"
+            ],
+            "title": "Kind",
+            "default": "FACT"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Condition"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -731,6 +933,75 @@
           "options"
         ],
         "title": "Clarification"
+      },
+      "Condition": {
+        "properties": {
+          "conditionId": {
+            "type": "string",
+            "maxLength": 113,
+            "minLength": 14,
+            "title": "Conditionid"
+          },
+          "referenceCode": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Referencecode"
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 8,
+            "title": "Quote"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conditionId",
+          "referenceCode",
+          "quote"
+        ],
+        "title": "Condition",
+        "description": "네 사실 밖에서 근거 문단이 답을 가르는 조건. 문단 원문 인용(quote)에 묶인다.\nAI가 만든 질문 문장은 담지 않는다(Spring은 공식 문단 코드·원문 인용·답만 저장한다).\nconditionId는 문단 코드·인용의 해시라, Spring이 돌려줄 때 내용이 바뀌면 거부된다."
+      },
+      "ConfirmedCondition": {
+        "properties": {
+          "conditionId": {
+            "type": "string",
+            "maxLength": 113,
+            "minLength": 14,
+            "title": "Conditionid"
+          },
+          "referenceCode": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Referencecode"
+          },
+          "quote": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 8,
+            "title": "Quote"
+          },
+          "answer": {
+            "type": "string",
+            "enum": [
+              "YES",
+              "NO",
+              "UNKNOWN"
+            ],
+            "title": "Answer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "conditionId",
+          "referenceCode",
+          "quote",
+          "answer"
+        ],
+        "title": "ConfirmedCondition"
       },
       "DiscoveryMessage": {
         "properties": {
@@ -909,9 +1180,11 @@
             "title": "Improvements"
           },
           "turnFeedback": {
-            "items": {},
+            "items": {
+              "$ref": "#/components/schemas/TurnFeedback"
+            },
             "type": "array",
-            "maxItems": 0,
+            "maxItems": 8,
             "title": "Turnfeedback"
           },
           "mockPageEvaluation": {
@@ -1044,6 +1317,11 @@
           "checkedOfficialChannel": {
             "type": "boolean",
             "title": "Checkedofficialchannel"
+          },
+          "clickedAppLink": {
+            "type": "boolean",
+            "title": "Clickedapplink",
+            "default": false
           }
         },
         "type": "object",
@@ -1063,12 +1341,36 @@
           "usable": {
             "type": "boolean",
             "title": "Usable"
+          },
+          "imageType": {
+            "type": "string",
+            "enum": [
+              "SMS",
+              "MESSENGER_CHAT",
+              "TRANSFER_RECEIPT",
+              "WEB_PAGE",
+              "OTHER"
+            ],
+            "title": "Imagetype"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
           }
         },
         "type": "object",
         "required": [
           "recognizedText",
-          "usable"
+          "usable",
+          "imageType",
+          "summary"
         ],
         "title": "OcrResult"
       },
@@ -1132,6 +1434,55 @@
             "maximum": 3.0,
             "minimum": 0.0,
             "title": "Remainingclarifications"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/assist__contracts__ChatTurn"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History"
+          },
+          "fraudType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "MESSENGER_PHISHING",
+                  "SMISHING",
+                  "LOAN_FRAUD",
+                  "INSTITUTION_IMPERSONATION",
+                  "INVESTMENT_FRAUD",
+                  "SECONDHAND_TRADE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraudtype"
+          },
+          "confirmedConditions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ConfirmedCondition"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedconditions"
           }
         },
         "type": "object",
@@ -1299,8 +1650,22 @@
             "maximum": 15.0,
             "minimum": 1.0,
             "title": "Turncount"
+          },
+          "currentScene": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 15.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentscene"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "scenario",
@@ -1336,6 +1701,31 @@
                 "type": "null"
               }
             ]
+          },
+          "nextScene": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 15.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextscene"
+          },
+          "maskedInput": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maskedinput"
           }
         },
         "type": "object",
@@ -1394,6 +1784,22 @@
             ],
             "title": "Verifiedreferences",
             "description": "Spring 이 근거를 직접 골라 보내면 그 안에서만 답해요. null 이면 AI 서버가 근거를 찾아요"
+          },
+          "history": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/app__schemas__solution__ChatTurn"
+                },
+                "type": "array",
+                "maxItems": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History",
+            "description": "(선택) 최근 대화 몇 개(오래된 것부터). '둘 다 알려줘'처럼 앞 대화를 가리키는 질문을 이해하려고 써요"
           }
         },
         "type": "object",
@@ -1747,6 +2153,45 @@
         ],
         "title": "Success[SimulationResult]"
       },
+      "TurnFeedback": {
+        "properties": {
+          "turn": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Turn"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "safe",
+              "risky"
+            ],
+            "title": "Outcome"
+          },
+          "userAction": {
+            "type": "string",
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Useraction"
+          },
+          "feedback": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Feedback"
+          }
+        },
+        "type": "object",
+        "required": [
+          "turn",
+          "outcome",
+          "userAction",
+          "feedback"
+        ],
+        "title": "TurnFeedback",
+        "description": "리포트 타임라인 한 칸: 훈련자의 몇 번째 답변에서 무슨 일이 있었는지."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -1815,6 +2260,31 @@
         ],
         "title": "VerifiedReference"
       },
+      "app__schemas__solution__ChatTurn": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "AI"
+            ],
+            "title": "Role",
+            "description": "USER: 사용자, AI: 도우미"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatTurn"
+      },
       "app__schemas__solution__VerifiedReference": {
         "properties": {
           "code": {
@@ -1842,6 +2312,31 @@
           "excerpt"
         ],
         "title": "VerifiedReference"
+      },
+      "assist__contracts__ChatTurn": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "USER",
+              "AI"
+            ],
+            "title": "Role"
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content"
+          }
+        },
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatTurn",
+        "description": "이전 대화 한 턴. Spring이 저장한 가린 글(safe_content)을 그대로 보낸다."
       },
       "assist__contracts__VerifiedReference": {
         "properties": {

@@ -793,10 +793,9 @@ def condition_request(**changes):
     return plan_request(**{"question": MONEY_QUESTION, "facts": facts, "confirmedConditions": [], **changes})
 
 
-def confirmed(answer="YES", statement=REFUND_QUESTION, quote=REFUND_QUOTE, code=REFUND_REF["code"]):
+def confirmed(answer="YES", quote=REFUND_QUOTE, code=REFUND_REF["code"]):
     from assist.contracts import condition_id
-    return {"conditionId": condition_id(code, statement, quote), "statement": statement,
-            "referenceCode": code, "quote": quote, "answer": answer}
+    return {"conditionId": condition_id(code, quote), "referenceCode": code, "quote": quote, "answer": answer}
 
 
 class ConditionModel(SearchModel):
@@ -827,7 +826,7 @@ def test_condition_beyond_four_facts_is_asked_with_quoted_evidence():
     assert result.status == "NEED_USER_INPUT"
     c = result.clarification
     assert c.kind == "CONDITION" and c.factKey is None
-    assert c.content == REFUND_QUESTION and c.condition.statement == REFUND_QUESTION
+    assert c.content == REFUND_QUESTION and not hasattr(c.condition, "statement")
     assert c.condition.referenceCode == REFUND_REF["code"] and c.condition.quote in REFUND_REF["excerpt"]
     assert c.options == ["YES", "NO", "UNKNOWN"]
     assert model.clarify_calls == 0  # 평가 단계가 쓴 질문이 검증을 통과하면 추가 호출 없음
@@ -842,7 +841,7 @@ def test_condition_clarification_http_shape_and_fact_shape_unchanged(client):
     app.dependency_overrides[get_service] = lambda: service
     data = post(http, condition_request()).json()["data"]["clarification"]
     assert data["kind"] == "CONDITION" and data["factKey"] is None
-    assert set(data["condition"]) == {"conditionId", "statement", "referenceCode", "quote"}
+    assert set(data["condition"]) == {"conditionId", "referenceCode", "quote"}  # AI 질문 문장은 조건에 없음
 
 
 def test_conditions_not_asked_when_spring_does_not_opt_in():
@@ -880,7 +879,7 @@ def test_confirmed_condition_is_not_asked_again_and_reaches_search_and_evaluatio
     model, retriever = ConditionModel(), Retriever([REFUND_REF])
     result = run(condition_request(confirmedConditions=[confirmed("YES")]), model=model, retriever=retriever)
     assert result.status == "EVIDENCE_READY"
-    assert f"{REFUND_QUESTION}=YES" in retriever.queries[0][0]
+    assert f"{REFUND_QUOTE}=YES" in retriever.queries[0][0]
     assert model.seen[0].confirmedConditions[0].answer == "YES"
 
 
@@ -894,7 +893,7 @@ def test_same_quote_already_confirmed_is_not_asked_again():
                                           clarification=ModelClarification(**self.proposal))
             return EvidenceAssessment(sufficient=True, referenceCodes=[references[0]["code"]], retryQuery=None)
 
-    reworded = confirmed("NO", statement="거래 대금으로 보내신 건가요?")
+    reworded = confirmed("NO")
     result = run(condition_request(confirmedConditions=[reworded]), model=AsksAgain(),
                  retriever=Retriever([REFUND_REF]))
     assert result.status != "NEED_USER_INPUT"
@@ -913,7 +912,7 @@ def test_rejected_quote_gets_one_retry_with_reason_then_succeeds():
 
 
 def test_tampered_confirmed_condition_is_rejected():
-    tampered = {**confirmed("YES"), "statement": "기관 사칭 전화를 받고 보내신 돈인가요?"}
+    tampered = {**confirmed("YES"), "quote": "기관을 사칭해 돈을 보내게 한 경우"}
     with pytest.raises(ValidationError):
         TypeAdapter(AssistRequest).validate_python(condition_request(confirmedConditions=[tampered]))
 
@@ -921,13 +920,14 @@ def test_tampered_confirmed_condition_is_rejected():
 def test_answer_request_carries_confirmed_conditions():
     request = TypeAdapter(AssistRequest).validate_python(
         answer_request(confirmedConditions=[confirmed("YES")]))
-    assert request.model_dump()["confirmedConditions"][0]["statement"] == REFUND_QUESTION
+    dumped = request.model_dump()["confirmedConditions"][0]
+    assert set(dumped) == {"conditionId", "referenceCode", "quote", "answer"} and dumped["quote"] == REFUND_QUOTE
 
 
 def test_condition_clarification_rejected_for_v1_request():
     from assist.contracts import Condition, condition_id
-    cond = Condition(conditionId=condition_id(REFUND_REF["code"], REFUND_QUESTION, REFUND_QUOTE),
-                     statement=REFUND_QUESTION, referenceCode=REFUND_REF["code"], quote=REFUND_QUOTE)
+    cond = Condition(conditionId=condition_id(REFUND_REF["code"], REFUND_QUOTE),
+                     referenceCode=REFUND_REF["code"], quote=REFUND_QUOTE)
     response = PlanResponse(status="NEED_USER_INPUT", questionIntent="TRANSFER_RESPONSE",
                             clarification=Clarification(kind="CONDITION", factKey=None, condition=cond,
                                                         content=REFUND_QUESTION, options=["YES", "NO", "UNKNOWN"]),
@@ -936,3 +936,92 @@ def test_condition_clarification_rejected_for_v1_request():
     with pytest.raises(ValueError):
         response.validate_for(v1)
     response.validate_for(PlanRequest.model_validate(condition_request()))
+
+
+def test_v12_never_asks_four_facts_and_goes_straight_to_search():
+    """카드 섹션에서 네 사실이 확정돼 오므로 v1.2에서는 다시 묻지 않고 바로 근거 검색으로 간다."""
+    class AsksFact(SearchModel):
+        async def assess(self, request):
+            return Assessment(decision="NEED_USER_INPUT", questionIntent="DEVICE_SAFETY", factKey="installedApp")
+
+        async def evaluate(self, request, intent, references, feedback=None):
+            return EvidenceAssessment(sufficient=False, referenceCodes=[], retryQuery=None,
+                                      clarification=ModelClarification(factKey="installedApp"))
+
+    retriever = Retriever()
+    result = run(plan_request(confirmedConditions=[]), model=AsksFact(), retriever=retriever)
+    assert result.clarification is None or result.clarification.kind == "CONDITION"
+    assert len(retriever.queries) >= 1
+
+
+def test_confirmed_facts_are_phrased_into_search_query():
+    retriever = Retriever()
+    run(plan_request(facts={**FACTS, "transferredMoney": "YES"}), model=SearchModel(), retriever=retriever)
+    assert "확정된 피해 상황: 사기범에게 돈을 송금했다" in retriever.queries[0][0]
+
+
+def test_negated_condition_question_is_rejected():
+    from assist.clarify import ConditionSeed, validate_clarification
+    seed = ConditionSeed(referenceCode=REFUND_REF["code"], quote=REFUND_QUOTE)
+    for text in ("물건이나 서비스를 받기로 하고 보낸 돈이 아닌가요?", "물건이나 서비스 거래가 아니었나요?"):
+        check = validate_clarification(key=None, content=text, cited_codes=[REFUND_REF["code"]],
+                                       references=[REFUND_REF], question=MONEY_QUESTION, condition=seed)
+        assert not check.ok and check.reason == "LEADING_OR_VALUE_REQUEST"
+
+
+def _ref(code, excerpt="근거 문단입니다. 피해 대응 절차를 안내합니다."):
+    return {**REFERENCE, "code": code, "title": code, "excerpt": excerpt}
+
+
+class BranchRetriever(Retriever):
+    """본 검색과 갈림길 검색에 서로 다른 결과를 준다."""
+    def __init__(self, main, branch):
+        super().__init__(main)
+        self.branch = deepcopy(branch)
+
+    async def search(self, query, facts):
+        self.queries.append((query, deepcopy(facts)))
+        return deepcopy(self.branch if query.endswith("제외 대상·요건") else self.references)
+
+
+def test_v12_adds_branch_search_into_evaluated_top_five():
+    from assist.graph import MAX_EVALUATION_REFERENCES
+
+    class Seen(ConditionModel):
+        async def evaluate(self, request, intent, references, feedback=None):
+            self.evaluated = [r["code"] for r in references]
+            return await super().evaluate(request, intent, references, feedback)
+
+    main = [_ref(f"REF_MAIN_{i}") for i in range(8)]
+    retriever = BranchRetriever(main, [REFUND_REF, _ref("REF_BRANCH_2")])
+    model = Seen()
+    run(condition_request(), model=model, retriever=retriever)
+    assert len(retriever.queries) == 2 and retriever.queries[1][0].endswith("제외 대상·요건")
+    top = model.evaluated[:MAX_EVALUATION_REFERENCES]
+    assert REFUND_REF["code"] in top and "REF_BRANCH_2" in top  # 갈림길 문단이 판정 상위 5개 안에
+
+
+def test_v1_request_keeps_single_search():
+    retriever = BranchRetriever([_ref("REF_MAIN_0")], [REFUND_REF])
+    request = condition_request()
+    request.pop("confirmedConditions")
+    run(request, model=SearchModel(), retriever=retriever)
+    assert len(retriever.queries) == 1  # v1(주원님 흐름·사진 안내)은 검색 방식이 바뀌지 않음
+
+
+def test_interleave_branch_places_and_dedupes():
+    from assist.graph import interleave_branch
+    refs = [_ref(c) for c in ("A", "B", "C", "D")]
+    out = [r["code"] for r in interleave_branch(refs, [_ref("X"), _ref("C")])]
+    assert out == ["A", "X", "B", "C", "D"]
+
+
+def test_confirmed_condition_reference_is_kept_in_evidence():
+    class PicksOther(ConditionModel):
+        async def evaluate(self, request, intent, references, feedback=None):
+            return EvidenceAssessment(sufficient=True, referenceCodes=["REF_MAIN_0"], retryQuery=None)
+
+    retriever = BranchRetriever([_ref("REF_MAIN_0")], [REFUND_REF])
+    result = run(condition_request(confirmedConditions=[confirmed("NO")]), model=PicksOther(), retriever=retriever)
+    assert result.status == "EVIDENCE_READY"
+    assert [r.code for r in result.candidateReferences] == ["REF_MAIN_0", REFUND_REF["code"]]

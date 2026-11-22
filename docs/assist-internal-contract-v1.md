@@ -208,14 +208,14 @@ Spring이 `confirmedConditions`를 보내지 않으면(생략·null) v1과 똑�
 | 필드 | 규칙 |
 |---|---|
 | confirmedConditions | 생략·null이면 조건 질문 비활성(v1 동작). `[]`부터는 활성. 최대 10개, conditionId 중복 불가 |
-| └ conditionId, statement, referenceCode, quote | 응답으로 받은 condition을 **글자 그대로** 돌려준다. conditionId는 세 값의 해시라 하나라도 바뀌면 422 |
+| └ conditionId, referenceCode, quote | 응답으로 받은 condition을 **글자 그대로** 돌려준다. conditionId는 `referenceCode#sha256(referenceCode + "\n" + quote)` 앞 12자라 하나라도 바뀌면 422 |
 | └ answer | 사용자 답 `YES`/`NO`/`UNKNOWN` |
 
 **응답 clarification (조건 질문일 때만 키 추가)**
 
 ```json
 {"kind":"CONDITION","factKey":null,
- "condition":{"conditionId":"REF_LAW_REFUND_PROCEDURE_V1_P2#…","statement":"물건이나 서비스를 받기로 하고 보내신 돈인가요?",
+ "condition":{"conditionId":"REF_LAW_REFUND_PROCEDURE_V1_P2#…",
               "referenceCode":"REF_LAW_REFUND_PROCEDURE_V1_P2","quote":"제외: 물건·서비스를 주겠다며 속인 사기(…)"},
  "content":"물건이나 서비스를 받기로 하고 보내신 돈인가요?","options":["YES","NO","UNKNOWN"]}
 ```
@@ -223,7 +223,10 @@ Spring이 `confirmedConditions`를 보내지 않으면(생략·null) v1과 똑�
 - 네 사실 질문은 지금처럼 `{"factKey","content","options"}`만 온다(`kind`·`condition` 키 없음).
 - Spring은 질문을 보여 주고 답을 `confirmedConditions`에 추가해 같은 질문으로 PLAN을 다시 호출한다.
   `remainingClarifications`는 사실 질문과 조건 질문이 함께 쓴다. `askedFactKeys`에는 넣지 않는다.
-- statement는 사용자에게 물은 질문 문장(=content), quote는 공식 근거 문단 원문이다. 둘 다 사용자 원문이 아니다.
+- condition에는 AI가 만든 질문 문장이 없다. 질문 문장은 `content`로 온다. Spring은 처음과 재조회에 같은 문장을 보이려고
+  답할 때까지만 대기 상태에 보관하고, 답하면 지운다(메시지 기록에는 남기지 않는다).
+  Spring은 공식 근거 문단 코드(referenceCode), 그 문단 원문 인용(quote), 사용자 답(answer)만 저장한다.
+- 질문은 항상 quote의 상황에 해당하면 `YES`가 되도록 긍정형으로 만든다(부정 의문은 Python이 거부). 그래서 질문 문장 없이도 answer의 뜻이 정해진다.
 
 **Python 보장 (`assist/clarify.py`)**: quote가 검색된 그 문단에 글자 그대로 있어야 하고(틀리면 이유를 알려 한 번만 재제안), 질문이
 인용 내용을 다루며, 근거에 없는 구체 항목·유도·값 요구·연락처가 없어야 한다. 통과하지 못하면 묻지 않고

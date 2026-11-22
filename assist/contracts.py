@@ -59,28 +59,25 @@ class ContractModel(BaseModel):
     model_config = ConfigDict(extra="ignore", strict=True, hide_input_in_errors=True)
 
 
-ConditionStatement = Annotated[
-    str, Field(min_length=4, max_length=200), AfterValidator(nonblank), AfterValidator(safe_output)
-]
 ConditionQuote = Annotated[str, Field(min_length=8, max_length=300), AfterValidator(nonblank)]
 
 
-def condition_id(reference_code: str, statement: str, quote: str) -> str:
-    digest = hashlib.sha256(f"{reference_code}\n{statement}\n{quote}".encode()).hexdigest()[:12]
+def condition_id(reference_code: str, quote: str) -> str:
+    digest = hashlib.sha256(f"{reference_code}\n{quote}".encode()).hexdigest()[:12]
     return f"{reference_code}#{digest}"
 
 
 class Condition(ContractModel):
     """네 사실 밖에서 근거 문단이 답을 가르는 조건. 문단 원문 인용(quote)에 묶인다.
-    conditionId는 문단 코드·조건·인용의 해시라, Spring이 돌려줄 때 내용이 바뀌면 거부된다."""
+    AI가 만든 질문 문장은 담지 않는다(Spring은 공식 문단 코드·원문 인용·답만 저장한다).
+    conditionId는 문단 코드·인용의 해시라, Spring이 돌려줄 때 내용이 바뀌면 거부된다."""
     conditionId: Annotated[str, Field(min_length=14, max_length=113)]
-    statement: ConditionStatement
     referenceCode: ReferenceCode
     quote: ConditionQuote
 
     @model_validator(mode="after")
     def check_id(self) -> Self:
-        if self.conditionId != condition_id(self.referenceCode, self.statement, self.quote):
+        if self.conditionId != condition_id(self.referenceCode, self.quote):
             raise ValueError("condition id mismatch")
         return self
 

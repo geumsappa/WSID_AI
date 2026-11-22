@@ -46,7 +46,7 @@ SPECIFIC_TERMS: tuple[str, ...] = (
 BANNED_PATTERNS: tuple[re.Pattern, ...] = tuple(re.compile(p) for p in (
     r"죠\s*\?$", r"맞(으시|으세|나|지)", r"분명", r"반드시", r"당장", r"바로", r"서둘", r"빨리",
     r"알려\s*주(세요|십시오|시겠)", r"말씀해\s*주", r"입력해", r"적어\s*주", r"보내\s*주(세요|십시오)",
-    r"(무엇|뭐|어떤 번호|몇 번)", r"않(으셨|았|으신)", r"안\s*하셨", r"\d{2,}",
+    r"(무엇|뭐|어떤 번호|몇 번)", r"않(으셨|았|으신|나요|은가|는가)", r"안\s*하셨", r"아니(신|었|셨|ㄴ)|아닌", r"\d{2,}",
     r"제게|저에게|여기에", r"클릭", r"누르세요",
 ))
 MIN_LEN, MAX_LEN = 8, 120
@@ -81,11 +81,10 @@ class ConditionSeed:
     referenceCode: str
     quote: str
 
-    def to_condition(self, question: str) -> Condition:
-        # 조건 문장은 모델이 따로 쓰지 않고, 검증을 통과한 질문 문장을 그대로 쓴다.
-        statement = question.strip()
-        return Condition(conditionId=condition_id(self.referenceCode, statement, self.quote),
-                         statement=statement, referenceCode=self.referenceCode, quote=self.quote)
+    def to_condition(self) -> Condition:
+        # 질문 문장은 clarification.content로만 보내고 조건에는 넣지 않는다.
+        return Condition(conditionId=condition_id(self.referenceCode, self.quote),
+                         referenceCode=self.referenceCode, quote=self.quote)
 
 
 def propose_condition(*, reference_code: str | None, quote: str | None, references: list[dict],

@@ -942,12 +942,6 @@
             "minLength": 14,
             "title": "Conditionid"
           },
-          "statement": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 4,
-            "title": "Statement"
-          },
           "referenceCode": {
             "type": "string",
             "maxLength": 100,
@@ -964,12 +958,11 @@
         "type": "object",
         "required": [
           "conditionId",
-          "statement",
           "referenceCode",
           "quote"
         ],
         "title": "Condition",
-        "description": "네 사실 밖에서 근거 문단이 답을 가르는 조건. 문단 원문 인용(quote)에 묶인다.\nconditionId는 문단 코드·조건·인용의 해시라, Spring이 돌려줄 때 내용이 바뀌면 거부된다."
+        "description": "네 사실 밖에서 근거 문단이 답을 가르는 조건. 문단 원문 인용(quote)에 묶인다.\nAI가 만든 질문 문장은 담지 않는다(Spring은 공식 문단 코드·원문 인용·답만 저장한다).\nconditionId는 문단 코드·인용의 해시라, Spring이 돌려줄 때 내용이 바뀌면 거부된다."
       },
       "ConfirmedCondition": {
         "properties": {
@@ -978,12 +971,6 @@
             "maxLength": 113,
             "minLength": 14,
             "title": "Conditionid"
-          },
-          "statement": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 4,
-            "title": "Statement"
           },
           "referenceCode": {
             "type": "string",
@@ -1010,7 +997,6 @@
         "type": "object",
         "required": [
           "conditionId",
-          "statement",
           "referenceCode",
           "quote",
           "answer"

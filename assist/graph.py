@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import TypedDict
+import asyncio
 import logging
 import time
 
@@ -14,6 +15,8 @@ from .contracts import (
     PlanRequest, PlanResponse, QuestionIntent,
 )
 from .clarify import FACT_QUERIES, ConditionSeed, propose_condition, validate_clarification
+from rag.facts import FACT_PHRASES
+
 from .context import REFERENTIAL, drop_refund_notice, previous_ai, previous_user, topic_codes, topic_text
 from .model import AssistModel, INTENT_QUERIES, allowed_fact_keys
 from .upstream import request_id
@@ -27,6 +30,10 @@ CONDITION_FEEDBACK = {
     "DEFAULT": "조건 형식이 맞지 않는다. 문단 원문 인용과 상황 평서문으로 다시 제안한다.",
 }
 MAX_EVALUATION_REFERENCES = 5
+# v1.2 갈림길 검색: 질문에 '적용 제도·대상·제외·요건'을 붙여 한 번 더 검색해, 답을 가르는 조건이 적힌 문단을 찾는다.
+# 문단 코드를 정해 두지 않고 검색으로 찾으며, 판정에 가는 상위 5개 안에 BRANCH_SLOTS개를 끼워 넣는다.
+BRANCH_QUERY_SUFFIX = "\n이 경우 적용되는 제도와 적용 대상·제외 대상·요건"
+BRANCH_SLOTS = 2
 MAX_EVALUATION_EXCERPT = 600
 logger = logging.getLogger("uvicorn.error.assist")
 
@@ -35,6 +42,20 @@ def related_fact(request: PlanRequest, intent: QuestionIntent, key: str) -> bool
     """의도에 연결된 사실이거나, 질문 원문이 그 사실의 행동을 직접 언급할 때만 물을 수 있다.
     후속 요청(question=null)은 원문이 없으므로 의도 연결만 본다."""
     return key in allowed_fact_keys(request, intent)
+
+
+def interleave_branch(references: list[dict], branch: list[dict], limit: int = 10) -> list[dict]:
+    """갈림길 문단을 판정 상위권(2·4번째 자리)에 끼운다. 이미 있으면 그 자리로 당기고, 중복 없이 limit개까지."""
+    picked = [ref for ref in branch if ref["code"]]
+    codes = {ref["code"] for ref in picked}
+    rest = [ref for ref in references if ref["code"] not in codes]
+    out: list[dict] = []
+    for i, ref in enumerate(rest):
+        out.append(ref)
+        if i < len(picked):
+            out.append(picked[i])
+    out += picked[len(rest):]
+    return out[:limit]
 
 
 class AssistState(TypedDict, total=False):
@@ -119,7 +140,7 @@ class AssistService:
             return None
         return PlanResponse(status="NEED_USER_INPUT", questionIntent=state["intent"], candidateReferences=[],
                             clarification=Clarification(kind="CONDITION", factKey=None,
-                                                        condition=condition.to_condition(content),
+                                                        condition=condition.to_condition(),
                                                         content=content.strip(), options=["YES", "NO", "UNKNOWN"]),
                             reasonCode=None)
 
@@ -154,7 +175,7 @@ class AssistService:
                     check.reason or "-", ",".join(draft.referenceCodes) if check.ok else "-")
         if check.ok:
             clarification = (Clarification(kind="CONDITION", factKey=None,
-                                           condition=condition.to_condition(draft.content),
+                                           condition=condition.to_condition(),
                                            content=draft.content.strip(), options=["YES", "NO", "UNKNOWN"])
                              if condition else
                              Clarification(factKey=key, content=draft.content.strip(),
@@ -196,8 +217,13 @@ class AssistService:
         if request.fraudType is not None:
             query += "\n사기 유형: " + request.fraudType
         query += "\n사실: " + ", ".join(f"{key}={value}" for key, value in request.facts.model_dump().items())
+        # 확정된 사실을 검색에 쓸 수 있는 문장으로 붙인다(키 이름만으로는 임베딩 검색에 도움이 되지 않음).
+        phrases = [FACT_PHRASES[(key, value)] for key, value in request.facts.model_dump().items()
+                   if (key, value) in FACT_PHRASES]
+        if phrases:
+            query += "\n확정된 피해 상황: " + " ".join(phrases)
         if request.confirmedConditions:
-            query += "\n확인된 상황: " + "; ".join(f"{c.statement}={c.answer}" for c in request.confirmedConditions)
+            query += "\n확인된 상황: " + "; ".join(f"{c.quote}={c.answer}" for c in request.confirmedConditions)
         if clarify_key is not None:
             # 추가 질문의 근거와 답변 근거를 한 번의 검색으로 함께 찾는다.
             query += "\n추가 확인: " + FACT_QUERIES[clarify_key]
@@ -207,13 +233,24 @@ class AssistService:
         started = time.monotonic()
         request = state["request"]
         extra = {"fraud_type": request.fraudType} if request.fraudType is not None else {}
-        references = await self.retriever.search(state["query"], request.facts.model_dump(), **extra)
+        facts = request.facts.model_dump()
+        branch: list[dict] = []
+        if request.conditionsEnabled:
+            # 조건 질문을 켠 요청(v1.2)만: 본 검색과 갈림길 검색을 동시에 한다. v1 흐름은 그대로다.
+            topic = topic_text(request) or state["query"]
+            references, branch = await asyncio.gather(
+                self.retriever.search(state["query"], facts, **extra),
+                self.retriever.search(topic + BRANCH_QUERY_SUFFIX, facts, **extra))
+        else:
+            references = await self.retriever.search(state["query"], facts, **extra)
         # 질문 주제로 꼭 넣을 근거를 앞에 두고(검색 결과와 합쳐 최대 10개), 중고거래면 환급 안내 문단은 빼요
         text = topic_text(request)
         forced = self.retriever.by_codes(topic_codes(text, request.question or "")) if hasattr(self.retriever, "by_codes") else []
         if forced:
             seen = {ref["code"] for ref in forced}
             references = (forced + [ref for ref in references if ref["code"] not in seen])[:10]
+        if branch:
+            references = interleave_branch(references, branch[:BRANCH_SLOTS])
         references = drop_refund_notice(references, request.fraudType, text)
         logger.info("assist request_id=%s stage=search elapsed_ms=%d n=%d",
                     request_id.get(), round((time.monotonic() - started) * 1000), len(references))
@@ -280,10 +317,14 @@ class AssistService:
         if not set(assessment.referenceCodes) <= by_code.keys():
             raise ValueError("model selected unknown reference")
         if assessment.sufficient:
+            # 사용자가 답한 조건의 근거 문단은 답변 근거에 항상 넣는다. 그래야 ANSWER가 그 답에 맞춰
+            # 적용·제외되는 제도를 안내한다(판정 모델이 그 문단을 빠뜨려도).
+            codes = list(dict.fromkeys(assessment.referenceCodes + [
+                c.referenceCode for c in state["request"].confirmedConditions or [] if c.referenceCode in by_code]))[:10]
             return {"retry": False, "result": PlanResponse(
                 status="EVIDENCE_READY", questionIntent=state["intent"], clarification=None,
-                candidateReferences=[CandidateReference.model_validate(by_code[code])
-                                     for code in assessment.referenceCodes], reasonCode=None,
+                candidateReferences=[CandidateReference.model_validate(by_code[code]) for code in codes],
+                reasonCode=None,
             )}
         if (not reassessed and assessment.retryQuery is not None and state["searches"] < 1 + config.ASSIST_MAX_RESEARCHES
                 and assessment.retryQuery != state["query"]):

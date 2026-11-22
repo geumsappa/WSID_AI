@@ -16,6 +16,7 @@ from app.schemas.training_api import (
     ScenarioRequest, ScenarioResult, SimulationRequest, SimulationResult,
 )
 from app.services.scenario import run_scenario
+from app.scenario_data import SUBTYPE_TO_FRAUD_CODE
 from app.services.training_turn import APP_CLICK_EVENT, run_training_turn
 
 CATEGORIES = {
@@ -45,16 +46,26 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
     facts = request.facts.get("extractedFacts", [])
     if not isinstance(facts, list):
         raise AiApiError(422, "INVALID_REQUEST", "추출 사실 형식을 확인해 주세요.")
-    facts = [dict(fact, category=CATEGORIES[request.fraudTypeCode]) for fact in facts if isinstance(fact, dict)]
     if not facts:
-        detail = "; ".join(f"{key}: {value}" for key, value in request.facts.items()
-                           if isinstance(value, (str, int, bool)))
-        facts = [{"category": CATEGORIES[request.fraudTypeCode],
-                  "detail": _safe(detail or CATEGORIES[request.fraudTypeCode])[:200]}]
-    result = run_scenario("scenario", facts)
+        detail = "; ".join(str(request.facts[key]) for key in ("activity", "item", "role", "counterpart", "situation")
+                           if isinstance(request.facts.get(key), str) and request.facts[key].strip())
+        facts = [{"category": "기타", "detail": _safe(detail)[:200]}] if detail.strip() else []
+    if not facts and request.facts.get("contextGraph") is None and not request.facts.get("discoveryEvidence"):
+        raise AiApiError(422, "INVALID_REQUEST", "훈련에 사용할 구체적인 상황을 한 가지 알려 주세요.")
+    result = run_scenario("scenario", facts, context=request.facts.get("contextGraph"),
+                          plan=request.facts.get("scenarioPlan"), context_hash=request.facts.get("planContextHash"),
+                          discovery_evidence=request.facts.get("discoveryEvidence"),
+                          discovery_ready=request.facts.get("discoveryReady", False),
+                          readiness_evidence=request.facts.get("readinessEvidence"),
+                          discovery_topics=request.facts.get("knownTopics"),
+                          discovery_requirements=request.facts.get("intakeRequirements"))
     generated = _scenario(result["scenario"])
     # Spring은 제목·설명과 함께 전체 시나리오를 보관하고 다음 AI 요청에 재사용한다.
     generated["description"] = generated["background"]
+    code = result["scenario"].get("fraudTypeCode") or SUBTYPE_TO_FRAUD_CODE.get(generated["fraudSubtype"])
+    if code is None:
+        raise AiApiError(503, "AI_SERVICE_UNAVAILABLE", "시나리오의 호환용 분류 코드를 확인하지 못했어요.")
+    generated["fraudTypeCode"] = code
     return ScenarioResult(scenario=generated,
                           mockPageTemplateCode="BANK_NOTICE" if (generated.get("mockPage") is not None
                               or "[모의링크]" in generated.get("openingMessage", "")

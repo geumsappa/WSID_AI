@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.discovery import DiscoveryMessage
 
 FraudType = Literal["SECONDHAND_TRADE", "SMISHING", "MESSENGER_PHISHING",
-                    "LOAN_FRAUD", "INSTITUTION_IMPERSONATION", "INVESTMENT_FRAUD"]
+                    "LOAN_FRAUD", "INSTITUTION_IMPERSONATION", "INVESTMENT_FRAUD", "JOB_SCAM"]
 
 
 class ScenarioRequest(BaseModel):

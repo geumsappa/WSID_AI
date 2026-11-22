@@ -1,0 +1,4211 @@
+{
+  "schemaVersion": "research-cases-v2",
+  "collectionVersion": "2026-11-20.4",
+  "collectedAt": "2026-11-20",
+  "status": "RESEARCH_ONLY_TEAM_REVIEW_PENDING",
+  "purpose": "시뮬레이션 생성용 RAG 후보 자료 조사. 현재 생성기와 연결하지 않음.",
+  "reviewPolicy": "원문 열람·요약 확인은 AI 수행. 팀의 근거·적합성·이용조건 검토와 명시적 승인 전에는 approvedForGeneration=false.",
+  "distinctions": {
+    "sourceFacts": "출처가 설명하거나 신고 내용으로 소개한 사실의 짧은 요약",
+    "serviceAnalysis": "서비스 적용을 위한 수집자 판단. 실제 사건·사용자 사실이 아님",
+    "fictionalScenario": "이번 수집에서는 생성하지 않아 null",
+    "publicationDate": "출처 게시일이며 사건 발생일이 아님"
+  },
+  "limitations": [
+    "사건 통계나 전체 사기 유형을 대표하는 표본이 아니다.",
+    "공식 예방 예시·관측 수법·민원 신고를 개별 확정 사건과 구분한다.",
+    "기존 fraud_cases.yaml과 유형이 겹칠 수 있으므로 통합 전 중복 검토가 필요하다.",
+    "원문 전체·공격용 링크·피해자 식별정보는 수집하지 않았다.",
+    "원문 인용이 아니라 사실 중심의 짧은 자체 요약이며 이미지·영상은 복제하지 않았다.",
+    "50개 항목은 50개 독립 피해 사건이나 서로 다른 사기 유형 50종을 뜻하지 않는다. 수법 변형·접점별 자료를 포함하며 관련 항목을 연결했다.",
+    "해외 자료 19개 항목은 해외 발행자료이며 국내 발생 사실이나 국내 절차를 입증하지 않는다.",
+    "게시일 미표시 자료는 null, 월간 자료는 YYYY-MM로 기록하며 정확한 날짜를 임의 보완하지 않는다."
+  ],
+  "sources": [
+    {
+      "id": "S01",
+      "title": "“엄마, 나 폰 고장나서”…신종 보이스피싱 피해 사례·예방법",
+      "publisher": "금융위원회",
+      "host": "대한민국 정책브리핑",
+      "publishedDate": "2022-03-24",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148900158",
+      "kind": "GOVERNMENT_PORTAL",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "보이스피싱 피해 사례 1. 가족, 지인 사칭",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S01",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S02",
+      "title": "카드 배송 사칭 보이스피싱·스미싱 주의 권고",
+      "publisher": "한국인터넷진흥원",
+      "host": "KISA 보호나라·KrCERT/CC",
+      "publishedDate": "2025-02-18",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.krcert.or.kr/kr/bbs/view.do?bbsId=B0000133&menuNo=205020&nttId=71661&pageIndex=1",
+      "kind": "OFFICIAL_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "주요내용: 가짜 고객센터 연결과 원격제어 앱",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S02"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S03",
+      "title": "과태료, 범칙금 등 행정처분 스미싱 주의 권고",
+      "publisher": "한국인터넷진흥원",
+      "host": "KISA 보호나라·KrCERT/CC",
+      "publishedDate": "2025-08-21",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.krcert.or.kr/kr/bbs/view.do?bbsId=B0000133&menuNo=205020&nttId=71846",
+      "kind": "OFFICIAL_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "주요내용: 행정처분 통보와 민감정보 입력",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S03"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S04",
+      "title": "“여행 예약 플랫폼”해킹으로 인한 스미싱 주의 권고",
+      "publisher": "한국인터넷진흥원",
+      "host": "KISA 보호나라·KrCERT/CC",
+      "publishedDate": "2026-05-12",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.krcert.or.kr/kr/bbs/view.do?bbsId=B0000133&categoryCode=&menuNo=205020&nttId=72049&pageIndex=1&searchCnd=&searchWrd=",
+      "kind": "OFFICIAL_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "주요내용: 유출 예약정보와 호텔 관리자 사칭",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S04"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S05",
+      "title": "여름 휴가철, 가짜 항공권·숙박 꼭 확인하세요!",
+      "publisher": "개인정보보호위원회",
+      "host": "대한민국 정책브리핑",
+      "publishedDate": "2026-07-09",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.korea.kr/multi/visualNewsView.do?newsId=148967861",
+      "kind": "GOVERNMENT_PORTAL",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "카드뉴스 대체 텍스트: 가짜 예약 사이트 예시",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S05",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S06",
+      "title": "큐싱으로 인한 사이버 사기 피해 예방 안내",
+      "publisher": "법무부 출입국·외국인정책본부 게시 / 과학기술정보통신부 안내",
+      "host": "출입국·외국인정책본부",
+      "publishedDate": "2025-02-26",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.immigration.go.kr/immigration/1473/subview.do?enc=Zm5jdDF8QEB8JTJGYmJzJTJGaW1taWdyYXRpb24lMkY0NyUyRjU5MjM3OSUyRmFydGNsVmlldy5kbyUzRg%3D%3D",
+      "kind": "OFFICIAL_REPOST",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "큐싱 시도 사례 (2), 예방 수칙",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S06",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S07",
+      "title": "티켓 거래 사기를 주의하세요!",
+      "publisher": "경찰청",
+      "host": "대한민국 정책브리핑",
+      "publishedDate": "2024-11-27",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.korea.kr/multi/visualNewsView.do?newsId=148936764&pWise=sub&pWiseSub=C6",
+      "kind": "GOVERNMENT_PORTAL",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "티켓 거래 사기 수법: 오류·환불 빙자 재입금",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S07",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S08",
+      "title": "[공지] 중고 거래 피싱 주의사항 안내",
+      "publisher": "네이버",
+      "host": "네이버 고객센터",
+      "publishedDate": "2024-11-05",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://help.naver.com/notice/noticeView.help?noticeNo=17671",
+      "kind": "PLATFORM_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "채팅으로 받은 안전결제 링크와 경고 무시 요구",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S08"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S09",
+      "title": "구직자 대상 신종 보이스피싱 주의 안내",
+      "publisher": "잡코리아",
+      "host": "잡코리아 고객센터",
+      "publishedDate": "2024-12-18",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.jobkorea.co.kr/help/notice/view?no=14877",
+      "kind": "PLATFORM_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "사례 ①~④: 채용 지원 후 화상면접 앱",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S09"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S10",
+      "title": "취업사기 급증 관련 주의사항 안내",
+      "publisher": "고용노동부 안양지청",
+      "host": "고용노동부",
+      "publishedDate": "2025-11-21",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.moel.go.kr/local/anyang/news/notice/noticeView.do?bbs_seq=20251100991",
+      "kind": "OFFICIAL_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "취업사기에 해당할 위험이 높은 구인광고",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "SITE_POLICY_REQUIRES_CONSULTATION",
+        "evidenceRefs": [
+          "S10",
+          "MOEL"
+        ],
+        "observedItemNotice": null,
+        "reason": "개별 자유이용 표시가 확인되지 않았고, 공식 사이트 정책의 협의·허락 조건이 현재 활용 목적에 관련됨.",
+        "nextAction": "원문 저장·가공·서비스 활용 범위를 담당기관에 확인하거나 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S11",
+      "title": "“점점 교묘해지는 신종 온라인 사기”… 민원 폭증으로 ‘민원예보’ 발령",
+      "publisher": "국민권익위원회",
+      "host": "국민권익위원회",
+      "publishedDate": "2025-05-22",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.acrc.go.kr/boardDownload.es?bid=4A&list_no=91523&seq=2",
+      "kind": "OFFICIAL_REPORT",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "붙임: 아르바이트 미끼형 사기 및 연애 빙자 사기 민원",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "ELIGIBLE_WITH_ATTRIBUTION",
+        "licenseCode": "KOGL-1",
+        "evidenceRefs": [
+          "S11",
+          "ACRC_ITEM",
+          "KOGL"
+        ],
+        "observedItemNotice": "해당 게시물에 1유형과 AI유형을 병행 표시",
+        "reason": "PDF의 게시물 원문에서 공공누리 1유형 표시와 해당 첨부파일의 연결을 확인함. 출처표시·제3자 권리 제외 등 조건을 유지할 때 자료 선별 기준 통과.",
+        "nextAction": "출처와 조건을 붙여 원문 보관. 내용 검토·개인정보 검토를 마치기 전 생성 승인으로 취급하지 않음.",
+        "rawArchiveAllowedForThisRun": true,
+        "ragRightsCandidate": true,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      },
+      "localArchive": {
+        "path": "research-originals/2026-11-20/S11-original.pdf",
+        "sha256": "dd698fc1d59f796234184dbf72016ed228e7b87b6b48bcb34927fb62e6050808",
+        "bytes": 460168,
+        "manifest": "research-originals/2026-11-20/manifest.json",
+        "gitIgnored": true,
+        "approvedForGeneration": false
+      }
+    },
+    {
+      "id": "S12",
+      "title": "수익률 200% 보장? ‘투자리딩방’ 사기 주의보",
+      "publisher": "경찰청",
+      "host": "대한민국 정책브리핑",
+      "publishedDate": "2024-03-11",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148926749",
+      "kind": "GOVERNMENT_PORTAL",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "투자리딩방 사기 수법",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S12",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S13",
+      "title": "최근 금융권 개인정보 유출사고에 따른 보이스피싱·스미싱 등 피해에 주의하세요.",
+      "publisher": "금융위원회·금융감독원",
+      "host": "금융위원회",
+      "publishedDate": "2026-10-06",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.fsc.go.kr/po010101/87882?curPage=&srchBeginDt=&srchCtgry=1&srchEndDt=&srchKey=&srchText=",
+      "kind": "OFFICIAL_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "소비자경보 2026-26호: 개인정보 유출을 빙자한 주요 수법",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "SITE_POLICY_REQUIRES_CONSULTATION",
+        "evidenceRefs": [
+          "S13",
+          "FSC"
+        ],
+        "observedItemNotice": null,
+        "reason": "개별 자유이용 표시가 확인되지 않았고, 공식 사이트 정책의 협의·허락 조건이 현재 활용 목적에 관련됨.",
+        "nextAction": "원문 저장·가공·서비스 활용 범위를 담당기관에 확인하거나 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S14",
+      "title": "자영업자 울리는 '노쇼(No-show)' 사기 수법 공개",
+      "publisher": "경찰청",
+      "host": "대한민국 정책브리핑",
+      "publishedDate": "2025-07-09",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148951545",
+      "kind": "GOVERNMENT_PORTAL",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "영상 설명: 단체예약과 주류 대리구매",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "SITE_POLICY_REQUIRES_CONSULTATION",
+        "evidenceRefs": [
+          "S14",
+          "KOREA"
+        ],
+        "observedItemNotice": null,
+        "reason": "개별 자유이용 표시가 확인되지 않았고, 공식 사이트 정책의 협의·허락 조건이 현재 활용 목적에 관련됨.",
+        "nextAction": "원문 저장·가공·서비스 활용 범위를 담당기관에 확인하거나 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S15",
+      "title": "공무원의 달콤한 대리구매 유혹, 100% 신종피싱 사기입니다.",
+      "publisher": "금융위원회 금융정보분석원",
+      "host": "금융위원회",
+      "publishedDate": "2026-08-10",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://fsc.go.kr/po010101/87493?curPage=9&srchBeginDt=&srchCtgry=&srchEndDt=&srchKey=&srchText=",
+      "kind": "OFFICIAL_REPORT",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "범죄유형별 피해사례: 소방·위생 점검을 가장한 물품 구매",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "SITE_POLICY_REQUIRES_CONSULTATION",
+        "evidenceRefs": [
+          "S15",
+          "FSC"
+        ],
+        "observedItemNotice": null,
+        "reason": "개별 자유이용 표시가 확인되지 않았고, 공식 사이트 정책의 협의·허락 조건이 현재 활용 목적에 관련됨.",
+        "nextAction": "원문 저장·가공·서비스 활용 범위를 담당기관에 확인하거나 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S16",
+      "title": "추석 명절 스미싱·사이버사기 주의보!",
+      "publisher": "경찰청",
+      "host": "대한민국 정책브리핑",
+      "publishedDate": "2024-09-09",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148933689",
+      "kind": "GOVERNMENT_PORTAL",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "스미싱 주의보: 허위 배송·취소·환불 문자",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S16",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S17",
+      "title": "보이스피싱 ‘노쇼’ 사기 범죄 주의 안내",
+      "publisher": "국세청",
+      "host": "국세청",
+      "publishedDate": "2026-02-12",
+      "dateMeaning": "페이지 게시일 또는 보도자료 보도일이며 사건 발생일이 아님",
+      "url": "https://www.nts.go.kr/nts/na/ntt/selectNttInfo.do?nttSn=1348849",
+      "kind": "OFFICIAL_NOTICE",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "주요 피해 사례 및 세금계산서의 증빙 범위",
+      "sourceCountry": "KR",
+      "publishedDatePrecision": "DAY",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S17"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S18",
+      "title": "국세청이 알려드리는 스팸문자·스미싱 예방법",
+      "publisher": "국세청·정책브리핑",
+      "host": "국세청·정책브리핑",
+      "publishedDate": "2025-04-08",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148941362",
+      "kind": "GOVERNMENT_PORTAL",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "스팸·스미싱 문자 유형",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S18",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S19",
+      "title": "건강보험 웹진: 건강검진 사칭 문자 주의",
+      "publisher": "국민건강보험공단",
+      "host": "국민건강보험공단",
+      "publishedDate": "2023-07",
+      "publishedDatePrecision": "MONTH",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.nhis.or.kr/static/alim/paper/oldpaper/202307/sub/section4_7.html",
+      "kind": "OFFICIAL_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "건강검진 사칭 스미싱문자 안내",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S19"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S20",
+      "title": "넷플릭스(Netflix)를 사칭한 피싱 메일 유포 주의",
+      "publisher": "안랩 ASEC",
+      "host": "안랩 ASEC",
+      "publishedDate": "2024-09-02",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://asec.ahnlab.com/ko/82799/",
+      "kind": "SECURITY_RESEARCH",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "결제 실패 메일 및 분석 범위",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S20"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S21",
+      "title": "[안내] 네이버 광고주 센터 피싱 주의 당부",
+      "publisher": "네이버",
+      "host": "네이버",
+      "publishedDate": "2025-11-19",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://help.naver.com/notice/noticeView.help?noticeNo=27619",
+      "kind": "PLATFORM_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "광고주 센터 및 로그인 화면 사칭",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S21"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S22",
+      "title": "부고 문자 사칭, 스미싱 주의보",
+      "publisher": "경찰청·정책브리핑",
+      "host": "경찰청·정책브리핑",
+      "publishedDate": "2023-12-18",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148923848",
+      "kind": "GOVERNMENT_PORTAL",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "부고 문자 스미싱 수법",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S22",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S23",
+      "title": "권익위, 110콜센터 스미싱 분석: 수법 지능화·다양화",
+      "publisher": "국민권익위원회 정부민원안내콜센터",
+      "host": "국민권익위원회 정부민원안내콜센터",
+      "publishedDate": "2014-04-16",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.110.go.kr/board/newsView.do?curPage=12&num=3123&scText=&scType=",
+      "kind": "OFFICIAL_REPORT",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "모바일 청첩장 상담사례",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S23",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S24",
+      "title": "네이버 사칭 사이트 구별 방법",
+      "publisher": "네이버",
+      "host": "네이버",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://help.naver.com/service/5640/contents/18983?lang=ko&osType=COMMONOS",
+      "kind": "PLATFORM_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "주민등록번호 요구 및 보호조치 사칭",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S24"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S25",
+      "title": "유심 무료 교환·유심보호서비스 관련 피싱·스미싱 공격 주의",
+      "publisher": "한국인터넷진흥원",
+      "host": "한국인터넷진흥원",
+      "publishedDate": "2025-04-27",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.krcert.or.kr/kr/bbs/view.do?bbsId=B0000133&categoryCode=&menuNo=205020&nttId=71727&pageIndex=1&searchCnd=&searchWrd=",
+      "kind": "OFFICIAL_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "주요내용: 검색 결과의 도박사이트 연결",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S25"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S26",
+      "title": "KISA, 민생회복 소비쿠폰 사칭 범죄 집중 대응",
+      "publisher": "한국인터넷진흥원",
+      "host": "한국인터넷진흥원",
+      "publishedDate": "2025-07-17",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.kisa.kr/402/form?lang_type=KO&postSeq=2516",
+      "kind": "OFFICIAL_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "예상한 주요 사칭 수법 및 공식 안내 경로",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S26"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S27",
+      "title": "금융사기 수법 및 사례 안내",
+      "publisher": "KB국민카드",
+      "host": "KB국민카드",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://card.kbcard.com/SVC/DVIEW/HSFM0002",
+      "kind": "FINANCIAL_INSTITUTION_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "관세청 사칭 통관 세금 미납 스미싱 사례",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S27"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S28",
+      "title": "출입국·외국인관서 사칭 보이스피싱 주의 안내",
+      "publisher": "법무부 출입국·외국인정책본부",
+      "host": "법무부 출입국·외국인정책본부",
+      "publishedDate": "2026-05-12",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.immigration.go.kr/bbs/moj/184/606515/artclView.do",
+      "kind": "OFFICIAL_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "최근 접수 사례: 중요 서류 미제출 주장",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "PERMISSION_REQUIRED",
+        "licenseCode": "KOGL-4",
+        "evidenceRefs": [
+          "S28",
+          "KOGL"
+        ],
+        "observedItemNotice": "게시물에 비상업·변경금지 조건 표시",
+        "reason": "게시물의 4유형 조건 확인. 이번 목표인 가공·서비스 활용에 맞는 추가 허락을 확보하지 않음. 비상업 원문 보관까지 일괄 불법이라는 판단은 아님.",
+        "nextAction": "적합한 추가 이용허락을 받거나 같은 사실을 다루는 별도 개방 자료로 교체.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S29",
+      "title": "유명 메일 서비스 사칭 피싱 공격, 누구나 대상일 수 있다",
+      "publisher": "안랩",
+      "host": "안랩",
+      "publishedDate": "2021-05-31",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.ahnlab.com/ko/contents/content-center/30251",
+      "kind": "SECURITY_RESEARCH",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "기업용 메일 서비스 대상 공격 분석",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S29"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S30",
+      "title": "피싱 메일 주의 안내 - 정부기관 공문서 사칭",
+      "publisher": "네이버",
+      "host": "네이버",
+      "publishedDate": "2026-08-20",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://help.naver.com/notice/noticeView.help?lang=ko&noticeNo=33658&serviceNo=30021",
+      "kind": "PLATFORM_NOTICE",
+      "sourceCountry": "KR",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "기관 공문서 열람에서 가짜 포털 로그인으로 전환",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "UNCONFIRMED",
+        "evidenceRefs": [
+          "S30"
+        ],
+        "observedItemNotice": null,
+        "reason": "해당 게시물의 원문 저장·가공·상업 서비스 이용을 허용하는 명시적 조건을 확인하지 못함. 공개 열람 가능만으로 허락으로 보지 않음.",
+        "nextAction": "게시물별 이용조건이나 권리자의 허락을 추가 확인. 그 전에는 원문 저장·RAG 투입 보류.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S31",
+      "title": "가짜 임대 매물과 보증금 요구 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/articles/rental-listing-scams",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "How Rental Scam Ads Work",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S31",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S32",
+      "title": "전기·가스·수도 회사 사칭 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/articles/scammers-pretend-be-your-utility-company",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "How Utility Scams Work",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S32",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S33",
+      "title": "장학금·학자금 지원 사칭 예방 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/articles/how-avoid-scholarship-and-financial-aid-scams",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "Scholarship Scams",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S33",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S34",
+      "title": "기술지원 사칭 및 가짜 구독 갱신 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/articles/how-spot-avoid-and-report-tech-support-scams",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "How a Tech Support Scam Works / Fake invoices and subscription renewals",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S34",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S35",
+      "title": "온라인 반려동물 판매 사기 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2024/12/getting-pet-avoid-scams",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "온라인 판매 광고와 선결제 요구",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S35",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S36",
+      "title": "반려동물 사고·치료를 빙자한 사기 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.ftc.gov/2026/06/animal-lovers-learn-spot-and-avoid-breed-pet-scams",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "동물병원·구조기관 사칭과 가짜 사진",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S36",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S37",
+      "title": "재난·대형 사고 관련 가짜 기부 요청 주의",
+      "publisher": "미국 연방수사국(FBI) IC3",
+      "host": "미국 연방수사국(FBI) IC3",
+      "publishedDate": "2025-01-16",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.ic3.gov/PSA/2025/PSA250116",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "재난 모금 사칭과 개인정보 수집",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "FOREIGN_RIGHTS_UNCONFIRMED",
+        "evidenceRefs": [
+          "S37"
+        ],
+        "observedItemNotice": null,
+        "reason": "미국 연방기관 자료라는 이유만으로 국내 원문 저장·RAG 이용을 자동 승인하지 않음. 이번에는 개별 권리·이용정책 확인 미완료.",
+        "nextAction": "FBI/IC3의 해당 자료 이용범위와 국내 적용을 추가 확인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S38",
+      "title": "위조 수표와 과다지급 반환 사기 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/articles/how-spot-avoid-and-report-fake-check-scams",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "Types of Fake Checks Scams / Overpayments",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S38",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S39",
+      "title": "사기 피해금 회수를 약속하는 재사기 주의",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2026/08/have-you-lost-money-scam-watch-scammers-who-say-they-can-help",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "회수 비용·처리비 선입금 요구",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S39",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S40",
+      "title": "보낸 사람 확인을 유도하는 미주문 택배 QR 주의",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2025/01/scam-alert-qr-code-unexpected-package",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "택배 동봉 QR과 피싱 사이트",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S40",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S41",
+      "title": "거래 상대가 요구하는 Google Voice 인증번호 사기",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2021/10/google-voice-scam-how-verification-code-scam-works-how-avoid-it",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "판매 글·분실 반려동물 글을 보고 본인 확인 요구",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S41",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S42",
+      "title": "미납 통행료 문자 사칭 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2025/01/got-text-about-unpaid-tolls-its-probably-scam",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "가짜 통행료 납부 페이지",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S42",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S43",
+      "title": "AI 음성 복제를 이용한 가족 긴급상황 사칭 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2023/03/scammers-use-ai-enhance-their-family-emergency-schemes",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "음성 복제 경고와 별도 연락 확인",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S43",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S44",
+      "title": "자산 보호 명목의 비트코인 ATM 입금 유도 주의",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2024/03/did-someone-send-you-bitcoin-atm-its-scam",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "자금을 안전하게 옮겨야 한다는 허위 주장",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S44",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S45",
+      "title": "당첨금을 받기 위한 비용 요구 사기 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/consumer-alerts/2026/03/random-call-saying-youve-won-prize-scam",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "세금·배송·처리비 선납 요구",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S45",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S46",
+      "title": "취업·재택근무 사기 안내",
+      "publisher": "미국 연방거래위원회(FTC)",
+      "host": "미국 연방거래위원회(FTC)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://consumer.ftc.gov/articles/job-scams",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "Reshipping scams",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "US_GOV_TEXT_POLICY_CONFIRMED_SCOPE_PENDING",
+        "evidenceRefs": [
+          "S46",
+          "FTC"
+        ],
+        "observedItemNotice": null,
+        "reason": "FTC 자체 정부 작성 본문의 이용정책은 확인했으나, 한국 내 적용과 개별 자료 범위를 최종 확인하지 않아 이번 원문 보관 대상에서는 보류.",
+        "nextAction": "자체 작성 본문 여부·제3자 포함 여부·국내 적용 범위를 확인. 확인된 범위만 별도 승인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S47",
+      "title": "업무 이메일 사칭 안내",
+      "publisher": "미국 연방수사국(FBI)",
+      "host": "미국 연방수사국(FBI)",
+      "publishedDate": null,
+      "publishedDatePrecision": "UNKNOWN",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.fbi.gov/how-we-can-help-you/common-frauds-and-scams/business-email-compromise?source=govdelivery",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "거래처 인보이스·지급 경로 변경 예시",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "FOREIGN_RIGHTS_UNCONFIRMED",
+        "evidenceRefs": [
+          "S47"
+        ],
+        "observedItemNotice": null,
+        "reason": "미국 연방기관 자료라는 이유만으로 국내 원문 저장·RAG 이용을 자동 승인하지 않음. 이번에는 개별 권리·이용정책 확인 미완료.",
+        "nextAction": "FBI/IC3의 해당 자료 이용범위와 국내 적용을 추가 확인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    },
+    {
+      "id": "S48",
+      "title": "상사를 사칭해 상품권 번호를 받는 업무 사기",
+      "publisher": "미국 연방수사국(FBI)",
+      "host": "미국 연방수사국(FBI)",
+      "publishedDate": "2018-12-11",
+      "publishedDatePrecision": "DAY",
+      "dateMeaning": "출처에 표시된 게시일/발행월. 미확인 날짜를 사건일이나 확인일로 대체하지 않음",
+      "url": "https://www.fbi.gov/contact-us/field-offices/phoenix/news/press-releases/fbi-tech-tuesday-business-email-compromise-bec-gift-card-fraud",
+      "kind": "FOREIGN_OFFICIAL_GUIDANCE",
+      "sourceCountry": "US",
+      "checkedAt": "2026-11-20",
+      "verification": "BODY_READ",
+      "evidenceLocation": "임직원 보상·선물 명목 구매 및 PIN 전달",
+      "rightsReview": {
+        "checkedAt": "2026-11-20",
+        "reviewType": "AI_PRELIMINARY_SOURCE_SCREENING",
+        "status": "CONFIRMATION_REQUIRED",
+        "licenseCode": "FOREIGN_RIGHTS_UNCONFIRMED",
+        "evidenceRefs": [
+          "S48"
+        ],
+        "observedItemNotice": null,
+        "reason": "미국 연방기관 자료라는 이유만으로 국내 원문 저장·RAG 이용을 자동 승인하지 않음. 이번에는 개별 권리·이용정책 확인 미완료.",
+        "nextAction": "FBI/IC3의 해당 자료 이용범위와 국내 적용을 추가 확인.",
+        "rawArchiveAllowedForThisRun": false,
+        "ragRightsCandidate": false,
+        "approvedForGeneration": false,
+        "scope": "기관 자체 작성 텍스트·공개 첨부자료만 검토. 제3자 이미지·로고·댓글·공격용 링크는 포함 허락으로 보지 않음.",
+        "assessmentScope": "원문 복제·가공 조건 선별. 독립적으로 작성한 사실 카드 이용의 최종 판정 아님."
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "RC-001",
+      "title": "휴대폰 고장을 핑계로 가족을 사칭",
+      "sourceId": "S01",
+      "sourceCaseKind": "ILLUSTRATIVE_WARNING",
+      "incidentDate": null,
+      "situation": "가족·지인 관계",
+      "targetUserRole": "가족에게 연락받은 사람",
+      "contactMethods": [
+        "문자",
+        "메신저"
+      ],
+      "impersonatedRoles": [
+        "가족",
+        "지인"
+      ],
+      "pretext": "통화 불가와 대신 처리 부탁",
+      "sourceFacts": {
+        "summary": "평소 아는 사람으로 가장해 신분증·카드 정보나 돈을 요구하는 수법을 당국이 예시로 안내했다.",
+        "mechanisms": [
+          "관계에 대한 신뢰 악용",
+          "통화 확인 회피"
+        ],
+        "requestedActions": [
+          "개인정보 제공",
+          "송금"
+        ],
+        "riskSignals": [
+          "기존 번호와 다른 연락처",
+          "본인 확인 전 민감정보 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "출처는 특정 개인 사건이 아닌 예방 예시다."
+        ],
+        "adaptationNote": "일상에 가족이 등장했다는 사실만으로 실제 돈 부탁이나 휴대폰 고장을 경험했다고 쓰지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-002",
+      "title": "신청하지 않은 카드 배송과 가짜 고객센터",
+      "sourceId": "S02",
+      "sourceCaseKind": "OBSERVED_PATTERN",
+      "incidentDate": null,
+      "situation": "카드 발급·배송 확인",
+      "targetUserRole": "카드 발급을 확인하려는 사람",
+      "contactMethods": [
+        "전화",
+        "문자"
+      ],
+      "impersonatedRoles": [
+        "배송 담당자",
+        "카드사 상담원"
+      ],
+      "pretext": "반송·발급 취소·보안 지원",
+      "sourceFacts": {
+        "summary": "카드 배송을 알린 뒤 허위 상담 창구로 연결해 원격제어 앱 사용을 요구하는 공격이 탐지됐다.",
+        "mechanisms": [
+          "상담 창구 사칭",
+          "정상 배포 앱의 원격 기능 악용"
+        ],
+        "requestedActions": [
+          "전화 연결",
+          "앱 설치"
+        ],
+        "riskSignals": [
+          "신청한 적 없는 카드",
+          "외부 연락에서 원격 접근 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "정상 앱이라는 사실만으로 요청자가 신뢰된다는 뜻은 아니다."
+        ],
+        "adaptationNote": "실제 카드 신청을 사용자 사실로 추가하지 않아도 원치 않은 발급 통보를 가상 사건으로 설정할 수 있다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-003",
+      "title": "행정처분 조회를 빙자한 문자",
+      "sourceId": "S03",
+      "sourceCaseKind": "OBSERVED_PATTERN",
+      "incidentDate": null,
+      "situation": "교통·행정처분 통보",
+      "targetUserRole": "벌금·과태료 내역을 확인하려는 사람",
+      "contactMethods": [
+        "문자",
+        "피싱 웹사이트"
+      ],
+      "impersonatedRoles": [
+        "정부·지자체 담당자"
+      ],
+      "pretext": "불이익 내역 확인",
+      "sourceFacts": {
+        "summary": "행정처분 안내로 위장한 문자에서 조회 페이지 접속 후 민감정보 입력이나 앱 설치를 유도하는 공격이 탐지됐다.",
+        "mechanisms": [
+          "권위 사칭",
+          "불이익 확인 심리 자극"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "개인정보 제공",
+          "앱 설치"
+        ],
+        "riskSignals": [
+          "문자 링크에서 민감정보 요구",
+          "조회에 불필요한 앱 설치"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "실제 위반이나 과태료 발생을 입증하는 자료가 아니다."
+        ],
+        "adaptationNote": "사용자가 운전했다는 말만으로 위반 사실을 확정하지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-004",
+      "title": "호텔 예약 취소를 막는다며 결제정보 재확인",
+      "sourceId": "S04",
+      "sourceCaseKind": "OBSERVED_PATTERN",
+      "incidentDate": null,
+      "situation": "숙박 예약 이후",
+      "targetUserRole": "숙박 예약자",
+      "contactMethods": [
+        "문자",
+        "메신저",
+        "피싱 웹사이트"
+      ],
+      "impersonatedRoles": [
+        "호텔 관리자"
+      ],
+      "pretext": "결제정보 확인 실패와 예약 유지",
+      "sourceFacts": {
+        "summary": "유출된 예약정보로 호텔 담당자처럼 접근해 결제정보를 다시 입력시키는 스미싱이 공지됐다.",
+        "mechanisms": [
+          "이미 아는 예약정보로 신뢰 형성",
+          "취소 불안 이용"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "결제정보 제공"
+        ],
+        "riskSignals": [
+          "예약 유지를 이유로 외부 페이지 사용",
+          "추가 결제정보 입력 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "출처는 메시지 유포를 확인하지만 개별 송금 피해 결과까지 모두 확정하지 않는다."
+        ],
+        "adaptationNote": "예약 경험이 없는 사용자를 예약자로 바꾸지 않는다. 단순 식사 결제에 호텔 유출 사실을 옮겨 붙이지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-005",
+      "title": "검색으로 찾은 가짜 여행 예약 사이트",
+      "sourceId": "S05",
+      "sourceCaseKind": "ILLUSTRATIVE_WARNING",
+      "incidentDate": null,
+      "situation": "항공·숙박 검색과 예약",
+      "targetUserRole": "예약 서비스를 고르는 사람",
+      "contactMethods": [
+        "검색 결과",
+        "위장 웹사이트"
+      ],
+      "impersonatedRoles": [
+        "예약 플랫폼"
+      ],
+      "pretext": "할인 예약",
+      "sourceFacts": {
+        "summary": "공식 서비스와 비슷한 예약 페이지에 접속해 개인정보·카드정보를 입력하는 상황을 카드뉴스가 예시로 제시했다.",
+        "mechanisms": [
+          "익숙한 사이트 외형 모방",
+          "과도한 할인과 마감 압박"
+        ],
+        "requestedActions": [
+          "사이트 접속",
+          "개인정보 제공",
+          "결제정보 제공"
+        ],
+        "riskSignals": [
+          "주소와 서비스 외형의 불일치",
+          "불필요한 정보 재입력"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "A씨 서사는 교육용 예시이며 독립적으로 검증한 특정 피해 사건이 아니다."
+        ],
+        "adaptationNote": "이미 예약한 사람과 예약처를 찾는 사람을 구분한다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-006",
+      "title": "공유 이동수단 결제 QR을 가장한 큐싱",
+      "sourceId": "S06",
+      "sourceCaseKind": "ILLUSTRATIVE_WARNING",
+      "incidentDate": null,
+      "situation": "공유 킥보드·자전거 이용",
+      "targetUserRole": "현장 QR을 읽는 이용자",
+      "contactMethods": [
+        "현장 QR코드",
+        "연결 웹사이트"
+      ],
+      "impersonatedRoles": [
+        "이동수단 결제 서비스"
+      ],
+      "pretext": "이용·결제 절차",
+      "sourceFacts": {
+        "summary": "공유 이동수단의 결제 QR을 위장하는 시도를 공식 예방 자료가 소개한다.",
+        "mechanisms": [
+          "정상 접점으로 보이는 QR 악용"
+        ],
+        "requestedActions": [
+          "QR 스캔",
+          "사이트 접속"
+        ],
+        "riskSignals": [
+          "덧붙인 QR 스티커",
+          "연결 후 불필요한 정보 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "스캔만으로 항상 감염된다는 인과관계는 채택하지 않는다. 개별 국내 피해 사건으로 단정하지 않는다."
+        ],
+        "adaptationNote": "실제 악성 QR이나 앱을 만들지 않고 가상 페이지 선택 행동으로 훈련한다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-007",
+      "title": "티켓 거래 오류·환불을 이유로 반복 입금",
+      "sourceId": "S07",
+      "sourceCaseKind": "OBSERVED_PATTERN",
+      "incidentDate": null,
+      "situation": "공연 티켓 양도 거래",
+      "targetUserRole": "티켓 구매자",
+      "contactMethods": [
+        "개인 간 거래 연락",
+        "환불 창구"
+      ],
+      "impersonatedRoles": [
+        "티켓 판매자",
+        "거래 업체"
+      ],
+      "pretext": "입금 오류 수정과 환불",
+      "sourceFacts": {
+        "summary": "이미 보낸 돈이 확인되지 않는다며 다시 보내게 하고 환불 확인에도 추가 입금을 요구하는 수법을 경찰이 설명했다.",
+        "mechanisms": [
+          "오류 해결 명목 추가 지출",
+          "환불 기대 이용"
+        ],
+        "requestedActions": [
+          "송금",
+          "반복 송금"
+        ],
+        "riskSignals": [
+          "환불받으려면 먼저 입금하라는 요구",
+          "오류 이유가 계속 바뀜"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "개별 피해자의 신원·거래 날짜는 자료에서 확정하지 않았다."
+        ],
+        "adaptationNote": "티켓 구매 맥락이 없으면 공연 취향만으로 이미 양도 거래를 했다고 만들지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-008",
+      "title": "채팅으로 전달하는 가짜 안전결제 링크",
+      "sourceId": "S08",
+      "sourceCaseKind": "PLATFORM_WARNING",
+      "incidentDate": null,
+      "situation": "중고 물품 택배 거래",
+      "targetUserRole": "물품 구매자",
+      "contactMethods": [
+        "거래 채팅",
+        "외부 웹페이지"
+      ],
+      "impersonatedRoles": [
+        "판매자",
+        "안전결제 서비스"
+      ],
+      "pretext": "거래 안전 보장",
+      "sourceFacts": {
+        "summary": "채팅에서 받은 안전결제 페이지와 피싱 경고를 무시하라는 판매자 대응을 플랫폼이 경고했다.",
+        "mechanisms": [
+          "안전 장치 사칭",
+          "보안 경고 무력화"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "외부 거래 진행"
+        ],
+        "riskSignals": [
+          "별도 결제 링크 전달",
+          "차단 경고를 오류라고 주장"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "앱 설치나 특정 개인정보 요구는 이 공지 본문으로 확정하지 않는다."
+        ],
+        "adaptationNote": "플랫폼 자체 결제와 채팅으로 전달받은 외부 결제 페이지를 구분한다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-009",
+      "title": "채용 지원 뒤 화상면접 앱 설치 요구",
+      "sourceId": "S09",
+      "sourceCaseKind": "REPORTED_CASE_DESCRIPTION",
+      "incidentDate": null,
+      "situation": "채용 지원·면접 준비",
+      "targetUserRole": "구직자",
+      "contactMethods": [
+        "채용 공고",
+        "메신저",
+        "설치 안내 링크"
+      ],
+      "impersonatedRoles": [
+        "기업 인사담당자"
+      ],
+      "pretext": "화상면접 준비",
+      "sourceFacts": {
+        "summary": "공고 지원자가 면접 앱 안내를 따른 뒤 무단 금융거래를 발견한 사례가 채용 플랫폼 공지에 소개됐다.",
+        "mechanisms": [
+          "채용 절차 사칭",
+          "보안 설정 변경 요청"
+        ],
+        "requestedActions": [
+          "앱 설치",
+          "코드 전달"
+        ],
+        "riskSignals": [
+          "면접 전에 기기 보안 약화 요구",
+          "공식 회사 확인 없이 설치 안내"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "사건 서술은 플랫폼 공지에 근거하며 판결문을 확인한 것은 아니다."
+        ],
+        "adaptationNote": "실제 지원한 기업·직무는 사용자에게 확인된 범위만 쓴다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-010",
+      "title": "좋은 취업 조건 뒤 신분증·사례금 요구",
+      "sourceId": "S10",
+      "sourceCaseKind": "RISK_WARNING",
+      "incidentDate": null,
+      "situation": "일자리 탐색",
+      "targetUserRole": "구직자",
+      "contactMethods": [
+        "구인광고"
+      ],
+      "impersonatedRoles": [
+        "구인업체"
+      ],
+      "pretext": "유리한 채용 조건",
+      "sourceFacts": {
+        "summary": "고용노동부가 채용 전 신분증 사본이나 취업 사례금을 요구하는 광고를 위험 징후로 안내했다.",
+        "mechanisms": [
+          "좋은 조건으로 경계 완화",
+          "채용 명목 금전·정보 요구"
+        ],
+        "requestedActions": [
+          "신분증 사본 제공",
+          "금전 지급"
+        ],
+        "riskSignals": [
+          "업계 대비 과도한 조건",
+          "채용 전 개인정보·돈 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "공지의 위험 신호 목록이며 특정 업체의 범죄 확정 사실이 아니다."
+        ],
+        "adaptationNote": "신분증은 실제 업로드 대신 가상 신분증 제공 행동으로 처리한다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-011",
+      "title": "리뷰 부업과 공동 미션을 빙자한 송금",
+      "sourceId": "S11",
+      "sourceCaseKind": "REPORTED_COMPLAINT",
+      "incidentDate": null,
+      "situation": "재택 부업·리뷰 업무",
+      "targetUserRole": "부업 참여자",
+      "contactMethods": [
+        "SNS",
+        "단체 메신저"
+      ],
+      "impersonatedRoles": [
+        "부업 관리자",
+        "가짜 동료"
+      ],
+      "pretext": "리뷰 보상과 미션 수익",
+      "sourceFacts": {
+        "summary": "민원인은 리뷰 부업에서 단체방으로 이동한 뒤 동료 역할의 압박을 받아 돈을 보냈다고 신고했다.",
+        "mechanisms": [
+          "소액 보상으로 신뢰 형성",
+          "집단 재촉"
+        ],
+        "requestedActions": [
+          "송금"
+        ],
+        "riskSignals": [
+          "일을 시작하기 위한 입금",
+          "동료들이 동시에 재촉"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "민원인의 주장으로 수사·판결 확정 사실과 구분한다."
+        ],
+        "adaptationNote": "수익 광고를 본 것과 실제 참여·입금한 사실을 구분한다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "ELIGIBLE_WITH_ATTRIBUTION",
+        "rightsCandidate": true
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-012",
+      "title": "투자리딩방에서 가짜 거래 시스템으로 유도",
+      "sourceId": "S12",
+      "sourceCaseKind": "PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "투자 정보 탐색",
+      "targetUserRole": "개인 투자자",
+      "contactMethods": [
+        "문자",
+        "오픈채팅",
+        "위장 거래 서비스"
+      ],
+      "impersonatedRoles": [
+        "투자 전문가"
+      ],
+      "pretext": "무료 정보와 수익 보장",
+      "sourceFacts": {
+        "summary": "경찰 안내는 수익 인증을 보여주는 채팅방에서 허위 거래 시스템으로 투자금을 유인하는 수법을 설명한다.",
+        "mechanisms": [
+          "사회적 증거 위장",
+          "가짜 수익 표시"
+        ],
+        "requestedActions": [
+          "채팅방 참여",
+          "송금"
+        ],
+        "riskSignals": [
+          "원금·고수익 보장",
+          "검증되지 않은 거래 화면"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "특정 피해액·피해자 수를 이 항목에 부여하지 않는다."
+        ],
+        "adaptationNote": "일반적인 금융 관심을 투자 경험으로 바꾸지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-013",
+      "title": "개인정보 유출 보상·대환대출 빙자 선입금",
+      "sourceId": "S13",
+      "sourceCaseKind": "PREVENTIVE_ALERT",
+      "incidentDate": null,
+      "situation": "대출 상담·유출 안내",
+      "targetUserRole": "금융 이용자",
+      "contactMethods": [
+        "문자",
+        "전화"
+      ],
+      "impersonatedRoles": [
+        "금융회사 직원"
+      ],
+      "pretext": "대출 혜택과 피해 보상",
+      "sourceFacts": {
+        "summary": "유출정보를 안다는 이유로 신뢰하게 만든 뒤 대출 준비비나 기존 대출 상환 명목의 송금을 요구할 수 있다고 당국이 경보했다.",
+        "mechanisms": [
+          "개인정보 인지로 신뢰 유도",
+          "선입금 명분 제시"
+        ],
+        "requestedActions": [
+          "송금",
+          "앱 설치"
+        ],
+        "riskSignals": [
+          "대출 전에 비용 요구",
+          "상대가 지정한 외부 수단 사용"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "해당 공지는 2차 피해 우려에 대한 주의 경보이며 모든 열거 수법이 이번 유출에서 발생했다고 확인한 자료가 아니다."
+        ],
+        "adaptationNote": "사용자가 실제 유출 피해자라고 가정하지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-014",
+      "title": "단체예약 후 특정 업체 물품 대리구매",
+      "sourceId": "S14",
+      "sourceCaseKind": "REPORTED_PATTERN",
+      "incidentDate": null,
+      "situation": "단체 회식·행사 예약을 받는 사업장",
+      "targetUserRole": "식당 등 사업자",
+      "contactMethods": [
+        "예약 요청 연락"
+      ],
+      "impersonatedRoles": [
+        "공공기관 직원",
+        "유명인 담당자"
+      ],
+      "pretext": "대량 주문과 추가 물품 준비",
+      "sourceFacts": {
+        "summary": "공식 안내는 큰 예약을 제시한 상대가 지정 업체 물품을 먼저 구매하게 한 뒤 피해를 발생시키는 수법을 설명한다.",
+        "mechanisms": [
+          "대량 매출 기대 악용",
+          "위조 신분 자료로 신뢰 확보"
+        ],
+        "requestedActions": [
+          "대리구매",
+          "선결제"
+        ],
+        "riskSignals": [
+          "거래하지 않던 업체 지정",
+          "물품값을 먼저 부담하라는 요청"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "예약자는 고객이며 대리구매 요구를 받는 피해 역할은 사업자다."
+        ],
+        "adaptationNote": "식당에서 식사한 일반 손님에게 사업자 대상 수법을 그대로 배정하지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-015",
+      "title": "안전·위생 점검을 이유로 장비 구매 강요",
+      "sourceId": "S15",
+      "sourceCaseKind": "OBSERVED_PATTERN",
+      "incidentDate": null,
+      "situation": "사업장 안전·위생 점검",
+      "targetUserRole": "점검 대상 사업자",
+      "contactMethods": [
+        "기관 사칭 연락"
+      ],
+      "impersonatedRoles": [
+        "지자체·점검기관 담당자"
+      ],
+      "pretext": "점검 대비 특정 장비 구비",
+      "sourceFacts": {
+        "summary": "금융정보분석원 자료는 점검이나 정부 시책을 빙자해 특정 물품을 구매시키는 피해 수법이 발생한다고 설명한다.",
+        "mechanisms": [
+          "제도 준수 압박",
+          "지정 물품 구매 유도"
+        ],
+        "requestedActions": [
+          "물품 구매",
+          "송금"
+        ],
+        "riskSignals": [
+          "공식 확인 전 구매 압박",
+          "특정 판매처와 물품 지정"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "근로자의 교육 수강과 사업자의 장비 구비 의무는 다른 상황이다."
+        ],
+        "adaptationNote": "안전교육을 들었다는 말만으로 장비 구매 의무가 있었다고 쓰지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-016",
+      "title": "배송 취소·환불 계좌 입력을 요구하는 문자",
+      "sourceId": "S16",
+      "sourceCaseKind": "PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "배송·주문 내역 확인",
+      "targetUserRole": "물품을 주문했거나 주문 통보를 받은 사람",
+      "contactMethods": [
+        "문자"
+      ],
+      "impersonatedRoles": [
+        "배송·주문 안내 주체"
+      ],
+      "pretext": "취소 확인과 환불 처리",
+      "sourceFacts": {
+        "summary": "경찰은 미구매 물품의 배송 취소나 환불 계좌 입력을 빙자한 문자 링크를 주의하라고 안내했다.",
+        "mechanisms": [
+          "주문 내역에 대한 혼란",
+          "환불 기대 이용"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "계좌정보 입력"
+        ],
+        "riskSignals": [
+          "주문하지 않은 물건 안내",
+          "문자 링크에서 환불정보 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "출처는 반드시 모든 수신자가 실제 구매자였다고 말하지 않는다."
+        ],
+        "adaptationNote": "실제 주문 내역과 사기범의 허위 주문 통보를 별도로 표시한다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-017",
+      "title": "SNS 친분을 쌓은 뒤 쇼핑몰 투자 요청",
+      "sourceId": "S11",
+      "sourceCaseKind": "REPORTED_COMPLAINT",
+      "incidentDate": null,
+      "situation": "온라인에서 형성된 관계",
+      "targetUserRole": "SNS 대화 상대",
+      "contactMethods": [
+        "SNS",
+        "메신저"
+      ],
+      "impersonatedRoles": [
+        "친밀한 상대방"
+      ],
+      "pretext": "쇼핑몰 운영·투자 기회",
+      "sourceFacts": {
+        "summary": "민원인은 온라인으로 친분을 쌓은 상대의 투자 권유에 송금했고 제3자 명의 계좌가 사용됐다고 신고했다.",
+        "mechanisms": [
+          "정서적 신뢰 악용",
+          "친분에서 투자로 주제 전환"
+        ],
+        "requestedActions": [
+          "송금"
+        ],
+        "riskSignals": [
+          "만나지 않은 상대의 금전 부탁",
+          "제3자 명의 입금처"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "신고 내용의 요약이며 범죄사실 확정이나 피해금 회수 여부는 확인하지 않았다."
+        ],
+        "adaptationNote": "가족·오랜 친구 관계와 새 온라인 관계를 혼동하지 않는다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "ELIGIBLE_WITH_ATTRIBUTION",
+        "rightsCandidate": true
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-018",
+      "title": "납품·거래를 가장한 허위 세금계산서",
+      "sourceId": "S17",
+      "sourceCaseKind": "REPORTED_PATTERN",
+      "incidentDate": null,
+      "situation": "사업상 구매·납품 거래",
+      "targetUserRole": "사업자",
+      "contactMethods": [
+        "거래 연락",
+        "서류·사진 전송"
+      ],
+      "impersonatedRoles": [
+        "기관 직원",
+        "거래처 지인"
+      ],
+      "pretext": "물품 공급과 납품 대금",
+      "sourceFacts": {
+        "summary": "국세청은 물품이 전달되지 않았는데도 거래 서류나 세금계산서를 내세워 대금을 요구하는 수법을 안내했다.",
+        "mechanisms": [
+          "거래 서류로 신뢰 확보",
+          "배송 확인 없이 지급 유도"
+        ],
+        "requestedActions": [
+          "대금 지급"
+        ],
+        "riskSignals": [
+          "실물 수령보다 서류만 강조",
+          "낯선 거래처의 선지급 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "세금계산서가 실제 배송 완료를 증명한다고 해석하지 않는다."
+        ],
+        "adaptationNote": "일반 소비자의 카드 결제와 사업자의 납품 대금 거래를 구별한다.",
+        "basis": "수집자의 서비스 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-019",
+      "title": "세금 환급 안내로 접속 유도",
+      "sourceId": "S18",
+      "sourceCaseKind": "PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "연말정산·세금 신고",
+      "targetUserRole": "납세자",
+      "contactMethods": [
+        "문자"
+      ],
+      "impersonatedRoles": [
+        "세무기관"
+      ],
+      "pretext": "환급금 조회",
+      "sourceFacts": {
+        "summary": "국세청은 환급·신고·조사 등을 앞세운 사칭 문자를 소개하고 공식 안내문 확인을 권했다.",
+        "mechanisms": [
+          "공적 기관 신뢰 악용"
+        ],
+        "requestedActions": [
+          "링크 클릭"
+        ],
+        "riskSignals": [
+          "확인하지 않은 환급 안내"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "특정 수신자가 실제 환급 대상이라는 근거가 아니다."
+        ],
+        "adaptationNote": "실제 세금 신고 여부를 확인하고, 사기범의 환급 주장은 가상 사건으로 구분한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-020",
+      "title": "건강검진 결과 발송을 가장한 문자",
+      "sourceId": "S19",
+      "sourceCaseKind": "OBSERVED_PATTERN",
+      "incidentDate": null,
+      "situation": "건강검진",
+      "targetUserRole": "검진 안내 수신자",
+      "contactMethods": [
+        "문자"
+      ],
+      "impersonatedRoles": [
+        "건강보험기관"
+      ],
+      "pretext": "결과 보고서 확인",
+      "sourceFacts": {
+        "summary": "공단은 검진 보고서가 발송됐다는 문자에서 앱 설치 경로로 유인하는 사례를 알렸다.",
+        "mechanisms": [
+          "건강정보 확인 심리 이용"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "앱 설치"
+        ],
+        "riskSignals": [
+          "결과 확인 명목 외부 설치"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "스캔·클릭만으로 모든 기기가 감염된다고 일반화하지 않는다."
+        ],
+        "adaptationNote": "사용자가 실제 검진을 받았다고 가정하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-021",
+      "title": "OTT 결제 실패와 로그인 재요구",
+      "sourceId": "S20",
+      "sourceCaseKind": "SECURITY_OBSERVATION",
+      "incidentDate": null,
+      "situation": "영상 구독 서비스",
+      "targetUserRole": "구독자 또는 안내 수신자",
+      "contactMethods": [
+        "이메일"
+      ],
+      "impersonatedRoles": [
+        "OTT 운영자"
+      ],
+      "pretext": "결제수단 수정",
+      "sourceFacts": {
+        "summary": "보안업체는 구독 결제가 실패했다는 메일로 로그인 페이지 방문을 요구하는 유포 정황을 분석했다.",
+        "mechanisms": [
+          "결제 중단 불안",
+          "공식 링크를 섞은 위장"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "로그인"
+        ],
+        "riskSignals": [
+          "메일에서 계정 재인증 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "분석 당시 연결 페이지가 비활성 상태여서 이후 실제 피해는 확인되지 않았다."
+        ],
+        "adaptationNote": "서비스 이용 경험과 실제 결제 실패는 구분한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-022",
+      "title": "광고 관리센터를 모방한 계정 탈취",
+      "sourceId": "S21",
+      "sourceCaseKind": "PLATFORM_WARNING",
+      "incidentDate": null,
+      "situation": "온라인 광고 관리",
+      "targetUserRole": "광고주",
+      "contactMethods": [
+        "위장 사이트"
+      ],
+      "impersonatedRoles": [
+        "광고 플랫폼"
+      ],
+      "pretext": "광고 계정 로그인",
+      "sourceFacts": {
+        "summary": "플랫폼은 광고 관리 화면을 닮은 사이트가 가짜 로그인으로 연결되는 공격을 공지했다.",
+        "mechanisms": [
+          "익숙한 업무 화면 모방"
+        ],
+        "requestedActions": [
+          "계정정보 입력"
+        ],
+        "riskSignals": [
+          "공식 업무 화면과 다른 주소"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "광고주가 아닌 일반 소비자에게 동일한 업무 역할을 부여하지 않는다."
+        ],
+        "adaptationNote": "사용자가 광고 관리 업무를 한다고 확인된 경우에만 접점을 활용한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-023",
+      "title": "부고장으로 보이는 문자 링크",
+      "sourceId": "S22",
+      "sourceCaseKind": "PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "경조사 연락",
+      "targetUserRole": "지인의 소식을 확인하려는 사람",
+      "contactMethods": [
+        "문자"
+      ],
+      "impersonatedRoles": [
+        "지인·상주"
+      ],
+      "pretext": "장례 안내 확인",
+      "sourceFacts": {
+        "summary": "경찰은 일반 부고와 비슷한 문자로 위험한 링크를 열게 하는 수법을 경고했다.",
+        "mechanisms": [
+          "경조사에 대한 반응 이용"
+        ],
+        "requestedActions": [
+          "링크 클릭"
+        ],
+        "riskSignals": [
+          "별도 확인 없이 경조사 링크 열기"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "모든 모바일 부고장이 악성이라는 뜻은 아니다."
+        ],
+        "adaptationNote": "사용자 가족의 실제 사망 사실을 만들지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-024",
+      "title": "모바일 청첩장 사칭과 소액결제",
+      "sourceId": "S23",
+      "sourceCaseKind": "REPORTED_COMPLAINT",
+      "incidentDate": null,
+      "situation": "결혼 초대 연락",
+      "targetUserRole": "초대 문자를 받은 사람",
+      "contactMethods": [
+        "문자"
+      ],
+      "impersonatedRoles": [
+        "지인"
+      ],
+      "pretext": "청첩장 확인",
+      "sourceFacts": {
+        "summary": "공식 상담 분석에는 청첩장 문자를 확인한 뒤 소액결제 피해가 생겼다는 상담이 소개됐다.",
+        "mechanisms": [
+          "관계·행사 신뢰 이용"
+        ],
+        "requestedActions": [
+          "링크 클릭"
+        ],
+        "riskSignals": [
+          "모르는 설치·결제 발생"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "2014년 자료이며 현재 기기에서도 동일한 감염 과정이 재현된다고 보장하지 않는다."
+        ],
+        "adaptationNote": "초대 내용은 가상 설정임을 유지한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-023"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-025",
+      "title": "포털 보호조치 해제 페이지 사칭",
+      "sourceId": "S24",
+      "sourceCaseKind": "PLATFORM_WARNING",
+      "incidentDate": null,
+      "situation": "포털 계정 보호",
+      "targetUserRole": "계정 이용자",
+      "contactMethods": [
+        "메시지",
+        "위장 로그인 페이지"
+      ],
+      "impersonatedRoles": [
+        "포털 보안 담당자"
+      ],
+      "pretext": "보호조치 해제",
+      "sourceFacts": {
+        "summary": "플랫폼은 자사처럼 보이는 화면에서 민감정보를 입력시키는 사칭을 경고했다.",
+        "mechanisms": [
+          "계정 보호 명분 이용"
+        ],
+        "requestedActions": [
+          "민감정보 입력"
+        ],
+        "riskSignals": [
+          "포털 업무에서 불필요한 식별정보 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "자료의 게시일이 표시되지 않아 날짜를 추정하지 않았다."
+        ],
+        "adaptationNote": "실제 사용자 계정에 문제가 생겼다고 확정하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-026",
+      "title": "유심 교체 검색을 악용한 사이트 전환",
+      "sourceId": "S25",
+      "sourceCaseKind": "SECURITY_OBSERVATION",
+      "incidentDate": null,
+      "situation": "유심 교체·보호 서비스 검색",
+      "targetUserRole": "통신 이용자",
+      "contactMethods": [
+        "검색 결과",
+        "외부 사이트"
+      ],
+      "impersonatedRoles": [
+        "유심 관련 정보 제공자"
+      ],
+      "pretext": "교체·보호 안내",
+      "sourceFacts": {
+        "summary": "KISA는 유심 관련 검색 결과가 전혀 다른 도박 사이트로 전환된 정황을 확인했다.",
+        "mechanisms": [
+          "사회 이슈 키워드 악용"
+        ],
+        "requestedActions": [
+          "외부 사이트 접속"
+        ],
+        "riskSignals": [
+          "검색 목적과 무관한 서비스로 전환"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "이 출처만으로 가짜 가입 페이지의 정보 탈취나 개별 금전 피해까지 확정할 수 없다."
+        ],
+        "adaptationNote": "관측된 전환과 예상되는 위험을 분리한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-027",
+      "title": "지원금 신청·추가지급 안내 사칭",
+      "sourceId": "S26",
+      "sourceCaseKind": "PREVENTIVE_ALERT",
+      "incidentDate": null,
+      "situation": "정부 지원 신청",
+      "targetUserRole": "정책 안내 수신자",
+      "contactMethods": [
+        "문자",
+        "검색 결과",
+        "전화"
+      ],
+      "impersonatedRoles": [
+        "정부·카드사·지역화폐 서비스"
+      ],
+      "pretext": "쿠폰 발급·추가지급",
+      "sourceFacts": {
+        "summary": "KISA는 지원 정책을 이용한 가짜 신청 경로와 정보 요구 가능성을 안내했다.",
+        "mechanisms": [
+          "지원 혜택 기대 이용"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "개인정보 제공",
+          "앱 설치"
+        ],
+        "riskSignals": [
+          "공식 채널과 다른 신청 경로"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "공지에는 예상 수법도 포함되어 있어 모두 관측된 개별 사건으로 표시하지 않는다."
+        ],
+        "adaptationNote": "해당 정책의 시기·대상 여부를 일반적인 상시 지원금처럼 바꾸지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-028",
+      "title": "해외직구 통관 세금 미납 이메일",
+      "sourceId": "S27",
+      "sourceCaseKind": "REPORTED_CASE_DESCRIPTION",
+      "incidentDate": null,
+      "situation": "해외 물품 배송 대기",
+      "targetUserRole": "해외직구 이용자",
+      "contactMethods": [
+        "이메일",
+        "피싱 사이트"
+      ],
+      "impersonatedRoles": [
+        "통관기관"
+      ],
+      "pretext": "당일 납부·반송 방지",
+      "sourceFacts": {
+        "summary": "카드사 사례 안내는 통관 미납 메일의 위장 결제 화면에 정보를 적은 뒤 부정결제가 발생한 서사를 소개한다.",
+        "mechanisms": [
+          "배송 차질 압박",
+          "결제 화면 모방"
+        ],
+        "requestedActions": [
+          "카드정보 제공"
+        ],
+        "riskSignals": [
+          "즉시 납부하지 않으면 반송된다는 재촉"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "카드사의 교육용 사례 설명이며 개별 사건의 판결이나 원문 신고서는 확인하지 않았다."
+        ],
+        "adaptationNote": "실제 직구 경험이 없는 사람을 수입자로 만들지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-029",
+      "title": "출입국 민원 서류 누락을 알리는 사칭 전화",
+      "sourceId": "S28",
+      "sourceCaseKind": "REPORTED_SUSPICIOUS_CONTACT",
+      "incidentDate": null,
+      "situation": "출입국·체류 민원",
+      "targetUserRole": "기관 전화를 받은 사람",
+      "contactMethods": [
+        "국제전화",
+        "자동음성 안내"
+      ],
+      "impersonatedRoles": [
+        "출입국 담당기관"
+      ],
+      "pretext": "중요 서류 미제출",
+      "sourceFacts": {
+        "summary": "기관은 서류가 빠졌다며 안내 버튼을 누르게 한 의심 전화가 접수됐다고 공지했다.",
+        "mechanisms": [
+          "행정 불이익 우려"
+        ],
+        "requestedActions": [
+          "ARS 응답"
+        ],
+        "riskSignals": [
+          "실제 기관과 다른 발신 경로"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "이 안내에서 후속 송금이나 피해 결과까지 확인한 것은 아니다."
+        ],
+        "adaptationNote": "법적 체류 문제나 실제 서류 누락을 사용자 사실로 추가하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "PERMISSION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-030",
+      "title": "기업용 메일 서비스를 모방한 로그인",
+      "sourceId": "S29",
+      "sourceCaseKind": "SECURITY_OBSERVATION",
+      "incidentDate": null,
+      "situation": "업무 메일 이용",
+      "targetUserRole": "기업용 메일 사용자",
+      "contactMethods": [
+        "피싱 메일",
+        "위장 로그인 화면"
+      ],
+      "impersonatedRoles": [
+        "업무 메일 운영자"
+      ],
+      "pretext": "계정 접속",
+      "sourceFacts": {
+        "summary": "보안 연구는 복수의 기업용 메일 서비스를 겨냥한 계정정보 수집 페이지를 분석했다.",
+        "mechanisms": [
+          "반복 업무의 익숙함 이용"
+        ],
+        "requestedActions": [
+          "계정정보 입력"
+        ],
+        "riskSignals": [
+          "정상 로그인과 다른 접속 주소"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "일반 계정용 피싱과 수법이 유사하므로 별개의 독립 범죄 유형 수로 과장하지 않는다."
+        ],
+        "adaptationNote": "업무 계정이 실제 존재하는지와 업무 권한을 확인한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-025"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-031",
+      "title": "정부 공문서 열람을 빙자한 포털 비밀번호 요구",
+      "sourceId": "S30",
+      "sourceCaseKind": "PLATFORM_WARNING",
+      "incidentDate": null,
+      "situation": "세금·기관 공문 열람",
+      "targetUserRole": "이메일 이용자",
+      "contactMethods": [
+        "이메일",
+        "가짜 포털 화면"
+      ],
+      "impersonatedRoles": [
+        "정부기관"
+      ],
+      "pretext": "문서·고지 내용 확인",
+      "sourceFacts": {
+        "summary": "플랫폼은 기관 공문처럼 보이는 이메일이 가짜 포털 로그인으로 연결되는 공격을 공지했다.",
+        "mechanisms": [
+          "공문 외형 신뢰",
+          "기관 업무에서 계정정보로 전환"
+        ],
+        "requestedActions": [
+          "포털 비밀번호 입력"
+        ],
+        "riskSignals": [
+          "문서 열람을 위해 포털 암호 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "정상 기관 안내 이메일도 존재하므로 메일 수신 자체를 사기라고 단정하지 않는다."
+        ],
+        "adaptationNote": "기관의 송금 요구와 로그인 탈취 목적을 구별한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-019",
+          "RC-025"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "KR",
+      "localizationStatus": "DOMESTIC_SOURCE_TEAM_REVIEW_PENDING"
+    },
+    {
+      "id": "RC-032",
+      "title": "가짜 임대 매물의 계약금 선납",
+      "sourceId": "S31",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "주거·휴가용 숙소 임대",
+      "targetUserRole": "임차 희망자",
+      "contactMethods": [
+        "매물 사이트",
+        "이메일"
+      ],
+      "impersonatedRoles": [
+        "집주인·중개인"
+      ],
+      "pretext": "좋은 매물 확보",
+      "sourceFacts": {
+        "summary": "미국 당국은 실제 매물의 사진을 복사하고 연락처를 바꿔 선지급을 요구하는 수법을 설명한다.",
+        "mechanisms": [
+          "매물 복제",
+          "확인 전 예약 압박"
+        ],
+        "requestedActions": [
+          "보증금·신청비 송금"
+        ],
+        "riskSignals": [
+          "실물·권한 확인 전 지급"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "미국 임대 안내이며 한국의 계약금·중개 제도와 동일하다고 해석하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "국내 임대 절차로 옮길 때 별도 적합성 검토가 필요하다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-033",
+      "title": "즉시 요금을 내지 않으면 전기·가스를 끊는다는 협박",
+      "sourceId": "S32",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "생활요금 납부",
+      "targetUserRole": "공공요금 이용자",
+      "contactMethods": [
+        "전화",
+        "문자",
+        "방문"
+      ],
+      "impersonatedRoles": [
+        "전기·가스·수도 회사"
+      ],
+      "pretext": "당일 공급 중단 방지",
+      "sourceFacts": {
+        "summary": "미국 당국은 즉시 지불하지 않으면 공급을 끊겠다는 회사 사칭을 경고한다.",
+        "mechanisms": [
+          "생활 중단 공포"
+        ],
+        "requestedActions": [
+          "송금",
+          "상품권·가상자산 지급"
+        ],
+        "riskSignals": [
+          "확인할 시간 없이 결제 강요"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "해외 요금 징수 규칙을 한국 사업자의 운영 규칙으로 단정하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "국내 공공요금 절차와 별도로 확인한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-034",
+      "title": "장학금 확정을 약속하며 처리비 요구",
+      "sourceId": "S33",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "학업·장학금 신청",
+      "targetUserRole": "학생·보호자",
+      "contactMethods": [
+        "SNS",
+        "이메일",
+        "우편"
+      ],
+      "impersonatedRoles": [
+        "장학금·학자금 지원 담당자"
+      ],
+      "pretext": "지원 자격 확보",
+      "sourceFacts": {
+        "summary": "미국 당국은 장학금을 보장한다며 수수료나 금융정보를 먼저 받는 사기를 안내한다.",
+        "mechanisms": [
+          "교육비 부담 이용"
+        ],
+        "requestedActions": [
+          "선입금",
+          "금융정보 제공"
+        ],
+        "riskSignals": [
+          "장학금 보장과 비용 선납"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "미국 지원 제도 안내이며 한국장학재단의 실제 사건으로 바꿔 표기하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "한국의 자격·지원 기준은 이 자료로 생성하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-035",
+      "title": "컴퓨터 감염 경고 팝업과 원격지원",
+      "sourceId": "S34",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "기기 오류·보안 걱정",
+      "targetUserRole": "PC 사용자",
+      "contactMethods": [
+        "팝업",
+        "전화",
+        "검색 광고"
+      ],
+      "impersonatedRoles": [
+        "기술지원 담당자"
+      ],
+      "pretext": "감염 제거",
+      "sourceFacts": {
+        "summary": "미국 당국은 가짜 경고나 검색 결과에서 상담을 유도한 뒤 원격 접속과 비용을 요구하는 수법을 설명한다.",
+        "mechanisms": [
+          "보안 공포",
+          "가짜 전문가 권위"
+        ],
+        "requestedActions": [
+          "원격접속 허용",
+          "금전 지급"
+        ],
+        "riskSignals": [
+          "갑작스러운 지원 연락",
+          "확인 전 원격 권한 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "실제 기기 감염과 사기범의 주장에 의한 감염을 구분한다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "PC 사용 사실만으로 사용자가 감염됐다고 쓰지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-036",
+      "title": "가짜 구독 갱신 청구 후 과다 환불 반환 요구",
+      "sourceId": "S34",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "소프트웨어 구독·환불 확인",
+      "targetUserRole": "허위 청구 안내 수신자",
+      "contactMethods": [
+        "이메일",
+        "전화",
+        "위장 환불 화면"
+      ],
+      "impersonatedRoles": [
+        "구독·환불 담당자"
+      ],
+      "pretext": "청구 취소와 환불 오류 정정",
+      "sourceFacts": {
+        "summary": "미국 당국은 허위 구독 청구를 문의한 사람에게 환불을 과다 지급했다며 돈을 돌려받는 수법을 소개한다.",
+        "mechanisms": [
+          "허위 청구로 상담 유도",
+          "환불 오류 책임 전가"
+        ],
+        "requestedActions": [
+          "원격접속 허용",
+          "금융정보 제공",
+          "송금"
+        ],
+        "riskSignals": [
+          "환불받기 위해 원격 접근 허용",
+          "받지 않은 돈을 반환하라는 압박"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "영상 구독 갱신 피싱과 목적·흐름이 달라 구분하되 실제 구독 사실은 가정하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "허위 입금 화면을 실제 은행 입금으로 저장하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-021",
+          "RC-035"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-037",
+      "title": "존재하지 않는 반려동물 분양 광고",
+      "sourceId": "S35",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "반려동물 입양·분양 탐색",
+      "targetUserRole": "입양 희망자",
+      "contactMethods": [
+        "온라인 광고"
+      ],
+      "impersonatedRoles": [
+        "분양 판매자"
+      ],
+      "pretext": "저렴한 분양과 빠른 확보",
+      "sourceFacts": {
+        "summary": "미국 당국은 매력적인 동물 사진으로 유인한 뒤 선입금만 받고 동물을 제공하지 않는 광고를 경고한다.",
+        "mechanisms": [
+          "사진과 희소성 이용"
+        ],
+        "requestedActions": [
+          "선입금"
+        ],
+        "riskSignals": [
+          "실제 확인 전 지급 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "동물 판매·입양의 국내 법적 요건을 설명하는 자료는 아니다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "동물을 키운다는 사실만으로 분양 거래를 했다고 만들지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-038",
+      "title": "잃어버린 반려동물을 치료 중이라며 비용 요구",
+      "sourceId": "S36",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "반려동물 실종·안전 걱정",
+      "targetUserRole": "반려동물 보호자",
+      "contactMethods": [
+        "온라인 연락",
+        "가짜 사진·영상"
+      ],
+      "impersonatedRoles": [
+        "동물병원·구조기관"
+      ],
+      "pretext": "응급치료",
+      "sourceFacts": {
+        "summary": "미국 당국은 반려동물을 보호·치료하고 있다고 속여 긴급 비용을 받는 수법과 가짜 이미지 활용 가능성을 알렸다.",
+        "mechanisms": [
+          "보호자의 불안 악용",
+          "사진·영상 신뢰 이용"
+        ],
+        "requestedActions": [
+          "긴급 송금"
+        ],
+        "riskSignals": [
+          "독립 확인 전 치료비 강요"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "가짜 이미지 사용 가능성에 대한 안내이며 모든 동물병원 연락을 사기라고 하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "사용자의 실제 반려동물이 다쳤다는 사실을 생성하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-039",
+      "title": "재난 피해자 지원을 가장한 가짜 모금",
+      "sourceId": "S37",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "기부·재난 뉴스",
+      "targetUserRole": "기부 희망자",
+      "contactMethods": [
+        "SNS",
+        "이메일",
+        "모금 페이지"
+      ],
+      "impersonatedRoles": [
+        "구호단체·유명인·피해자"
+      ],
+      "pretext": "피해자 지원",
+      "sourceFacts": {
+        "summary": "FBI는 재난과 대형 사고 뒤 신뢰할 만한 모금처럼 꾸며 돈이나 정보를 수집하는 수법을 경고했다.",
+        "mechanisms": [
+          "공감·긴급성 악용"
+        ],
+        "requestedActions": [
+          "기부금 지급",
+          "개인정보 제공"
+        ],
+        "riskSignals": [
+          "단체 확인 없이 즉시 송금 요청"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "미국 사건을 배경으로 한 안내이며 국내 실제 재난 피해자로 둔갑시키지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "재난·피해자 신상은 사용자의 경험과 분리한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-040",
+      "title": "물품값을 많이 보냈다며 차액 반환 요구",
+      "sourceId": "S38",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "온라인 물품 판매",
+      "targetUserRole": "판매자",
+      "contactMethods": [
+        "거래 연락",
+        "수표"
+      ],
+      "impersonatedRoles": [
+        "구매자"
+      ],
+      "pretext": "과다 지급금 반환",
+      "sourceFacts": {
+        "summary": "미국 당국은 위조 수표를 맡기게 한 뒤 초과분을 반환받는 수법을 설명한다.",
+        "mechanisms": [
+          "임시 입금 표시 신뢰",
+          "차액 반환 압박"
+        ],
+        "requestedActions": [
+          "수표 입금",
+          "차액 송금"
+        ],
+        "riskSignals": [
+          "최종 결제 확인 전 반환 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "미국 수표 결제 구조에 의존하므로 한국 은행 입금 절차와 동일하게 취급하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "구매자 피해와 판매자 피해를 구별한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-041",
+      "title": "기존 사기 피해금을 돌려주겠다며 착수금 요구",
+      "sourceId": "S39",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "사기 피해 이후",
+      "targetUserRole": "기존 피해자",
+      "contactMethods": [
+        "전화",
+        "SNS",
+        "이메일"
+      ],
+      "impersonatedRoles": [
+        "회수업체·법률기관·공공기관"
+      ],
+      "pretext": "피해금 회수",
+      "sourceFacts": {
+        "summary": "미국 당국은 이미 피해를 입은 사람에게 회수 비용이나 금융정보를 요구하는 재사기를 경고했다.",
+        "mechanisms": [
+          "회복 기대 악용"
+        ],
+        "requestedActions": [
+          "수수료 선납",
+          "금융정보 제공"
+        ],
+        "riskSignals": [
+          "회수 보장과 선납 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "공식 지급정지·법률 구제 절차와 가짜 회수 영업을 구분한다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "실제 피해 경험이 없는 사람에게 과거 피해 이력을 추가하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-042",
+      "title": "주문하지 않은 택배의 발신자 확인 QR",
+      "sourceId": "S40",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "예상하지 못한 물품 수령",
+      "targetUserRole": "택배 수령인",
+      "contactMethods": [
+        "택배 동봉 QR"
+      ],
+      "impersonatedRoles": [
+        "선물·반품 안내 주체"
+      ],
+      "pretext": "보낸 사람·반품 방법 확인",
+      "sourceFacts": {
+        "summary": "미국 당국은 미주문 택배에 QR을 넣어 발신자 확인이나 반품 안내처럼 피싱 페이지에 접속시키는 위험을 설명한다.",
+        "mechanisms": [
+          "선물 호기심",
+          "반품 명분"
+        ],
+        "requestedActions": [
+          "QR 스캔",
+          "로그인·결제정보 입력"
+        ],
+        "riskSignals": [
+          "발신자가 없는 택배",
+          "정보 확인을 위해 QR 사용 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "모든 미주문 택배가 피싱은 아니며 한국의 미주문 물품 처리 법률은 별도다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "배송 문자 링크와 실제 물품에 동봉된 접근 수단을 구별한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-006",
+          "RC-016"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-043",
+      "title": "구매 의향을 보인 상대가 인증번호 요구",
+      "sourceId": "S41",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "중고 판매·분실동물 글 게시",
+      "targetUserRole": "판매자·글 게시자",
+      "contactMethods": [
+        "거래 연락",
+        "인증 문자"
+      ],
+      "impersonatedRoles": [
+        "구매 희망자·습득자"
+      ],
+      "pretext": "게시자의 신원 확인",
+      "sourceFacts": {
+        "summary": "미국 당국은 거래 상대가 진짜인지 확인한다며 별도 서비스의 인증번호를 넘기게 하는 수법을 설명한다.",
+        "mechanisms": [
+          "상호 신뢰 확인을 빙자"
+        ],
+        "requestedActions": [
+          "인증번호 전달"
+        ],
+        "riskSignals": [
+          "대화 목적과 다른 서비스의 코드 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "원문은 Google Voice 서비스가 관련된 미국 사례로 한국의 특정 인증 체계와 구분한다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "실제 인증번호를 만들지 않고 전달 행동만 훈련한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-044",
+      "title": "미납 도로 통행료 납부 문자",
+      "sourceId": "S42",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "차량 이동·통행료 확인",
+      "targetUserRole": "운전자 또는 문자 수신자",
+      "contactMethods": [
+        "문자",
+        "위장 납부 사이트"
+      ],
+      "impersonatedRoles": [
+        "도로 통행료 기관"
+      ],
+      "pretext": "연체 요금 즉시 납부",
+      "sourceFacts": {
+        "summary": "미국 당국은 통행료 미납을 앞세워 가짜 납부 페이지에서 카드·개인정보를 받는 문자를 경고한다.",
+        "mechanisms": [
+          "연체 부담 압박"
+        ],
+        "requestedActions": [
+          "링크 클릭",
+          "카드정보 제공"
+        ],
+        "riskSignals": [
+          "예상치 못한 납부 문자"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "미국 통행료 사칭이며 한국 도로 운영자의 실제 문자 발송 규칙을 이 자료로 단정하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "과태료와 통행료를 같은 법적 사건으로 저장하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-003"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-045",
+      "title": "가족 목소리를 흉내 낸 긴급 송금 전화",
+      "sourceId": "S43",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "가족의 긴급상황 연락",
+      "targetUserRole": "가족·보호자",
+      "contactMethods": [
+        "전화",
+        "합성 음성"
+      ],
+      "impersonatedRoles": [
+        "가족"
+      ],
+      "pretext": "사고 등 긴급 비용",
+      "sourceFacts": {
+        "summary": "미국 당국은 익숙한 목소리처럼 들리게 해 긴급 송금을 유도할 수 있다고 경고했다.",
+        "mechanisms": [
+          "목소리 신뢰 악용",
+          "긴급성 강조"
+        ],
+        "requestedActions": [
+          "송금"
+        ],
+        "riskSignals": [
+          "별도 확인 없이 급히 지급 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "AI 음성 악용 가능성 안내이며 모든 가족 긴급전화가 합성이라는 뜻은 아니다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "실제 가족 목소리 수집·복제 없이 상황 설명으로 훈련한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-001"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-046",
+      "title": "돈을 보호한다며 가상자산 ATM 입금 유도",
+      "sourceId": "S44",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "계정·자산 보안 걱정",
+      "targetUserRole": "금융 이용자",
+      "contactMethods": [
+        "전화",
+        "QR 안내",
+        "가상자산 ATM"
+      ],
+      "impersonatedRoles": [
+        "정부·금융 지원 담당자"
+      ],
+      "pretext": "안전한 자산 보관",
+      "sourceFacts": {
+        "summary": "미국 당국은 돈이 위험하다며 가상자산 ATM으로 옮기게 하는 자산 보호 사기를 경고한다.",
+        "mechanisms": [
+          "자산 손실 공포",
+          "보호 수단 사칭"
+        ],
+        "requestedActions": [
+          "현금 인출",
+          "가상자산 송금"
+        ],
+        "riskSignals": [
+          "보호를 이유로 자금 이동 지시"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "국내 가상자산 ATM 이용 환경과 동일하지 않아 현지화 검토가 필요하다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "실제 송금·지갑주소·입금 QR은 생성하지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-047",
+      "title": "당첨금을 받으려면 세금·배송비를 먼저 내라는 연락",
+      "sourceId": "S45",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "경품·이벤트 연락",
+      "targetUserRole": "당첨 안내 수신자",
+      "contactMethods": [
+        "전화"
+      ],
+      "impersonatedRoles": [
+        "경품 행사 운영자"
+      ],
+      "pretext": "상품 수령 처리",
+      "sourceFacts": {
+        "summary": "미국 당국은 당첨을 알린 뒤 세금·배송·처리비부터 내도록 하는 수법을 설명한다.",
+        "mechanisms": [
+          "보상 기대",
+          "기회 상실 압박"
+        ],
+        "requestedActions": [
+          "선입금"
+        ],
+        "riskSignals": [
+          "응모하지 않은 행사 당첨",
+          "받기 전 비용 요구"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "해외 경품 규정과 국내 적법한 제세공과금 처리를 혼동하지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "미확인 연락과 정상 이벤트를 독립적으로 확인하는 판단을 학습 목표로 삼는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-048",
+      "title": "재택 배송 업무를 빙자한 물품 재발송",
+      "sourceId": "S46",
+      "sourceCaseKind": "FOREIGN_PATTERN_WARNING",
+      "incidentDate": null,
+      "situation": "재택 부업 탐색",
+      "targetUserRole": "구직자",
+      "contactMethods": [
+        "구인 광고",
+        "업무 지시"
+      ],
+      "impersonatedRoles": [
+        "배송 업무 고용주"
+      ],
+      "pretext": "집에서 하는 배송 일",
+      "sourceFacts": {
+        "summary": "미국 당국은 물품을 대신 받아 포장과 영수증을 버리고 다시 보내도록 하는 가짜 일자리를 소개한다.",
+        "mechanisms": [
+          "업무 명분으로 불법 유통에 연루"
+        ],
+        "requestedActions": [
+          "물품 수령·재발송"
+        ],
+        "riskSignals": [
+          "거래 증빙 제거 지시"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "단순한 재배송 서비스 전체를 사기라고 단정하지 않으며 원문의 범죄 관련 조건을 확인해야 한다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "앱 설치·정보 제공 외에 위험한 업무 수락이라는 별도 행동으로 분류한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-049",
+      "title": "기존 거래처 인보이스의 지급 경로 변경",
+      "sourceId": "S47",
+      "sourceCaseKind": "FOREIGN_REPORTED_PATTERN",
+      "incidentDate": null,
+      "situation": "사업상 대금 지급",
+      "targetUserRole": "회계·구매 담당자",
+      "contactMethods": [
+        "업무 이메일"
+      ],
+      "impersonatedRoles": [
+        "거래처"
+      ],
+      "pretext": "지급 정보 변경",
+      "sourceFacts": {
+        "summary": "FBI는 알고 지내던 업체의 인보이스처럼 보이는 가짜 요청으로 지급 경로를 바꾸는 업무 사기를 안내한다.",
+        "mechanisms": [
+          "정상 거래 맥락 악용"
+        ],
+        "requestedActions": [
+          "변경된 지급처로 송금"
+        ],
+        "riskSignals": [
+          "이메일만으로 지급 정보 변경"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "개별 기소 사건이 아니라 실제 피해를 바탕으로 소개한 예시다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "기존 물품 수령과 정상 거래 사실을 보존하며 지급 요청의 진위만 바뀌게 한다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": [
+          "RC-018"
+        ]
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    },
+    {
+      "id": "RC-050",
+      "title": "상사의 직원 선물 요청으로 상품권 번호 전달",
+      "sourceId": "S48",
+      "sourceCaseKind": "FOREIGN_OBSERVED_PATTERN",
+      "incidentDate": null,
+      "situation": "직장 업무·행사 준비",
+      "targetUserRole": "직원·비서",
+      "contactMethods": [
+        "이메일",
+        "문자"
+      ],
+      "impersonatedRoles": [
+        "대표·인사 책임자"
+      ],
+      "pretext": "직원 선물·행사 물품 준비",
+      "sourceFacts": {
+        "summary": "FBI는 상사를 사칭해 상품권을 사게 한 다음 번호와 PIN을 보내도록 하는 피해 수법을 공지했다.",
+        "mechanisms": [
+          "직장 내 권한·업무 긴급성 악용"
+        ],
+        "requestedActions": [
+          "상품권 구매",
+          "상품권 번호 전달"
+        ],
+        "riskSignals": [
+          "별도 확인 없이 번호·PIN 전달"
+        ]
+      },
+      "serviceAnalysis": {
+        "applicabilityLimits": [
+          "회사에서 상품권을 구매하는 정상 업무 자체를 범죄로 보지 않는다.",
+          "해외 발행자료다. 국내 발생 사례·법률·금융 절차의 근거로 자동 전용하지 않는다."
+        ],
+        "adaptationNote": "인증번호와 상품권 번호의 역할을 구분하고 실제 사용 가능한 번호를 만들지 않는다.",
+        "basis": "수집자의 적용 분석이며 출처의 사실·사용자 경험과 구분함",
+        "relatedCaseIds": []
+      },
+      "fictionalScenario": null,
+      "review": {
+        "sourceContentChecked": true,
+        "teamReviewStatus": "PENDING",
+        "reviewedBy": null,
+        "approvedForGeneration": false,
+        "rightsStatus": "CONFIRMATION_REQUIRED",
+        "rightsCandidate": false
+      },
+      "sourceCountry": "US",
+      "localizationStatus": "FOREIGN_SOURCE_REQUIRES_KOREAN_CONTEXT_REVIEW"
+    }
+  ],
+  "collectionMetrics": {
+    "entries": 50,
+    "sources": 48,
+    "entriesBySourceCountry": {
+      "KR": 31,
+      "US": 19
+    },
+    "entriesByEvidenceKind": {
+      "ILLUSTRATIVE_WARNING": 3,
+      "OBSERVED_PATTERN": 6,
+      "PLATFORM_WARNING": 4,
+      "REPORTED_CASE_DESCRIPTION": 2,
+      "RISK_WARNING": 1,
+      "REPORTED_COMPLAINT": 3,
+      "PATTERN_WARNING": 4,
+      "PREVENTIVE_ALERT": 2,
+      "REPORTED_PATTERN": 2,
+      "SECURITY_OBSERVATION": 3,
+      "REPORTED_SUSPICIOUS_CONTACT": 1,
+      "FOREIGN_PATTERN_WARNING": 17,
+      "FOREIGN_REPORTED_PATTERN": 1,
+      "FOREIGN_OBSERVED_PATTERN": 1
+    },
+    "approvedForGeneration": 0
+  },
+  "rightsAudit": {
+    "checkedAt": "2026-11-20",
+    "reviewNature": "AI가 확인한 이용조건에 따른 1차 선별. 법적 보증·권리자 허락·팀 승인과 구분함",
+    "intendedUse": "원문 저장, 문단 검색, 가상 시나리오 생성에 참고, 향후 공개·상업 서비스 가능성까지 고려",
+    "policies": [
+      {
+        "id": "KOGL",
+        "url": "https://www.kogl.or.kr/info/license.do",
+        "checkedAt": "2026-11-20",
+        "finding": "유형별 상업 이용·변경 조건을 따로 확인. 사이트 공통 표시를 개별 자료 허락으로 대체하지 않음."
+      },
+      {
+        "id": "ACRC_ITEM",
+        "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000&nPage=16&tag=",
+        "checkedAt": "2026-11-20",
+        "finding": "해당 게시물의 첨부 PDF 연결과 공공누리 1유형 및 AI유형 표시를 확인. 이번에는 1유형의 출처표시 조건을 근거로 판단."
+      },
+      {
+        "id": "KOREA",
+        "url": "https://www.korea.kr/guide/copyRight.do",
+        "checkedAt": "2026-11-20",
+        "finding": "개별 이용조건 우선. 표시 없는 자료 및 이미지 이용에는 담당자 협의 필요."
+      },
+      {
+        "id": "MOEL",
+        "url": "https://moel.go.kr/site/copyright/copyrightList.do",
+        "checkedAt": "2026-11-20",
+        "finding": "1유형 표시 확인 후 자유이용. 표시 없는 자료는 사전 협의 안내."
+      },
+      {
+        "id": "FSC",
+        "url": "https://www.fsc.go.kr/ut020104",
+        "checkedAt": "2026-11-20",
+        "finding": "기관이 권리 전부를 보유한 자료와 타인 권리 자료가 혼재. 수익·혜택 목적 이용은 사전 협의 안내."
+      },
+      {
+        "id": "FTC",
+        "url": "https://www.ftc.gov/policy-notices/website-policy",
+        "checkedAt": "2026-11-20",
+        "finding": "FTC 자체 정부 저작물의 복제·이용 정책은 확인. 제3자 사진·도표·댓글·제출 자료는 제외. 미국 공공영역 지위를 한국 내 사용의 최종 허가로 자동 판정하지 않음."
+      }
+    ],
+    "sourceCounts": {
+      "PERMISSION_REQUIRED": 14,
+      "CONFIRMATION_REQUIRED": 33,
+      "ELIGIBLE_WITH_ATTRIBUTION": 1
+    },
+    "caseCounts": {
+      "PERMISSION_REQUIRED": 14,
+      "CONFIRMATION_REQUIRED": 34,
+      "ELIGIBLE_WITH_ATTRIBUTION": 2
+    },
+    "rawArchivePolicy": "명시적 허락을 확인한 자료만 로컬 보관. research-originals/는 Git 제외. 권리 선별 통과와 내용 검토·생성 승인은 별도.",
+    "observationFile": "source-rights-observations-2026-11-20.json",
+    "scopeClarification": "기존 rightsReview는 원문 복제·가공 이용조건에 관한 선별이다. 사실정보를 독립적으로 작성할 수 있는지까지 금지한 판정으로 사용하지 않는다.",
+    "factualUseReviewFile": "fraud-pattern-cards-2026-11-20.json"
+  }
+}

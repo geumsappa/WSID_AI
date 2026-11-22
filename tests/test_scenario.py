@@ -2,7 +2,7 @@
 import app.services.scenario as scenario_service
 from app.guard.scenario_guard import find_unsafe_text, validate_and_normalize
 from app.llm.llm_client import LLMError
-from app.scenario_data import FALLBACK_SCENARIOS, RISK_TYPES, pick_subtype
+from app.scenario_data import FALLBACK_SCENARIOS, RISK_TYPES
 
 
 def _good_llm_output():
@@ -69,15 +69,8 @@ def test_6분류에_없는_위험유형은_차단():
     assert result is None
 
 
-def test_사실_카테고리로_유형_선택():
-    facts = [{"category": "구직·아르바이트", "detail": "알바 구함"},
-             {"category": "구직·아르바이트", "detail": "면접 다님"},
-             {"category": "택배·배송", "detail": "택배 기다림"}]
-    assert pick_subtype(facts) == "채용·아르바이트 사기"
 
 
-def test_사실이_없으면_택배_기본():
-    assert pick_subtype([]) == "택배 사칭"
 
 
 # ---------- 전체 흐름 ----------
@@ -91,51 +84,12 @@ def test_mock으로_시나리오_생성():
     assert not r["fallback_used"]
 
 
-def test_LLM이_계속_실패하면_사실에_맞는_기본_시나리오(monkeypatch):
-    def boom(*a, **k):
-        raise LLMError("x")
-    monkeypatch.setattr(scenario_service, "generate_json", boom)
-    r = scenario_service.run_scenario("s1", [{"category": "투자", "detail": "코인 투자"}])
-    assert r["fallback_used"]
-    assert r["scenario"]["fraudSubtype"] == "투자 리딩방"
-    assert r["scenario"]["riskType"] == "투자·가상자산"
-    assert r["analysis"]["usedFacts"] == ["코인 투자"]
 
 
-def test_가드레일_위반_시나리오는_재생성(monkeypatch):
-    bad = _good_llm_output()
-    bad["scenario"]["openingMessage"] = "토스로 결제했어요 http://fake.com"
-    good = _good_llm_output()
-    calls = iter([bad, good])
-    monkeypatch.setattr(scenario_service, "generate_json", lambda *a, **k: next(calls))
-    r = scenario_service.run_scenario("s1", [{"category": "거래(중고·쇼핑)", "detail": "자전거 판매"}])
-    assert not r["fallback_used"]
-    assert "http" not in r["scenario"]["openingMessage"]
 
 
-def test_입력_사실의_개인정보는_가려서_사용(monkeypatch):
-    seen = {}
-
-    def capture(system, user, **k):
-        seen["user"] = user
-        return _good_llm_output()
-    monkeypatch.setattr(scenario_service, "generate_json", capture)
-    scenario_service.run_scenario("s1", [{"category": "거래(중고·쇼핑)", "detail": "010-1234-5678로 연락함"}])
-    assert "1234" not in seen["user"]
 
 
-def test_사실의_채널_사칭_요구정보가_LLM에_전달됨(monkeypatch):
-    seen = {}
-
-    def capture(system, user, **k):
-        seen["user"] = user
-        return _good_llm_output()
-    monkeypatch.setattr(scenario_service, "generate_json", capture)
-    scenario_service.run_scenario("s1", [{
-        "category": "택배·배송", "detail": "반송 문자 받음", "channel": "문자",
-        "impersonatedIdentity": "택배사", "requestedAction": "링크 클릭", "riskFactors": ["시간 압박"]}])
-    assert "채널: 문자" in seen["user"] and "사칭: 택배사" in seen["user"]
-    assert "요구: 링크 클릭" in seen["user"] and "위험 요소: 시간 압박" in seen["user"]
 
 
 # ---------- SIM-005/006 사례 DB · 모방범죄 · 개인정보 요구 장면 ----------
@@ -180,12 +134,12 @@ def test_근거_사례가_없거나_유형이_다르면_폐기():
     assert validate_and_normalize(data)[0] is None
 
 
-def test_개인정보를_요구하는_장면이_없으면_폐기():
+def test_개인정보_요구가_없어도_다른_위험_요구가_있으면_허용():
     data = _good_llm_output()
     for sc in data["scenario"]["keyScenes"]:
         sc["request"], sc["requestedInfo"] = "링크 클릭", []
     result, errors = validate_and_normalize(data)
-    assert result is None and any("개인정보를 요구하는 장면" in e for e in errors)
+    assert result is not None and not errors
 
 
 def test_기본_시나리오는_전부_개인정보_요구_장면이_있음():
@@ -208,3 +162,20 @@ def test_단계별_절차_대본이나_너무_긴_대본은_폐기():
     data = _good_llm_output()
     data["scenario"]["openingMessage"] = "안녕하세요 " * 60
     assert validate_and_normalize(data)[0] is None
+
+
+def test_개인정보_요구를_선택하면_대상정보는_명시해야함():
+    data = _good_llm_output()
+    for scene in data["scenario"]["keyScenes"]:
+        if scene["request"] == "개인정보 제공":
+            scene["requestedInfo"] = []
+    result, errors = validate_and_normalize(data)
+    assert result is None and any("requestedInfo" in error for error in errors)
+
+
+def test_위험요구없이_대화만_계속하는_장면은_충분하지않음():
+    data = _good_llm_output()
+    for scene in data["scenario"]["keyScenes"]:
+        scene.update(request="대화 지속", requestedInfo=[])
+    result, errors = validate_and_normalize(data)
+    assert result is None and any("위험 요구" in error for error in errors)

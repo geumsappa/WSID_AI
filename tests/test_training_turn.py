@@ -62,7 +62,7 @@ def test_사기범_대사에_실존기관이나_URL이_있으면_기본_대사�
 
 
 def test_사기범이_개인정보를_요구하는_건_허용(monkeypatch):
-    msg = "판매대금 받으시려면 계좌번호랑 인증번호 알려주세요"
+    msg = "판매대금 받으시려면 계좌번호랑 전화번호 알려주세요"
     monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
         "judgment": {"outcome": "risky"}, "personaMessage": msg, "nextScene": 2,
         "requestType": "개인정보 제공"})
@@ -169,11 +169,13 @@ def test_실제로_입력하면_요구와_제공이_기록되고_값은_안_남�
     assert not r["done"]
 
 
-def test_요구받은_인증번호를_숫자로만_답해도_잡힘():
-    sc = _scenario_of("지인·가족 사칭")  # 장면2: 신분증 사진, 카드번호, 인증번호 요구
-    r = training.run_training_turn("s1", sc, 2, _history("482913"))
-    assert r["infoDisclosure"]["provided"] == ["인증번호"]
-    assert "482913" not in r["maskedText"]
+def test_요구받은_생년월일을_숫자로만_답해도_잡힘():
+    sc = _scenario_of("지인·가족 사칭")
+    sc["keyScenes"][1]["requestedInfo"] = ["생년월일"]
+    r = training.run_training_turn("s1", sc, 2, _history("900101"))
+    assert r["infoDisclosure"]["provided"] == ["생년월일"]
+    assert "900101" not in r["maskedText"]
+
 
 
 def test_이름처럼_패턴이_없는_정보는_LLM_판단으로_기록하고_답변은_통째로_가림(monkeypatch):

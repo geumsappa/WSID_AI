@@ -12,7 +12,7 @@ def test_spring_contract_reuses_context_logic(monkeypatch):
     def run(session_id, history, known_facts=None):
         captured.update(history=history, facts=known_facts)
         return {
-            "extracted_facts": [{"category": "거래(중고·쇼핑)", "detail": "물건을 판매함"}],
+            "state": {"extractedFacts": [{"category": "거래(중고·쇼핑)", "detail": "물건을 판매함"}]},
             "next_question": "물건을 사는 쪽이었나요?",
             "done": False,
         }
@@ -27,7 +27,6 @@ def test_spring_contract_reuses_context_logic(monkeypatch):
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
-    assert data["data"]["facts"]["activity"] == "중고거래"
     assert data["data"]["facts"]["extractedFacts"][0]["detail"] == "물건을 판매함"
     assert data["data"]["nextQuestion"] == "물건을 사는 쪽이었나요?"
     assert data["data"]["canGenerateScenario"] is False

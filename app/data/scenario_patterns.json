@@ -1,0 +1,1927 @@
+{
+  "schemaVersion": 2,
+  "version": "2026-11-21.licensed.2",
+  "useScope": "공공누리 제1유형의 개별 표시를 확인한 텍스트에 한하여 사용. 출처 링크·작성자·일자·재구성 표시를 보존. 원기관 후원 오인 및 제3자 이미지·녹음·개인정보 제외. 공개 화면의 출처 표시는 별도 필수.",
+  "recordMeaning": "수법 또는 접점별 항목이며 동일 문서에서 여러 항목을 추출한다. 항목 수를 독립 피해 사건 수로 해석하지 않음.",
+  "coverageGaps": [
+    "넷플릭스 구독 결제 사칭",
+    "화상면접 앱 설치 사칭",
+    "호텔 예약정보 유출 사칭",
+    "티켓 오류·환불을 빙자한 반복 입금"
+  ],
+  "records": [
+    {
+      "id": "RC-001",
+      "country": "KR",
+      "recordKind": "REPORTED_INVESTIGATION",
+      "description": "가족을 사칭해 휴대전화가 고장 났다고 말하고 개인정보 제공과 원격제어 앱 설치를 요구한 조직의 검거 사례가 발표됐다.",
+      "context": "가족·지인 연락",
+      "targetRole": "가족에게 연락받은 사람",
+      "claimedRoles": [
+        "가족",
+        "지인"
+      ],
+      "requestedActions": [
+        "개인정보 제공",
+        "앱 설치"
+      ],
+      "mechanisms": [
+        "관계에 대한 신뢰 악용",
+        "통화 확인 회피"
+      ],
+      "keywords": [
+        "휴대폰 고장",
+        "메신저",
+        "가족"
+      ],
+      "limits": [
+        "검거 발표이며 확정 판결을 확인한 자료는 아니다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 검거 발표이며 확정 판결을 확인한 자료는 아니다.",
+      "source": {
+        "id": "OL10",
+        "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+        "publisher": "경찰청",
+        "author": null,
+        "title": "사이버사기·사이버금융범죄 집중단속 중간 결과",
+        "publishedDate": "2022-07-20",
+        "evidenceLocation": "PDF 4쪽, 메신저피싱 수사사례 2",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+          "observedNotice": "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "경찰청, 2022-07-20, 「사이버사기·사이버금융범죄 집중단속 중간 결과」. https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "46e2ccd3b19cde0164ca7877f90bd0b5e1b7f1ed5ea1101ed3ee3c7b147a6253"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-002",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "가족이나 지인이라고 주장하면서 긴급 상황을 이유로 금전·상품권 또는 금융정보를 요구하는 수법이 안내됐다.",
+      "context": "가족·지인 관계",
+      "targetRole": "메신저 수신자",
+      "claimedRoles": [
+        "가족",
+        "지인"
+      ],
+      "requestedActions": [
+        "송금",
+        "상품권 제공",
+        "개인정보 제공"
+      ],
+      "mechanisms": [
+        "관계 신뢰 악용",
+        "긴급성 압박"
+      ],
+      "keywords": [
+        "친구",
+        "가족",
+        "메신저"
+      ],
+      "limits": [
+        "사용자의 가족에게 실제 사고가 났다고 단정하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 사용자의 가족에게 실제 사고가 났다고 단정하지 않는다.",
+      "source": {
+        "id": "OL01",
+        "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+        "publisher": "방송통신위원회 등 관계부처 합동",
+        "author": null,
+        "title": "설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보",
+        "publishedDate": "2023-01-16",
+        "evidenceLocation": "본문, 가족·지인 사칭 메신저 피싱 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회 등 관계부처 합동, 2023-01-16, 「설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보」. https://www.korea.kr/news/policyNewsView.do?newsId=148910622 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "5fa8e7e2b2b3eb424b1ea4526917db0a692ceb898af23aab14f71d77a89bb92f"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-003",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "배송 안내 문자를 보낸 뒤 메신저 대화로 옮겨 택배기사를 사칭하는 수법이 안내됐다.",
+      "context": "택배 배송 조회",
+      "targetRole": "택배 안내 수신자",
+      "claimedRoles": [
+        "택배기사"
+      ],
+      "requestedActions": [
+        "링크 클릭",
+        "메신저 대화"
+      ],
+      "mechanisms": [
+        "배송 확인 심리 악용",
+        "대화 채널 이동"
+      ],
+      "keywords": [
+        "택배",
+        "배송",
+        "선물"
+      ],
+      "limits": [
+        "주문·배송 사실과 가상 사칭 연락을 구분한다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 주문·배송 사실과 가상 사칭 연락을 구분한다.",
+      "source": {
+        "id": "OL01",
+        "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+        "publisher": "방송통신위원회 등 관계부처 합동",
+        "author": null,
+        "title": "설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보",
+        "publishedDate": "2023-01-16",
+        "evidenceLocation": "본문, 택배 문자 이후 메신저 유도 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회 등 관계부처 합동, 2023-01-16, 「설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보」. https://www.korea.kr/news/policyNewsView.do?newsId=148910622 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "5fa8e7e2b2b3eb424b1ea4526917db0a692ceb898af23aab14f71d77a89bb92f"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-003",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "교통법규 위반이나 과태료 고지처럼 꾸민 문자로 악성 앱 경로나 전화 연결을 유도하는 스미싱 위험이 안내됐다.",
+      "context": "차량 운전·교통 안내",
+      "targetRole": "교통 안내 수신자",
+      "claimedRoles": [
+        "교통 담당 기관"
+      ],
+      "requestedActions": [
+        "링크 클릭",
+        "앱 설치"
+      ],
+      "mechanisms": [
+        "공적 권위 사칭",
+        "불이익 우려 악용"
+      ],
+      "keywords": [
+        "과태료",
+        "운전",
+        "범칙금"
+      ],
+      "limits": [
+        "운전했다는 말만으로 실제 위반이나 벌금 발생을 추가하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 운전했다는 말만으로 실제 위반이나 벌금 발생을 추가하지 않는다.",
+      "source": {
+        "id": "OL01",
+        "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+        "publisher": "방송통신위원회 등 관계부처 합동",
+        "author": null,
+        "title": "설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보",
+        "publishedDate": "2023-01-16",
+        "evidenceLocation": "본문, 공공기관 사칭 스미싱 및 정의 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회 등 관계부처 합동, 2023-01-16, 「설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보」. https://www.korea.kr/news/policyNewsView.do?newsId=148910622 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "5fa8e7e2b2b3eb424b1ea4526917db0a692ceb898af23aab14f71d77a89bb92f"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-020",
+      "country": "KR",
+      "recordKind": "REPORTED_SUPPORT_CASE",
+      "description": "건강검진 통지로 위장한 문자의 링크에 접속한 뒤 악성 앱 설치와 소액결제 피해를 입었다는 상담 사례가 소개됐다.",
+      "context": "건강검진 안내",
+      "targetRole": "건강검진 문자 수신자",
+      "claimedRoles": [
+        "건강검진 안내 기관"
+      ],
+      "requestedActions": [
+        "링크 클릭",
+        "앱 설치"
+      ],
+      "mechanisms": [
+        "건강정보 확인 심리 악용"
+      ],
+      "keywords": [
+        "건강검진",
+        "검진 결과"
+      ],
+      "limits": [
+        "상담 사례이며 모든 검진 안내 문자나 링크가 악성이라는 뜻은 아니다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 상담 사례이며 모든 검진 안내 문자나 링크가 악성이라는 뜻은 아니다.",
+      "source": {
+        "id": "OL02",
+        "url": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+        "publisher": "방송통신위원회",
+        "author": null,
+        "title": "유명인·가족 등 사칭, 절대 돈 보내지 마세요",
+        "publishedDate": "2024-04-08",
+        "evidenceLocation": "본문, 예시사례2 기관 사칭 피해",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+          "observedNotice": "방송미디어통신위원회의 해당 저작물은 \"공공누리 1유형 (출처표시)\" 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회, 2024-04-08, 「유명인·가족 등 사칭, 절대 돈 보내지 마세요」. https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "aa221436856000a66c47db02fff35df811aec2a20de813a8820449c536631a59"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-006",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "유명인을 사칭해 친밀감을 쌓은 뒤 입국·투자·만남을 이유로 돈을 요구하는 수법이 소개됐다.",
+      "context": "유명인 관련 SNS 교류",
+      "targetRole": "온라인 연락 상대",
+      "claimedRoles": [
+        "유명인 사칭자"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "정서적 신뢰 악용",
+        "만남 명분"
+      ],
+      "keywords": [
+        "SNS",
+        "연애",
+        "팬"
+      ],
+      "limits": [
+        "실제 유명인의 사기 가담을 주장하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 실제 유명인의 사기 가담을 주장하지 않는다.",
+      "source": {
+        "id": "OL02",
+        "url": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+        "publisher": "방송통신위원회",
+        "author": null,
+        "title": "유명인·가족 등 사칭, 절대 돈 보내지 마세요",
+        "publishedDate": "2024-04-08",
+        "evidenceLocation": "본문, 유명인 사칭 연애빙자 사기",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+          "observedNotice": "방송미디어통신위원회의 해당 저작물은 \"공공누리 1유형 (출처표시)\" 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회, 2024-04-08, 「유명인·가족 등 사칭, 절대 돈 보내지 마세요」. https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "aa221436856000a66c47db02fff35df811aec2a20de813a8820449c536631a59"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-007",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "유명인 투자 후기와 고수익 광고를 내세워 앱 설치나 특정 계좌 입금을 유도하는 수법이 소개됐다.",
+      "context": "투자 광고 탐색",
+      "targetRole": "투자 관심자",
+      "claimedRoles": [
+        "유명인·투자 전문가 사칭자"
+      ],
+      "requestedActions": [
+        "앱 설치",
+        "송금"
+      ],
+      "mechanisms": [
+        "권위 차용",
+        "수익 기대 악용"
+      ],
+      "keywords": [
+        "투자",
+        "광고",
+        "수익"
+      ],
+      "limits": [
+        "유명인 광고를 봤다는 사실만으로 투자 참여를 추가하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 유명인 광고를 봤다는 사실만으로 투자 참여를 추가하지 않는다.",
+      "source": {
+        "id": "OL02",
+        "url": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+        "publisher": "방송통신위원회",
+        "author": null,
+        "title": "유명인·가족 등 사칭, 절대 돈 보내지 마세요",
+        "publishedDate": "2024-04-08",
+        "evidenceLocation": "본문, 유명인 사칭 투자 사기",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+          "observedNotice": "방송미디어통신위원회의 해당 저작물은 \"공공누리 1유형 (출처표시)\" 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회, 2024-04-08, 「유명인·가족 등 사칭, 절대 돈 보내지 마세요」. https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "aa221436856000a66c47db02fff35df811aec2a20de813a8820449c536631a59"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-008",
+      "country": "KR",
+      "recordKind": "REPORTED_SUPPORT_CASE",
+      "description": "사기 피해 게시글을 보고 해결을 돕겠다는 상대가 접근해 카드 관련 정보를 받은 뒤 추가 결제 피해가 생긴 상담 사례가 소개됐다.",
+      "context": "이전 사기 피해 공개 이후",
+      "targetRole": "피해 상담을 찾는 사람",
+      "claimedRoles": [
+        "피해 해결 조력자"
+      ],
+      "requestedActions": [
+        "카드 관련 정보 제공"
+      ],
+      "mechanisms": [
+        "피해 회복 기대 악용",
+        "경험 공유를 통한 신뢰 형성"
+      ],
+      "keywords": [
+        "피해 회복",
+        "도움",
+        "재사기"
+      ],
+      "limits": [
+        "실제 피해 경험이 없는 사용자에게 과거 피해 이력을 추가하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 실제 피해 경험이 없는 사용자에게 과거 피해 이력을 추가하지 않는다.",
+      "source": {
+        "id": "OL02",
+        "url": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+        "publisher": "방송통신위원회",
+        "author": null,
+        "title": "유명인·가족 등 사칭, 절대 돈 보내지 마세요",
+        "publishedDate": "2024-04-08",
+        "evidenceLocation": "본문, 예시사례1의 2차 피해",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+          "observedNotice": "방송미디어통신위원회의 해당 저작물은 \"공공누리 1유형 (출처표시)\" 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회, 2024-04-08, 「유명인·가족 등 사칭, 절대 돈 보내지 마세요」. https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "aa221436856000a66c47db02fff35df811aec2a20de813a8820449c536631a59"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-009",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "기업 쇼핑몰이나 고객센터를 닮은 사이트·SNS에서 할인 등을 내세워 별도 계좌 입금을 요구하는 수법이 소개됐다.",
+      "context": "온라인 쇼핑·고객센터 문의",
+      "targetRole": "쇼핑 이용자",
+      "claimedRoles": [
+        "쇼핑몰·고객센터"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "기업 외형 모방",
+        "할인 기대 악용"
+      ],
+      "keywords": [
+        "쇼핑몰",
+        "할인",
+        "고객센터"
+      ],
+      "limits": [
+        "정상 쇼핑몰의 계좌 결제 전체를 사기라고 단정하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 정상 쇼핑몰의 계좌 결제 전체를 사기라고 단정하지 않는다.",
+      "source": {
+        "id": "OL02",
+        "url": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+        "publisher": "방송통신위원회",
+        "author": null,
+        "title": "유명인·가족 등 사칭, 절대 돈 보내지 마세요",
+        "publishedDate": "2024-04-08",
+        "evidenceLocation": "본문, 기업 쇼핑몰·고객센터 사칭 사기",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+          "observedNotice": "방송미디어통신위원회의 해당 저작물은 \"공공누리 1유형 (출처표시)\" 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "방송통신위원회, 2024-04-08, 「유명인·가족 등 사칭, 절대 돈 보내지 마세요」. https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "aa221436856000a66c47db02fff35df811aec2a20de813a8820449c536631a59"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-027",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "지원 대상·지급 금액·신청 안내를 빙자해 정부나 카드사인 것처럼 접근하는 스미싱 위험이 안내됐다.",
+      "context": "지원 혜택 신청",
+      "targetRole": "지원금 안내 수신자",
+      "claimedRoles": [
+        "정부·카드사·은행"
+      ],
+      "requestedActions": [
+        "링크 클릭"
+      ],
+      "mechanisms": [
+        "지원 혜택 기대 악용",
+        "공적 주체 사칭"
+      ],
+      "keywords": [
+        "지원금",
+        "소비쿠폰",
+        "지역화폐"
+      ],
+      "limits": [
+        "2025년 특정 사업 안내다. 모든 현재 지원사업의 발송 규칙으로 일반화하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 2025년 특정 사업 안내다. 모든 현재 지원사업의 발송 규칙으로 일반화하지 않는다.",
+      "source": {
+        "id": "OL03",
+        "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148945781",
+        "publisher": "관계부처 합동·대한민국 정책브리핑",
+        "author": null,
+        "title": "소비쿠폰 문자에 URL 링크있다면 100% 사기",
+        "publishedDate": "2025-07-10",
+        "evidenceLocation": "본문, 소비쿠폰 신청·지급 시기 사칭 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148945781",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "관계부처 합동·대한민국 정책브리핑, 2025-07-10, 「소비쿠폰 문자에 URL 링크있다면 100% 사기」. https://www.korea.kr/news/policyNewsView.do?newsId=148945781 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "568252cad1fd0bfdcc7773f3f1c29770d841246507de6f01363c2cb50b4da853"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-011",
+      "country": "KR",
+      "recordKind": "AUTHOR_REPORTED_EXPERIENCE",
+      "description": "중고거래 판매자가 안전결제를 피하고 직접 계좌 송금을 요구해 작성자가 거래를 중단한 경험이 소개됐다.",
+      "context": "중고 물품 구매",
+      "targetRole": "중고거래 구매자",
+      "claimedRoles": [
+        "물품 판매자"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "거래 보호 절차 회피"
+      ],
+      "keywords": [
+        "중고거래",
+        "노트북",
+        "안전결제"
+      ],
+      "limits": [
+        "거래 중단 경험이며 법원에서 확정된 범죄 사실로 표현하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 거래 중단 경험이며 법원에서 확정된 범죄 사실로 표현하지 않는다.",
+      "source": {
+        "id": "OL04",
+        "url": "https://www.korea.kr/news/reporterView.do?newsId=148932094",
+        "publisher": "대한민국 정책브리핑",
+        "author": "양은빈",
+        "title": "온라인서비스 피해 상담·지원이 필요하다면? 온라인피해365센터!",
+        "publishedDate": "2024-08-14",
+        "evidenceLocation": "본문, 작성자의 중고거래 경험 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/reporterView.do?newsId=148932094",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "대한민국 정책브리핑 / 작성자 양은빈, 2024-08-14, 「온라인서비스 피해 상담·지원이 필요하다면? 온라인피해365센터!」. https://www.korea.kr/news/reporterView.do?newsId=148932094 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "7af61e1861886addadf74c165b47e676285ba6ce2409394769424794661b0f79"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-012",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "판매자에게는 구매자처럼, 구매자에게는 판매자처럼 접근해 중간에서 돈을 가로채는 삼자 사기가 설명됐다.",
+      "context": "개인 간 중고 거래",
+      "targetRole": "물품 판매자·구매자",
+      "claimedRoles": [
+        "구매자·판매자"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "거래 당사자 역할 혼동"
+      ],
+      "keywords": [
+        "중고거래",
+        "삼자 사기",
+        "직거래"
+      ],
+      "limits": [
+        "실제 판매자와 사칭자의 역할을 혼동하거나 사용자의 역할을 바꾸지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 실제 판매자와 사칭자의 역할을 혼동하거나 사용자의 역할을 바꾸지 않는다.",
+      "source": {
+        "id": "OL05",
+        "url": "https://www.korea.kr/news/reporterView.do?newsId=148927935",
+        "publisher": "대한민국 정책브리핑",
+        "author": "조민서",
+        "title": "중고거래 안전하게 이용하려면",
+        "publishedDate": "2024-04-18",
+        "evidenceLocation": "본문, 삼자 사기 설명 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/reporterView.do?newsId=148927935",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "대한민국 정책브리핑 / 작성자 조민서, 2024-04-18, 「중고거래 안전하게 이용하려면」. https://www.korea.kr/news/reporterView.do?newsId=148927935 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "1e57b1ce20a10ec949895f827219a68143237741cc041c04a80985a7b69ae031"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-013",
+      "country": "KR",
+      "recordKind": "AUTHOR_REPORTED_EXPERIENCE",
+      "description": "저렴한 노트북 판매 글을 보고 선입금한 뒤 판매자가 연락을 끊었다는 작성자 경험이 소개됐다.",
+      "context": "저렴한 중고 노트북 구매",
+      "targetRole": "중고 물품 구매자",
+      "claimedRoles": [
+        "중고 물품 판매자"
+      ],
+      "requestedActions": [
+        "선입금"
+      ],
+      "mechanisms": [
+        "저가 매물로 유인",
+        "선입금 후 연락 단절"
+      ],
+      "keywords": [
+        "중고 노트북",
+        "저렴한 매물"
+      ],
+      "limits": [
+        "작성자 경험이며 수사·판결의 최종 결과를 확인한 자료가 아니다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 작성자 경험이며 수사·판결의 최종 결과를 확인한 자료가 아니다.",
+      "source": {
+        "id": "OL06",
+        "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148833094",
+        "publisher": "대한민국 정책브리핑",
+        "author": null,
+        "title": "꼼꼼하다 자부했던 필자, 중고거래 피해봤다",
+        "publishedDate": "2017-05-29",
+        "evidenceLocation": "본문, 작성자의 노트북 선입금 경험 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148833094",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "대한민국 정책브리핑, 2017-05-29, 「꼼꼼하다 자부했던 필자, 중고거래 피해봤다」. https://www.korea.kr/briefing/policyBriefingView.do?newsId=148833094 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "3239bf15660e9d71e720a6eb26b1606b92b6aca1115328231f01a54806a41ac7"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-014",
+      "country": "KR",
+      "recordKind": "REPORTED_ATTEMPT",
+      "description": "교육 담당자를 사칭해 상담과 미팅 약속으로 신뢰를 쌓은 뒤 안전검사에 필요하다며 물품 대리발주와 급한 송금을 요청한 사례가 소개됐다.",
+      "context": "교육 업무·업체 상담",
+      "targetRole": "교육·납품 업체 담당자",
+      "claimedRoles": [
+        "공공기관 교육 담당자"
+      ],
+      "requestedActions": [
+        "대리구매",
+        "송금"
+      ],
+      "mechanisms": [
+        "기존 업무 맥락 악용",
+        "차액 수익 제시",
+        "긴급성 압박"
+      ],
+      "keywords": [
+        "교육",
+        "업체",
+        "안전검사",
+        "물품 발주"
+      ],
+      "limits": [
+        "확인된 예시는 구매 거절로 이어졌다. 송금 피해가 확정됐다고 바꾸지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 확인된 예시는 구매 거절로 이어졌다. 송금 피해가 확정됐다고 바꾸지 않는다.",
+      "source": {
+        "id": "OL07",
+        "url": "https://www.kca.go.kr/home/sub.do?menukey=4003&mode=view&no=1004452737",
+        "publisher": "한국소비자원",
+        "author": null,
+        "title": "한국소비자원 직원 사칭 피해 주의 안내",
+        "publishedDate": "2026-04-09",
+        "evidenceLocation": "본문, 실제 사례 항목",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.kca.go.kr/home/sub.do?menukey=4003&mode=view&no=1004452737",
+          "observedNotice": "이 게시물은 \"공공누리 제1유형(출처표시)\" 조건에 따라 자유롭게 이용이 가능합니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "한국소비자원, 2026-04-09, 「한국소비자원 직원 사칭 피해 주의 안내」. https://www.kca.go.kr/home/sub.do?menukey=4003&mode=view&no=1004452737 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "3fc7ff69dddf1364740bd321a7c8053cb501451659b627e4da2590eb74ce64ca"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-008",
+      "country": "KR",
+      "recordKind": "PREVENTION_WARNING",
+      "description": "판매자가 별도로 보내는 안전결제 링크가 가짜 결제 사이트일 수 있어 주소를 확인하라는 예방 수칙이 제시됐다.",
+      "context": "중고 물품 택배 거래",
+      "targetRole": "물품 구매자",
+      "claimedRoles": [
+        "물품 판매자·안전결제 서비스"
+      ],
+      "requestedActions": [
+        "링크 클릭"
+      ],
+      "mechanisms": [
+        "안전장치 사칭"
+      ],
+      "keywords": [
+        "중고거래",
+        "안전결제",
+        "택배 거래"
+      ],
+      "limits": [
+        "예방 수칙이며 특정 링크나 피해자의 확정 사건이 아니다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 예방 수칙이며 특정 링크나 피해자의 확정 사건이 아니다.",
+      "source": {
+        "id": "OL10",
+        "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+        "publisher": "경찰청",
+        "author": null,
+        "title": "사이버사기·사이버금융범죄 집중단속 중간 결과",
+        "publishedDate": "2022-07-20",
+        "evidenceLocation": "PDF 5쪽, 직거래 사기 예방 수칙 3",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+          "observedNotice": "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "경찰청, 2022-07-20, 「사이버사기·사이버금융범죄 집중단속 중간 결과」. https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "46e2ccd3b19cde0164ca7877f90bd0b5e1b7f1ed5ea1101ed3ee3c7b147a6253"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-016",
+      "country": "KR",
+      "recordKind": "REPORTED_INVESTIGATION",
+      "description": "중고거래 사이트에 콘서트 표를 판매한다는 허위 글을 올려 돈을 편취한 피의자의 검거 사례가 발표됐다.",
+      "context": "공연 티켓 양도 거래",
+      "targetRole": "공연 티켓 구매자",
+      "claimedRoles": [
+        "티켓 판매자"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "희소한 표에 대한 수요 악용",
+        "허위 판매 글"
+      ],
+      "keywords": [
+        "공연",
+        "티켓",
+        "콘서트",
+        "양도"
+      ],
+      "limits": [
+        "반복 입금이나 환불 수수료 요구는 이 사례로 입증되지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 반복 입금이나 환불 수수료 요구는 이 사례로 입증되지 않는다.",
+      "source": {
+        "id": "OL10",
+        "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+        "publisher": "경찰청",
+        "author": null,
+        "title": "사이버사기·사이버금융범죄 집중단속 중간 결과",
+        "publishedDate": "2022-07-20",
+        "evidenceLocation": "PDF 4쪽, 직거래 사기 수사사례 5",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+          "observedNotice": "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "경찰청, 2022-07-20, 「사이버사기·사이버금융범죄 집중단속 중간 결과」. https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "46e2ccd3b19cde0164ca7877f90bd0b5e1b7f1ed5ea1101ed3ee3c7b147a6253"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-012",
+      "country": "KR",
+      "recordKind": "REPORTED_INVESTIGATION",
+      "description": "주식·가상자산 관련 사기 사이트를 만들고 홍보 문자를 보내 투자금을 편취한 조직의 검거 사례가 발표됐다.",
+      "context": "주식·가상자산 투자 정보",
+      "targetRole": "개인 투자자",
+      "claimedRoles": [
+        "투자 서비스 운영자"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "허위 투자 플랫폼",
+        "홍보 문자 유인"
+      ],
+      "keywords": [
+        "주식",
+        "코인",
+        "가상자산",
+        "투자"
+      ],
+      "limits": [
+        "검거 발표이며 사용자에게 실제 투자를 했다는 과거를 추가하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 검거 발표이며 사용자에게 실제 투자를 했다는 과거를 추가하지 않는다.",
+      "source": {
+        "id": "OL10",
+        "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+        "publisher": "경찰청",
+        "author": null,
+        "title": "사이버사기·사이버금융범죄 집중단속 중간 결과",
+        "publishedDate": "2022-07-20",
+        "evidenceLocation": "PDF 4쪽, 투자 사기 수사사례 1·2",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+          "observedNotice": "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "경찰청, 2022-07-20, 「사이버사기·사이버금융범죄 집중단속 중간 결과」. https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "46e2ccd3b19cde0164ca7877f90bd0b5e1b7f1ed5ea1101ed3ee3c7b147a6253"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-018",
+      "country": "KR",
+      "recordKind": "REPORTED_INVESTIGATION",
+      "description": "NFT 투자에 참여하면 나중에 다른 가상자산으로 교환 가능한 토큰을 주겠다고 홍보해 자금을 편취한 검거 사례가 소개됐다.",
+      "context": "NFT·토큰 투자 탐색",
+      "targetRole": "디지털 자산 투자 관심자",
+      "claimedRoles": [
+        "NFT 투자 프로젝트 운영자"
+      ],
+      "requestedActions": [
+        "가상자산 지급"
+      ],
+      "mechanisms": [
+        "장래 교환 가치 약속",
+        "신규 투자 기회 유인"
+      ],
+      "keywords": [
+        "NFT",
+        "토큰",
+        "투자"
+      ],
+      "limits": [
+        "원문의 특정 프로젝트 명칭·실제 지갑·공격 경로는 재현하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 원문의 특정 프로젝트 명칭·실제 지갑·공격 경로는 재현하지 않는다.",
+      "source": {
+        "id": "OL10",
+        "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+        "publisher": "경찰청",
+        "author": null,
+        "title": "사이버사기·사이버금융범죄 집중단속 중간 결과",
+        "publishedDate": "2022-07-20",
+        "evidenceLocation": "PDF 4쪽, 투자 사기 수사사례 3",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+          "observedNotice": "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "경찰청, 2022-07-20, 「사이버사기·사이버금융범죄 집중단속 중간 결과」. https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "46e2ccd3b19cde0164ca7877f90bd0b5e1b7f1ed5ea1101ed3ee3c7b147a6253"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-019",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "범죄 연루와 구속 가능성을 주장하고 주변과의 상담을 막은 뒤 자산 검사를 명분으로 돈이나 상품권 등을 요구하는 수법이 설명됐다.",
+      "context": "금융·수사 관련 연락",
+      "targetRole": "수사기관 사칭 연락 수신자",
+      "claimedRoles": [
+        "수사기관·금융당국"
+      ],
+      "requestedActions": [
+        "송금",
+        "상품권 번호 전달"
+      ],
+      "mechanisms": [
+        "공포 조성",
+        "주변 확인 차단",
+        "자산 검사 명분"
+      ],
+      "keywords": [
+        "수사",
+        "검사",
+        "기관 사칭",
+        "자산 보호"
+      ],
+      "limits": [
+        "실제 수사나 범죄 연루를 사용자 사실로 만들지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 실제 수사나 범죄 연루를 사용자 사실로 만들지 않는다.",
+      "source": {
+        "id": "OL11",
+        "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213",
+        "publisher": "경찰청",
+        "author": null,
+        "title": "대출까지 받게 하는 전화금융사기, 회복 불가능한 피해로 이어질 수 있어 예방법을 반드시 숙지해야",
+        "publishedDate": "2023-07-05",
+        "evidenceLocation": "PDF 3쪽, 기관사칭 시나리오 설명",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213",
+          "observedNotice": "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "경찰청, 2023-07-05, 「대출까지 받게 하는 전화금융사기, 회복 불가능한 피해로 이어질 수 있어 예방법을 반드시 숙지해야」. https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "fca3c45b90f242c32a82e879bb9ad0badc6fb618718117a1cb562ee573aa0487"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-020",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "하지 않은 해외 결제나 계좌 개설을 알리는 미끼 문자에서 확인 전화를 유도한 뒤 기관사칭 사기로 이어지는 흐름이 소개됐다.",
+      "context": "주문하지 않은 결제·계좌 안내",
+      "targetRole": "문자 수신자",
+      "claimedRoles": [
+        "결제 안내 주체·수사기관"
+      ],
+      "requestedActions": [
+        "전화 연결"
+      ],
+      "mechanisms": [
+        "예상 밖 거래에 대한 불안",
+        "여러 역할의 연계 사칭"
+      ],
+      "keywords": [
+        "해외 결제",
+        "계좌 개설",
+        "택배 반송"
+      ],
+      "limits": [
+        "사용자가 실제 해외 결제를 했다고 가정하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 사용자가 실제 해외 결제를 했다고 가정하지 않는다.",
+      "source": {
+        "id": "OL11",
+        "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213",
+        "publisher": "경찰청",
+        "author": null,
+        "title": "대출까지 받게 하는 전화금융사기, 회복 불가능한 피해로 이어질 수 있어 예방법을 반드시 숙지해야",
+        "publishedDate": "2023-07-05",
+        "evidenceLocation": "PDF 2쪽 및 5쪽, 미끼 문자와 피해 유형",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213",
+          "observedNotice": "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "경찰청, 2023-07-05, 「대출까지 받게 하는 전화금융사기, 회복 불가능한 피해로 이어질 수 있어 예방법을 반드시 숙지해야」. https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "fca3c45b90f242c32a82e879bb9ad0badc6fb618718117a1cb562ee573aa0487"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-006",
+      "country": "KR",
+      "recordKind": "OBSERVED_ATTEMPT",
+      "description": "공유 이동장치의 정상 QR 위에 다른 스티커를 붙여 악성 앱이나 유해 사이트로 유도하는 국내 시도 유형이 안내됐다.",
+      "context": "공유 킥보드·자전거 이용",
+      "targetRole": "현장 QR 이용자",
+      "claimedRoles": [
+        "이동수단 이용 서비스"
+      ],
+      "requestedActions": [
+        "QR 스캔",
+        "앱 설치"
+      ],
+      "mechanisms": [
+        "정상 접점 위장",
+        "QR 스티커 덧붙임"
+      ],
+      "keywords": [
+        "킥보드",
+        "공유 자전거",
+        "QR",
+        "큐싱"
+      ],
+      "limits": [
+        "QR을 스캔하기만 하면 항상 감염된다고 서술하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. QR을 스캔하기만 하면 항상 감염된다고 서술하지 않는다.",
+      "source": {
+        "id": "OL12",
+        "url": "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371",
+        "publisher": "과학기술정보통신부 등 관계부처",
+        "author": null,
+        "title": "정부, 큐싱 피해로부터 우리 청소년들을 지키기 위해 적극 나선다",
+        "publishedDate": "2024-10-23",
+        "evidenceLocation": "ODT 본문, 국내 확인된 시도 유형 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "과학기술정보통신부 등 관계부처, 2024-10-23, 「정부, 큐싱 피해로부터 우리 청소년들을 지키기 위해 적극 나선다」. https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "c02955b07bd2698e5e655a2b697a2306320f3189b0cdd81a347002402bf80124"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-022",
+      "country": "KR",
+      "recordKind": "OBSERVED_ATTEMPT",
+      "description": "광고나 이메일에 QR을 넣고 안전거래 등에 필요한 앱이라고 속여 설치를 요구하는 시도가 안내됐다.",
+      "context": "온라인 광고·이메일 확인",
+      "targetRole": "QR 포함 안내 수신자",
+      "claimedRoles": [
+        "안전거래 안내 주체"
+      ],
+      "requestedActions": [
+        "QR 스캔",
+        "앱 설치"
+      ],
+      "mechanisms": [
+        "안전 절차 위장",
+        "간편 설치 명분"
+      ],
+      "keywords": [
+        "QR",
+        "광고",
+        "이메일",
+        "안전거래"
+      ],
+      "limits": [
+        "실제 악성 앱·QR·접속 주소나 조작법은 제공하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 실제 악성 앱·QR·접속 주소나 조작법은 제공하지 않는다.",
+      "source": {
+        "id": "OL12",
+        "url": "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371",
+        "publisher": "과학기술정보통신부 등 관계부처",
+        "author": null,
+        "title": "정부, 큐싱 피해로부터 우리 청소년들을 지키기 위해 적극 나선다",
+        "publishedDate": "2024-10-23",
+        "evidenceLocation": "ODT 본문, 온라인 광고·메일의 QR 삽입 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "과학기술정보통신부 등 관계부처, 2024-10-23, 「정부, 큐싱 피해로부터 우리 청소년들을 지키기 위해 적극 나선다」. https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "c02955b07bd2698e5e655a2b697a2306320f3189b0cdd81a347002402bf80124"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-011",
+      "country": "KR",
+      "recordKind": "REPORTED_COMPLAINT",
+      "description": "리뷰 부업 참여자를 단체방으로 옮긴 뒤 동료 역할의 사람들이 송금을 재촉했다는 민원이 소개됐다.",
+      "context": "재택 부업·리뷰 업무",
+      "targetRole": "부업 참여자",
+      "claimedRoles": [
+        "부업 관리자·가짜 동료"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "소액 업무로 신뢰 형성",
+        "집단 압박"
+      ],
+      "keywords": [
+        "재택",
+        "리뷰",
+        "부업",
+        "팀미션"
+      ],
+      "limits": [
+        "민원인의 신고 내용이며 확정 판결로 표현하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 민원인의 신고 내용이며 확정 판결로 표현하지 않는다.",
+      "source": {
+        "id": "OL18",
+        "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+        "publisher": "국민권익위원회",
+        "author": null,
+        "title": "점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령",
+        "publishedDate": "2025-05-22",
+        "evidenceLocation": "PDF 3쪽, 아르바이트 미끼형 민원 1",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+          "observedNotice": "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "국민권익위원회, 2025-05-22, 「점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령」. https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "33037d8888aced385fea8d04a00d9229bd14e3e41e210485cf97cefadb1b2221"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-024",
+      "country": "KR",
+      "recordKind": "REPORTED_COMPLAINT",
+      "description": "물품 구매금과 수익을 돌려준다는 작은 업무로 시작해 단체방의 등급별 고수익 구매로 송금을 유도했다는 민원이 소개됐다.",
+      "context": "물품 리뷰·보상환급 부업",
+      "targetRole": "부업 참여자",
+      "claimedRoles": [
+        "리뷰 부업 운영자"
+      ],
+      "requestedActions": [
+        "물품 구매",
+        "송금"
+      ],
+      "mechanisms": [
+        "보상환급 기대",
+        "단계별 수익 약속"
+      ],
+      "keywords": [
+        "페이백",
+        "리뷰",
+        "등급",
+        "부업"
+      ],
+      "limits": [
+        "업무 대가가 실제 지급되었다는 내용과 미래 수익 주장을 구분한다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 업무 대가가 실제 지급되었다는 내용과 미래 수익 주장을 구분한다.",
+      "source": {
+        "id": "OL18",
+        "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+        "publisher": "국민권익위원회",
+        "author": null,
+        "title": "점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령",
+        "publishedDate": "2025-05-22",
+        "evidenceLocation": "PDF 4쪽 첫 번째 민원",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+          "observedNotice": "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "국민권익위원회, 2025-05-22, 「점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령」. https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "33037d8888aced385fea8d04a00d9229bd14e3e41e210485cf97cefadb1b2221"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-025",
+      "country": "KR",
+      "recordKind": "REPORTED_COMPLAINT",
+      "description": "해외배송 쇼핑몰에 주문하고 결제했지만 배송과 환불을 받지 못했다는 민원이 소개됐다.",
+      "context": "해외직구·온라인 쇼핑",
+      "targetRole": "상품 구매자",
+      "claimedRoles": [
+        "온라인 쇼핑몰"
+      ],
+      "requestedActions": [
+        "결제"
+      ],
+      "mechanisms": [
+        "배송 기대",
+        "환불 지연"
+      ],
+      "keywords": [
+        "해외직구",
+        "배송",
+        "환불",
+        "쇼핑몰"
+      ],
+      "limits": [
+        "배송 지연 전체가 사기라는 뜻은 아니며 수사 확정 사실로 일반화하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 배송 지연 전체가 사기라는 뜻은 아니며 수사 확정 사실로 일반화하지 않는다.",
+      "source": {
+        "id": "OL18",
+        "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+        "publisher": "국민권익위원회",
+        "author": null,
+        "title": "점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령",
+        "publishedDate": "2025-05-22",
+        "evidenceLocation": "PDF 3쪽, 쇼핑몰·해외직구 민원 1",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+          "observedNotice": "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "국민권익위원회, 2025-05-22, 「점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령」. https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "33037d8888aced385fea8d04a00d9229bd14e3e41e210485cf97cefadb1b2221"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-026",
+      "country": "KR",
+      "recordKind": "REPORTED_COMPLAINT",
+      "description": "SNS 라이브로 구매자와 친분을 쌓고 의류를 팔던 사업자에게서 미배송이 지속됐다는 민원이 소개됐다.",
+      "context": "SNS 의류 판매·라이브 쇼핑",
+      "targetRole": "의류 구매자",
+      "claimedRoles": [
+        "SNS 의류 판매자"
+      ],
+      "requestedActions": [
+        "결제"
+      ],
+      "mechanisms": [
+        "판매자와의 친분 신뢰",
+        "반복 미배송"
+      ],
+      "keywords": [
+        "옷",
+        "의류",
+        "라이브",
+        "쇼핑",
+        "SNS"
+      ],
+      "limits": [
+        "사업장 변경과 범죄 의혹은 민원인의 주장이다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 사업장 변경과 범죄 의혹은 민원인의 주장이다.",
+      "source": {
+        "id": "OL18",
+        "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+        "publisher": "국민권익위원회",
+        "author": null,
+        "title": "점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령",
+        "publishedDate": "2025-05-22",
+        "evidenceLocation": "PDF 3쪽, 쇼핑몰·해외직구 민원 3",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+          "observedNotice": "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "국민권익위원회, 2025-05-22, 「점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령」. https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "33037d8888aced385fea8d04a00d9229bd14e3e41e210485cf97cefadb1b2221"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-027",
+      "country": "KR",
+      "recordKind": "REPORTED_COMPLAINT",
+      "description": "고수익 광고를 보고 입금한 후 메신저로 추가 투자를 권유받고 출금이 되지 않았다는 민원이 소개됐다.",
+      "context": "온라인 투자 광고",
+      "targetRole": "투자 참여자",
+      "claimedRoles": [
+        "투자 기업·상담자"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "광고로 신뢰 형성",
+        "추가 투자 유도"
+      ],
+      "keywords": [
+        "광고",
+        "투자",
+        "추가 입금",
+        "출금"
+      ],
+      "limits": [
+        "원문이 뒷받침하지 않는 출금 수수료나 추가 인증 요구는 사실 근거로 주장하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 원문이 뒷받침하지 않는 출금 수수료나 추가 인증 요구는 사실 근거로 주장하지 않는다.",
+      "source": {
+        "id": "OL18",
+        "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+        "publisher": "국민권익위원회",
+        "author": null,
+        "title": "점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령",
+        "publishedDate": "2025-05-22",
+        "evidenceLocation": "PDF 4쪽, 투자 유도형 민원 2",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+          "observedNotice": "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "국민권익위원회, 2025-05-22, 「점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령」. https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "33037d8888aced385fea8d04a00d9229bd14e3e41e210485cf97cefadb1b2221"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-017",
+      "country": "KR",
+      "recordKind": "REPORTED_COMPLAINT",
+      "description": "채팅앱에서 친밀감을 쌓은 상대의 사업·투자 제안에 따라 제삼자 명의 계좌로 송금했다는 민원이 소개됐다.",
+      "context": "온라인 친분·투자 권유",
+      "targetRole": "온라인 대화 상대",
+      "claimedRoles": [
+        "친분을 쌓은 상대"
+      ],
+      "requestedActions": [
+        "송금"
+      ],
+      "mechanisms": [
+        "정서적 신뢰 악용",
+        "친분에서 투자로 전환"
+      ],
+      "keywords": [
+        "채팅앱",
+        "친분",
+        "연애",
+        "투자"
+      ],
+      "limits": [
+        "친구를 만났다는 말만으로 사용자의 연애 관계나 투자 이력을 만들지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 친구를 만났다는 말만으로 사용자의 연애 관계나 투자 이력을 만들지 않는다.",
+      "source": {
+        "id": "OL18",
+        "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+        "publisher": "국민권익위원회",
+        "author": null,
+        "title": "점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령",
+        "publishedDate": "2025-05-22",
+        "evidenceLocation": "PDF 4쪽, 연애 빙자 민원 1",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+          "observedNotice": "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "국민권익위원회, 2025-05-22, 「점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령」. https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "33037d8888aced385fea8d04a00d9229bd14e3e41e210485cf97cefadb1b2221"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "RC-024",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "무료쿠폰이나 결혼식 초대 등을 내세운 문자에 외부 주소를 넣어 악성 앱 및 정보·결제 피해로 유도하는 수법이 설명됐다.",
+      "context": "쿠폰·결혼식 안내 문자",
+      "targetRole": "안내 문자 수신자",
+      "claimedRoles": [
+        "쿠폰 발급 주체·지인"
+      ],
+      "requestedActions": [
+        "링크 클릭"
+      ],
+      "mechanisms": [
+        "보상 기대·경조사 반응 악용"
+      ],
+      "keywords": [
+        "무료쿠폰",
+        "청첩장",
+        "결혼식",
+        "초대"
+      ],
+      "limits": [
+        "2013년 자료다. 현재 기기에서 클릭만으로 무조건 감염된다고 단정하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 2013년 자료다. 현재 기기에서 클릭만으로 무조건 감염된다고 단정하지 않는다.",
+      "source": {
+        "id": "OL15",
+        "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453",
+        "publisher": "대한민국 정책브리핑",
+        "author": "위클리공감",
+        "title": "금융사기 의심되면? 일단 신고하세요!",
+        "publishedDate": "2013-11-29",
+        "evidenceLocation": "본문, 스미싱 설명 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "대한민국 정책브리핑 / 작성자 위클리공감, 2013-11-29, 「금융사기 의심되면? 일단 신고하세요!」. https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "08d365d1d31be0f954973e6ae6bb143d9d8f3be5de5f1964fdb6061322bad0d1"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-030",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "보안 확인처럼 보이는 팝업으로 정보를 입력하게 해 인증 수단을 탈취하려는 파밍 수법이 설명됐다.",
+      "context": "인터넷 금융서비스 이용",
+      "targetRole": "온라인 은행 이용자",
+      "claimedRoles": [
+        "금융 서비스·보안 안내"
+      ],
+      "requestedActions": [
+        "금융정보 입력"
+      ],
+      "mechanisms": [
+        "보안 절차 사칭",
+        "가짜 화면 신뢰"
+      ],
+      "keywords": [
+        "인터넷뱅킹",
+        "보안 확인",
+        "팝업"
+      ],
+      "limits": [
+        "2013년 기술·인증 제도를 현재 제도와 동일시하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 2013년 기술·인증 제도를 현재 제도와 동일시하지 않는다.",
+      "source": {
+        "id": "OL15",
+        "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453",
+        "publisher": "대한민국 정책브리핑",
+        "author": "위클리공감",
+        "title": "금융사기 의심되면? 일단 신고하세요!",
+        "publishedDate": "2013-11-29",
+        "evidenceLocation": "본문, 파밍 피해 제보 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "대한민국 정책브리핑 / 작성자 위클리공감, 2013-11-29, 「금융사기 의심되면? 일단 신고하세요!」. https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "08d365d1d31be0f954973e6ae6bb143d9d8f3be5de5f1964fdb6061322bad0d1"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-031",
+      "country": "KR",
+      "recordKind": "AUTHOR_REPORTED_EXPERIENCE",
+      "description": "정부지원금 신청처럼 보이는 문자에 전문 용어와 선착순·조기 마감 표현을 넣어 서두르게 하는 연락 경험이 소개됐다.",
+      "context": "정부지원금·대출 안내",
+      "targetRole": "지원 안내 수신자",
+      "claimedRoles": [
+        "지원금 안내 주체"
+      ],
+      "requestedActions": [
+        "신청 연락"
+      ],
+      "mechanisms": [
+        "기회 상실 압박",
+        "정책 설명으로 신뢰 형성"
+      ],
+      "keywords": [
+        "정부지원금",
+        "저금리",
+        "대출",
+        "선착순"
+      ],
+      "limits": [
+        "당시 실제로 도착한 의심 문자에 관한 경험이며 현재 모든 정부 사업의 신청 절차로 일반화하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존한 채 접근 명분과 요구 행동만 새로운 가상 상황으로 구성한다. 당시 실제로 도착한 의심 문자에 관한 경험이며 현재 모든 정부 사업의 신청 절차로 일반화하지 않는다.",
+      "source": {
+        "id": "OL16",
+        "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148898376",
+        "publisher": "대한민국 정책브리핑",
+        "author": "김윤경",
+        "title": "수상한 문자, 전화 함부로 누르면 큰일!",
+        "publishedDate": "2022-01-25",
+        "evidenceLocation": "본문, 작성자가 받은 지원금 사칭 문자 경험",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148898376",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-20"
+        },
+        "attributionText": "대한민국 정책브리핑 / 작성자 김윤경, 2022-01-25, 「수상한 문자, 전화 함부로 누르면 큰일!」. https://www.korea.kr/briefing/policyBriefingView.do?newsId=148898376 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "6461ae517bcea8062ead45d9ad20a6efed6fb4f1fb89367ec03300f2c34235f5"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-20",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-032",
+      "country": "KR",
+      "recordKind": "AUTHOR_REPORTED_EXPERIENCE",
+      "description": "탈취된 업무용 메신저 계정으로 직장 동료에게 접근해 카드 한도를 이유로 상품권을 대신 구매해 달라고 요청한 경험이 소개됐다.",
+      "context": "직장 동료와 업무용 메신저",
+      "targetRole": "직장 동료의 연락을 받은 사람",
+      "claimedRoles": [
+        "직장 동료"
+      ],
+      "requestedActions": [
+        "상품권 대리구매"
+      ],
+      "mechanisms": [
+        "탈취 계정의 관계 신뢰 악용",
+        "나중에 갚겠다는 대납 명분"
+      ],
+      "keywords": [
+        "직장",
+        "동료",
+        "업무용",
+        "메신저",
+        "상품권",
+        "카드 한도"
+      ],
+      "limits": [
+        "작성자 경험담이며 판결 자료가 아니다. 다른 기관에서 인용한 이미지·대화 원문은 복제하지 않고 수법만 재구성한다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존하고 접근 명분과 요구 행동만 가상 상황으로 구성한다. 작성자 경험담이며 판결 자료가 아니다. 다른 기관에서 인용한 이미지·대화 원문은 복제하지 않고 수법만 재구성한다.",
+      "source": {
+        "id": "OL19",
+        "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148861032",
+        "publisher": "대한민국 정책브리핑",
+        "author": "전형",
+        "title": "보이스피싱 직접 당해보니, 남 얘기 아니었네",
+        "publishedDate": "2019-05-23",
+        "evidenceLocation": "본문 도입부와 작성자의 계정 탈취 경험",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148861032",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-21"
+        },
+        "attributionText": "대한민국 정책브리핑 / 작성자 전형, 2019-05-23, 「보이스피싱 직접 당해보니, 남 얘기 아니었네」. https://www.korea.kr/briefing/policyBriefingView.do?newsId=148861032 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "8cb7077f69ebc79a383de96860d23cf560bc35c0188d28d5938282d690ef1d38"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-21",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-033",
+      "country": "KR",
+      "recordKind": "PREVENTION_WARNING",
+      "description": "SNS·오픈채팅·구직사이트에서 고수익과 무료 숙소·항공권을 내세워 해외 출국을 유도한 뒤 여권 등을 빼앗는 취업 유인 수법이 경고됐다.",
+      "context": "해외 취업·고수익 아르바이트 모집",
+      "targetRole": "해외 일자리를 찾는 구직자",
+      "claimedRoles": [
+        "해외 구인 담당자"
+      ],
+      "requestedActions": [
+        "해외 출국"
+      ],
+      "mechanisms": [
+        "과도한 수익 보장",
+        "숙소·항공권 지원을 미끼로 유인"
+      ],
+      "keywords": [
+        "해외취업",
+        "구직",
+        "아르바이트",
+        "고수익",
+        "숙소",
+        "항공권",
+        "무비자"
+      ],
+      "limits": [
+        "예방 경고이며 모든 해외 구인을 사기로 단정하지 않는다. 가상 훈련은 출국 제안의 확인 단계로 한정하고 실제 출국·여권 제출을 유도하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존하고 접근 명분과 요구 행동만 가상 상황으로 구성한다. 예방 경고이며 모든 해외 구인을 사기로 단정하지 않는다. 가상 훈련은 출국 제안의 확인 단계로 한정하고 실제 출국·여권 제출을 유도하지 않는다.",
+      "source": {
+        "id": "OL20",
+        "url": "https://www.jeonnam.go.kr/M7116/boardView.do?displayHeader=&infoReturn=&menuId=jeonnam0202000000&pageIndex=1&searchText=&searchType=&seq=1959989",
+        "publisher": "전라남도 자치경찰위원회",
+        "author": null,
+        "title": "전남자치경찰위, 취업사기 등 캄보디아 해외여행 주의 당부",
+        "publishedDate": "2025-10-15",
+        "evidenceLocation": "본문 피해 사례의 다수는 SNS·오픈채팅·구직사이트 등을 통해 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.jeonnam.go.kr/M7116/boardView.do?displayHeader=&infoReturn=&menuId=jeonnam0202000000&pageIndex=1&searchText=&searchType=&seq=1959989",
+          "observedNotice": "본 저작물은 \"공공누리\" 제1유형:출처표시 조건에 따라 이용 할 수 있습니다.",
+          "checkedAt": "2026-11-21"
+        },
+        "attributionText": "전라남도 자치경찰위원회, 2025-10-15, 「전남자치경찰위, 취업사기 등 캄보디아 해외여행 주의 당부」. https://www.jeonnam.go.kr/M7116/boardView.do?displayHeader=&infoReturn=&menuId=jeonnam0202000000&pageIndex=1&searchText=&searchType=&seq=1959989 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "695082799a1fa32f1282be915eebd81066444be801d031c2af6f169bec10de34"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-21",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-034",
+      "country": "KR",
+      "recordKind": "REPORTED_INVESTIGATION",
+      "description": "전세사기 단속 브리핑에서 무자본 갭 투자에 허위 진술이나 위조 문서가 결합된 사례와 명의상 임대인·중개인 등의 공모 정황이 설명됐다.",
+      "context": "전세 계약과 임대인·중개인 확인",
+      "targetRole": "전셋집을 구하는 임차인",
+      "claimedRoles": [
+        "임대인",
+        "중개인"
+      ],
+      "requestedActions": [
+        "임대차 계약 진행"
+      ],
+      "mechanisms": [
+        "허위 설명·문서로 계약 신뢰 형성",
+        "공모 관계를 이용한 신뢰 형성"
+      ],
+      "keywords": [
+        "전세",
+        "임대차",
+        "보증금",
+        "임대인",
+        "중개인",
+        "계약",
+        "위조"
+      ],
+      "limits": [
+        "2023년 수사 중간 발표이며 확정 판결이 아니다. 무자본 갭 투자나 보증금 미반환 자체를 항상 사기로 단정하지 않고 현행 법률·구제 절차 근거로 사용하지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존하고 접근 명분과 요구 행동만 가상 상황으로 구성한다. 2023년 수사 중간 발표이며 확정 판결이 아니다. 무자본 갭 투자나 보증금 미반환 자체를 항상 사기로 단정하지 않고 현행 법률·구제 절차 근거로 사용하지 않는다.",
+      "source": {
+        "id": "OL21",
+        "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=156574158",
+        "publisher": "국토교통부·경찰청·대검찰청",
+        "author": null,
+        "title": "전세사기 기획조사 결과 및 특별단속 중간결과 발표",
+        "publishedDate": "2023-06-08",
+        "evidenceLocation": "질의응답 황병주 형사부장의 허위 진술·문서 위조 설명 및 윤승영 수사국장의 조직 설명",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=156574158",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-21"
+        },
+        "attributionText": "국토교통부·경찰청·대검찰청, 2023-06-08, 「전세사기 기획조사 결과 및 특별단속 중간결과 발표」. https://www.korea.kr/briefing/policyBriefingView.do?newsId=156574158 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "dae1e9d87d606c76e0ea90d41fd51d708fedeb6d65c3d20f34fac5a0a25f2918"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-21",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-035",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "일상적으로 이용하는 SNS 플랫폼 기업을 사칭해 계정정보를 탈취하려는 문자 발송이 증가한 유형으로 안내됐다.",
+      "context": "SNS 이용과 계정 안내 문자",
+      "targetRole": "SNS 서비스 이용자",
+      "claimedRoles": [
+        "SNS 플랫폼 기업"
+      ],
+      "requestedActions": [
+        "계정정보 제공"
+      ],
+      "mechanisms": [
+        "플랫폼 운영자 사칭",
+        "계정정보 탈취"
+      ],
+      "keywords": [
+        "SNS",
+        "플랫폼",
+        "계정",
+        "로그인",
+        "계정정보",
+        "문자"
+      ],
+      "limits": [
+        "통계·예방 안내 수준이다. 특정 서비스명이나 정지 사유, 구체적인 인증 화면은 원문에서 확인되지 않은 가상 설정으로 구분한다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존하고 접근 명분과 요구 행동만 가상 상황으로 구성한다. 통계·예방 안내 수준이다. 특정 서비스명이나 정지 사유, 구체적인 인증 화면은 원문에서 확인되지 않은 가상 설정으로 구분한다.",
+      "source": {
+        "id": "OL22",
+        "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148938770",
+        "publisher": "과학기술정보통신부·방송통신위원회·금융위원회",
+        "author": null,
+        "title": "“세뱃돈 송금” “설선물 받으세요” 문자 무심코 눌렀다간 낭패",
+        "publishedDate": "2025-01-20",
+        "evidenceLocation": "본문 SNS 등 플랫폼 기업 사칭 및 계정탈취 유형 통계 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148938770",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-21"
+        },
+        "attributionText": "과학기술정보통신부·방송통신위원회·금융위원회, 2025-01-20, 「“세뱃돈 송금” “설선물 받으세요” 문자 무심코 눌렀다간 낭패」. https://www.korea.kr/news/policyNewsView.do?newsId=148938770 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "732ec9df912fbe87ae740777f96df369e82488a814f9b012e88a6f25cabcd197"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-21",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    },
+    {
+      "id": "LP-036",
+      "country": "KR",
+      "recordKind": "PATTERN_WARNING",
+      "description": "지인을 사칭한 청첩장·부고장 형태의 문자사기가 증가한 유형으로 안내됐다.",
+      "context": "지인의 경조사 안내 문자",
+      "targetRole": "경조사 안내를 받은 사람",
+      "claimedRoles": [
+        "지인"
+      ],
+      "requestedActions": [
+        "의심 문자 열람"
+      ],
+      "mechanisms": [
+        "경조사 명분의 지인 사칭"
+      ],
+      "keywords": [
+        "부고장",
+        "청첩장",
+        "장례",
+        "경조사",
+        "지인",
+        "문자"
+      ],
+      "limits": [
+        "통계·예방 안내 수준이다. 링크 클릭만으로 반드시 감염된다고 단정하지 않으며 실제 지인의 사망·결혼 사실을 만들어내지 않는다.",
+        "원기관의 제작·후원·보증을 뜻하지 않으며 실제 사용자 경험과 가상 설정을 구분한다."
+      ],
+      "adaptationNote": "사용자가 확인한 활동·관계·행동 주체를 보존하고 접근 명분과 요구 행동만 가상 상황으로 구성한다. 통계·예방 안내 수준이다. 링크 클릭만으로 반드시 감염된다고 단정하지 않으며 실제 지인의 사망·결혼 사실을 만들어내지 않는다.",
+      "source": {
+        "id": "OL22",
+        "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148938770",
+        "publisher": "과학기술정보통신부·방송통신위원회·금융위원회",
+        "author": null,
+        "title": "“세뱃돈 송금” “설선물 받으세요” 문자 무심코 눌렀다간 낭패",
+        "publishedDate": "2025-01-20",
+        "evidenceLocation": "본문 청첩장·부고장 등 지인 사칭형 통계 단락",
+        "license": {
+          "code": "KOGL-1",
+          "scope": "TEXT_ONLY",
+          "policyUrl": "https://www.kogl.or.kr/info/license.do",
+          "evidenceUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148938770",
+          "observedNotice": "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+          "checkedAt": "2026-11-21"
+        },
+        "attributionText": "과학기술정보통신부·방송통신위원회·금융위원회, 2025-01-20, 「“세뱃돈 송금” “설선물 받으세요” 문자 무심코 눌렀다간 낭패」. https://www.korea.kr/news/policyNewsView.do?newsId=148938770 (공공누리 제1유형, 텍스트를 요약·재구성).",
+        "textHash": "732ec9df912fbe87ae740777f96df369e82488a814f9b012e88a6f25cabcd197"
+      },
+      "review": {
+        "status": "LICENSE_AND_FACTS_CHECKED",
+        "checkedAt": "2026-11-21",
+        "useScope": "개별 게시물의 공공누리 1유형이 적용되는 자체 작성 텍스트만 요약·재구성. 사진·로고·외부 녹음·원문 속 제3자 표현은 복제하지 않음."
+      }
+    }
+  ]
+}

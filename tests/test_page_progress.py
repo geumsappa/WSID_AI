@@ -1,6 +1,16 @@
 from app.schemas.training_api import SimulationRequest
 from app.services import training_api, training_turn
-from app.services.scenario import _fallback
+from copy import deepcopy
+from app.scenario_data import FALLBACK_SCENARIOS
+from app.guard.scenario_guard import validate_and_normalize
+
+
+def _fallback(_facts):
+    """Test sample only; production generation no longer has a fallback path."""
+    result, errors = validate_and_normalize(deepcopy(FALLBACK_SCENARIOS["택배 사칭"]))
+    assert not errors
+    result["scenario"]["maxTurns"] = 15
+    return result
 
 EVENT = "[훈련 행동: 본인 확인 정보 제출 완료]"
 

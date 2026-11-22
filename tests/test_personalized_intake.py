@@ -206,12 +206,15 @@ def test_blocked_optional_detail_is_reassessed_without_other_inventory_questions
     assert grounded_model[0][-1][1]["mode"] == "REASSESS"
 
 
-def test_paused_acknowledgements_do_not_repeat_message_but_new_facts_can_resume(grounded_model):
+def test_paused_acknowledgements_return_nonblank_reply_and_new_facts_can_resume(grounded_model):
     decision(grounded_model,[fact("ACTIVITY",1,"작업을 도왔어요")],target="OTHER",sufficient=False)
     first=ask("작업을 도왔어요")
     decision(grounded_model,[],target="OTHER",sufficient=False)
     second=ask("알겠어요",first.facts)
-    assert first.nextQuestion and second.nextQuestion == ""
+    assert first.nextQuestion and second.nextQuestion.strip()
+    assert second.nextQuestion != first.nextQuestion
+    assert "?" not in second.nextQuestion
+    assert second.facts["questionHistory"] == first.facts["questionHistory"]
     assert not second.canGenerateScenario
     decision(grounded_model,[fact("ROLE",3,"자료 찾는 일을 도왔어요")],target="OTHER")
     third=ask("자료 찾는 일을 도왔어요",second.facts)
@@ -282,3 +285,103 @@ def test_rich_answer_retains_more_than_five_topics_in_one_call(grounded_model):
     assert len(result.facts["knownTopics"]) == 7
     assert len(grounded_model[0]) == 1
     assert result.facts["questionHistory"] == []
+
+
+def test_no_more_details_after_cafe_pause_returns_valid_public_response(grounded_model):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    evidence = [{"turn": 1, "text": "카페 갔어"}, {"turn": 2, "text": "플젝"}, {"turn": 3, "text": "아니"}]
+    state = {"intakeTurn": 3, "intakePaused": True, "discoveryEvidence": evidence,
+        "knownTopics": {"ACTIVITY": {"status": "KNOWN", "turn": 2, "quote": "플젝"},
+                        "INTERACTION": {"status": "DECLINED", "turn": 3, "quote": "아니"}},
+        "questionHistory": [], "intakeRequirements": {"target": "OTHER", "topics": []}}
+    decision(grounded_model, [], target="OTHER", sufficient=False)
+    with TestClient(app) as client:
+        response = client.post("/internal/ai/discovery/next", headers={"X-Internal-Api-Key": "test-internal-key"},
+            json={"conversation": [], "knownFacts": state, "currentInput": "뭐 없는데"})
+    assert response.status_code == 200
+    result = response.json()["data"]
+    assert result["nextQuestion"].strip()
+    assert not result["canGenerateScenario"]
+    assert result["facts"]["intakePaused"] is True
+    assert result["facts"]["knownTopics"]["ACTIVITY"]["quote"] == "플젝"
+    assert len(grounded_model[0]) == 1
+
+
+@pytest.mark.parametrize("closed_status", ["NOT_APPLICABLE", "DECLINED"])
+def test_no_social_interaction_keeps_other_context_routes_open(grounded_model, closed_status):
+    state = {"intakeTurn": 2, "discoveryEvidence": [{"turn": 1, "text": "공유 공간에 갔어요"}, {"turn": 2, "text": "혼자 문서 정리했어요"}],
+        "knownTopics": {"SETTING": {"status": "KNOWN", "turn": 1, "quote": "공유 공간"},
+                        "ACTIVITY": {"status": "KNOWN", "turn": 2, "quote": "문서 정리했어요"},
+                        "PEOPLE": {"status": "KNOWN", "turn": 2, "quote": "혼자"}},
+        "questionHistory": [{"topic": "INTERACTION", "afterTurn": 2, "question": "주고받은 이야기가 있었나요?"}]}
+    calls = []
+    def answer(payload):
+        calls.append(payload)
+        if payload.get("mode") == "REASSESS":
+            assert "INTERACTION" not in payload["exploration"]["openContextTopics"]
+            assert "INTERACTION" in payload["exploration"]["closedTopics"]
+            return dict(updates=[], personalizationTarget="SERVICE", contextSufficient=False,
+                requiredTopics=["SERVICE"], nextTopic="SERVICE", nextQuestion="어느 곳을 이용하셨어요?")
+        return dict(updates=[fact("INTERACTION", 3, "없어요", closed_status)],
+            personalizationTarget="UNDECIDED", contextSufficient=False, requiredTopics=[], nextTopic=None)
+    grounded_model[1]["discovery_brief"] = answer
+    result = ask("없어요", state)
+    assert not result.canGenerateScenario
+    assert result.nextQuestion == "어느 곳을 이용하셨어요?"
+    assert "intakePaused" not in result.facts
+    assert result.facts["questionHistory"][-1]["topic"] == "SERVICE"
+    assert len(calls) == 2
+
+
+def test_context_route_exploration_respects_closed_and_exhausted_topics():
+    from app.services.fast_discovery import _exploration
+    topics = {"ACTIVITY": {"status": "KNOWN"}, "INTERACTION": {"status": "NOT_APPLICABLE"},
+              "SERVICE": {"status": "DECLINED"}, "ACCESS": {"status": "PARTIAL"}}
+    trace = _exploration(topics, [{"topic": "ACCESS"}, {"topic": "ACCESS"}])
+    assert trace["humanInteractionRequired"] is False
+    assert not {"INTERACTION", "SERVICE", "ACCESS"} & set(trace["openContextTopics"])
+    assert "TIME" in trace["openContextTopics"]
+
+
+def test_known_activity_can_be_deepened_once_without_reasking_activity(grounded_model):
+    decision(grounded_model, [fact("SETTING", 1, "카페"), fact("ACTIVITY", 1, "코딩했어요")], target="UNDECIDED", sufficient=False,
+        next_topic="ACTIVITY_DETAIL", question="어떤 작업을 하고 계셨어요?")
+    first = ask("카페에서 코딩했어요")
+    assert first.facts["questionHistory"][-1]["topic"] == "ACTIVITY_DETAIL"
+    decision(grounded_model, [fact("ACTIVITY_DETAIL", 2, "프로젝트요", "PARTIAL")], target="UNDECIDED", sufficient=False,
+        next_topic="ACTIVITY_DETAIL", question="어떤 걸 만드는 프로젝트인가요?")
+    second = ask("프로젝트요", first.facts)
+    assert second.nextQuestion == "어떤 걸 만드는 프로젝트인가요?"
+    decision(grounded_model, [fact("ACTIVITY_DETAIL", 3, "그냥 프로젝트", "PARTIAL")], target="UNDECIDED", sufficient=False,
+        next_topic="ACTIVITY_DETAIL", question="무슨 프로젝트인가요?")
+    third = ask("그냥 프로젝트", second.facts)
+    assert third.facts["intakePaused"]
+    assert len(third.facts["questionHistory"]) == 2
+    assert third.facts["knownTopics"]["ACTIVITY"]["quote"] == "코딩했어요"
+
+
+@pytest.mark.parametrize("status", ["KNOWN", "DECLINED"])
+def test_resolved_or_declined_activity_detail_is_not_reasked(grounded_model, status):
+    decision(grounded_model, [fact("ACTIVITY", 1, "코딩했어요"), fact("ACTIVITY_DETAIL", 1, "중고책 앱을 만들었어요" if status == "KNOWN" else "말하고 싶지 않아요", status)],
+        target="UNDECIDED", sufficient=False, next_topic="ACTIVITY_DETAIL", question="어떤 작업인가요?")
+    text = "코딩했어요. " + ("중고책 앱을 만들었어요" if status == "KNOWN" else "말하고 싶지 않아요")
+    result = ask(text)
+    assert result.facts["questionHistory"] == []
+    assert result.nextQuestion != "어떤 작업인가요?"
+
+
+@pytest.mark.parametrize("approved", [True, False])
+def test_concrete_solo_task_can_support_readiness_without_social_interaction(grounded_model, approved):
+    text = "혼자 산책 코스 기록과 추천 웹 서비스를 만들었어요"
+    decision(grounded_model, [fact("ACTIVITY", 1, "웹 서비스를 만들었어요"),
+        fact("ACTIVITY_DETAIL", 1, "산책 코스 기록과 추천 웹 서비스"), fact("PEOPLE", 1, "혼자")],
+        target="OTHER", sufficient=approved)
+    result = ask(text)
+    assert result.canGenerateScenario is approved
+    if approved:
+        assert result.facts["readinessEvidence"]["quote"] == "산책 코스 기록과 추천 웹 서비스"
+        assert "intakePaused" not in result.facts
+        assert result.facts["questionHistory"] == []
+    else:
+        assert "readinessEvidence" not in result.facts

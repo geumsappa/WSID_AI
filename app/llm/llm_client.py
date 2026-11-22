@@ -5,12 +5,30 @@ LLM 공급자를 바꾸고 싶으면 .env 의 LLM_PROVIDER 만 바꾸면 되고,
 """
 import json
 import logging
+import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 
 from app.config import settings
 from app.llm import mock_llm
 
 logger = logging.getLogger(__name__)
+
+
+_generation_deadline = ContextVar("generation_deadline", default=None)
+
+
+@contextmanager
+def generation_budget(seconds):
+    """One wall-clock budget shared by all model stages and retries in a request."""
+    previous = _generation_deadline.get()
+    deadline = time.monotonic() + seconds
+    token = _generation_deadline.set(min(deadline, previous) if previous is not None else deadline)
+    try:
+        yield
+    finally:
+        _generation_deadline.reset(token)
 
 
 class LLMError(Exception):
@@ -28,8 +46,15 @@ def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 80
     last_error: Exception | None = None
     for attempt in range(attempts):
         try:
+            call_timeout = timeout or settings.llm_timeout_seconds
+            deadline = _generation_deadline.get()
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise LLMError("generation_deadline_exceeded")
+                call_timeout = min(call_timeout, remaining)
             raw_text = _call_provider(system_prompt, user_content, max_tokens,
-                                      timeout or settings.llm_timeout_seconds, reasoning_effort=reasoning_effort, reuse_connection=reuse_connection)
+                                      call_timeout, reasoning_effort=reasoning_effort, reuse_connection=reuse_connection)
             return parse_json(raw_text)
         except Exception as e:  # 네트워크 오류, 타임아웃, JSON 깨짐 등 전부
             last_error = e

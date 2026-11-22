@@ -16,7 +16,7 @@ class DetailEvidence(BaseModel):
     quote: str = Field(min_length=1, max_length=180)
 
 
-Topic = Literal["ACTIVITY", "SETTING", "SERVICE", "PEOPLE", "PURPOSE", "ACCESS", "INTERACTION", "TRANSACTION", "ROLE", "PERSON_NAME", "TIME"]
+Topic = Literal["ACTIVITY", "SETTING", "SERVICE", "PEOPLE", "PURPOSE", "ACCESS", "INTERACTION", "TRANSACTION", "ROLE", "PERSON_NAME", "TIME", "ACTIVITY_DETAIL"]
 
 
 class FactUpdate(DetailEvidence):
@@ -36,7 +36,7 @@ class FactUpdate(DetailEvidence):
 
 class ConversationDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    updates: list[FactUpdate] = Field(default_factory=list, max_length=11)
+    updates: list[FactUpdate] = Field(default_factory=list, max_length=12)
     nextTopic: str | None = None
     focusChanged: StrictBool = False
     contextSufficient: StrictBool = False

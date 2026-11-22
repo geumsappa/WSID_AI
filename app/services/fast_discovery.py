@@ -20,11 +20,12 @@ MAX_EVIDENCE_CHARS = 9000
 
 # General question purposes, not activity-specific scenario branches.
 QUESTIONS = {
+    "ACTIVITY_DETAIL": "말씀하신 활동에서 구체적으로 어떤 일을 하고 계셨어요?",
     "TIME": "그 일이 있었던 건 언제쯤인가요? 대략적인 시점이면 괜찮아요.",
     "ACTIVITY": "그때 어떤 일을 하셨어요?",
     "PERSON_NAME": "그분은 뭐라고 부르면 될까요? 이름이나 별명으로 알려 주세요.",
     "PEOPLE": "혼자 하셨나요, 다른 사람과 함께하셨나요?",
-    "PURPOSE": "그 일을 하게 된 계기가 있었나요?",
+    "PURPOSE": "그 활동이나 작업으로 하려던 일은 무엇이었나요?",
     "ACCESS": "그 서비스는 어떤 경로로 이용하셨어요?",
     "INTERACTION": "직원이나 다른 사람과 주고받은 이야기가 있었나요?",
     "TRANSACTION": "결제나 예약은 직접 하셨나요?",
@@ -33,6 +34,7 @@ QUESTIONS = {
     "ROLE": "그 일에서 본인이나 상대가 맡은 일은 무엇이었나요?",
 }
 CLARIFICATIONS = {
+    "ACTIVITY_DETAIL": "그때 하던 일의 내용이나 목적을 조금 더 알려주실 수 있나요?",
     "TIME": "방문하거나 이용한 시점을 대략 기억하시나요?",
     "ACTIVITY": "그곳에서 실제로 어떤 일을 했는지 알려 주시겠어요?",
     "SETTING": "그 일이 있었던 장소나 상황을 조금 더 알려 주시겠어요?",
@@ -45,7 +47,7 @@ CLARIFICATIONS = {
     "TRANSACTION": "누가 계산했고, 나중에 정산하기로 한 약속이 있었나요?",
     "SERVICE": "이용한 서비스나 업체 이름은 무엇인가요?",
 }
-CONTEXT_TOPICS = {"PURPOSE", "ACCESS", "INTERACTION", "TRANSACTION", "ROLE"}
+CONTEXT_TOPICS = {"ACTIVITY_DETAIL", "PURPOSE", "ACCESS", "INTERACTION", "TRANSACTION", "ROLE"}
 
 
 def _supported(update, messages):
@@ -125,6 +127,18 @@ def _available_topics(topics, question_history):
     return available
 
 
+def _exploration(topics, question_history):
+    """Expose open context routes; a declined social route closes only that route."""
+    available = _available_topics(topics, question_history)
+    routes = {"ACTIVITY_DETAIL", "SETTING", "SERVICE", "TIME", "ACCESS", "PURPOSE", "INTERACTION", "TRANSACTION", "ROLE"}
+    return {"humanInteractionRequired": False,
+            "activityDetailKnown": topics.get("ACTIVITY_DETAIL", {}).get("status") == "KNOWN",
+            "openContextTopics": [topic for topic in available if topic in routes],
+            "closedTopics": [topic for topic, value in topics.items()
+                             if value.get("status") in {"DECLINED", "NOT_APPLICABLE"}],
+            "knownTopics": [topic for topic, value in topics.items() if value.get("status") == "KNOWN"]}
+
+
 def _requirements(decision):
     required = list(dict.fromkeys(decision.requiredTopics))
     if decision.personalizationTarget == "PERSON":
@@ -191,7 +205,7 @@ def run_discovery_turn(session_id, history, known_facts=None):
         targets = _available_topics(topics, question_history)
         previous_topics = json.dumps(topics, sort_keys=True, ensure_ascii=False)
         prompt = PROMPT.read_text(encoding="utf-8")
-        payload = {"messages": messages, "knownTopics": topics,
+        payload = {"messages": messages, "knownTopics": topics, "exploration": _exploration(topics, question_history),
                    "questionHistory": question_history, "questionTargets": targets,
                    "previousRequirements": known.get("intakeRequirements", {}),
                    "previousQuestions": [mask_input(message["text"]) for message in history if message["role"] == "ai"][-5:]}
@@ -214,7 +228,7 @@ def run_discovery_turn(session_id, history, known_facts=None):
                         raise
                     corrections_left -= 1
                     content["schemaErrors"] = ([{"path": ".".join(map(str, item["loc"])), "type": item["type"]} for item in error.errors()] if isinstance(error, ValidationError) else [{"path": "updates.quote", "type": "exact_user_quote_required"}])
-                    content["formatCorrection"] = "schemaErrors의 각 오류를 수정하세요. updates는 최대 11개, quote는 180자 이하입니다. 이미 knownTopics에 있는 사실을 반복 출력하지 마세요. 사용자 원문에서 연속된 짧은 부분을 그대로 quote에 복사하고 해당 turn을 사용하세요. 어미·조사·띄어쓰기를 고치거나 인용 안에 생략표시를 넣지 마세요. 이름/호칭도 인용 안의 값이어야 합니다. 사실을 추가하지 마세요."
+                    content["formatCorrection"] = "schemaErrors의 각 오류를 수정하세요. updates는 최대 12개, quote는 180자 이하입니다. 이미 knownTopics에 있는 사실을 반복 출력하지 마세요. 사용자 원문에서 연속된 짧은 부분을 그대로 quote에 복사하고 해당 turn을 사용하세요. 어미·조사·띄어쓰기를 고치거나 인용 안에 생략표시를 넣지 마세요. 이름/호칭도 인용 안의 값이어야 합니다. 사실을 추가하지 마세요."
 
 
         decision = decide(payload)
@@ -228,6 +242,7 @@ def run_discovery_turn(session_id, history, known_facts=None):
         # Reassess the existing facts once rather than walking through unused topics.
         if not ready and selected is None and (details or topics.get("ACTIVITY", {}).get("status") == "KNOWN") and not unchanged_pause:
             reassess_payload = {**payload, "mode": "REASSESS", "knownTopics": topics,
+                                "exploration": _exploration(topics, question_history),
                                 "questionHistory": question_history,
                                 "questionTargets": _available_topics(topics, question_history),
                                 "previousRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision)}}
@@ -252,7 +267,9 @@ def run_discovery_turn(session_id, history, known_facts=None):
             state["questionHistory"] = [*question_history, {"topic": target, "afterTurn": turn, "question": question}][-20:]
         else:
             state["intakePaused"] = True
-            question = "" if known.get("intakePaused") is True else "말씀하신 내용은 기억하고 있어요. 더 떠오르는 구체적인 일이 있으면 이어서 알려 주세요."
+            # Spring persists every AI reply and rejects blank generated text.
+            # Keep waiting without repeating a question or manufacturing readiness.
+            question = "알겠습니다. 내용을 더 추가하실 때 이어서 진행할게요." if known.get("intakePaused") is True else "말씀하신 내용은 기억하고 있어요. 더 떠오르는 구체적인 일이 있으면 이어서 알려 주세요."
         return {"state": state, "next_question": question,
                 "done": ready, "fallback_used": False,
                 "masked_text": mask_input(history[-1]["text"]),

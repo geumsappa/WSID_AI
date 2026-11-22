@@ -5,7 +5,7 @@ TASK: candidate_plan
 
 {{CONTEXT_FACTS}}
 
-공통 anchorClaims는 현재 focusEventIds와 personalizationBasis의 실제 사건 ID 및 원래 actorId를 포함한다.
+공통 anchorClaims는 현재 focusEventIds와 personalizationBasis가 참조하는 CONFIRMED 사건 ID 및 원래 actorId만 포함한다. UNCERTAIN/NEGATED 사건을 앵커나 personalizationBasis로 사용하지 않는다. 불확실한 항목은 context.events에 남기고 확정된 현재 활동·기능·역할을 중심으로 계획한다.
 personalizationBasis는 실제 인용과 추가 맥락, 그것 때문에 달라지는 접근 이유를 간결하게 설명한다.
 readinessEvidence와 confirmedTopics는 실제 turn/quote와 대조한다. 질문 속 예시·메타데이터를 사용자 사실로 만들지 않는다.
 

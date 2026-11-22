@@ -9,7 +9,7 @@ from app.api_errors import AiApiError
 from app.config import settings
 from app.guard.scenario_guard import mentioned_organizations, validate_and_normalize
 from app.guard.sensitive import mask_sensitive
-from app.llm.llm_client import LLMError, generate_json
+from app.llm.llm_client import LLMError, generate_json, generation_budget
 from app.schemas.context_graph import ContextGraph, GeneratedScenario, ScenarioPlan
 from app.services import scenario_planner
 from app.services.scenario_classification import classify_story
@@ -62,6 +62,14 @@ def _prepare_context(facts, context, plan, context_hash, discovery_evidence=None
 
 
 def run_scenario(session_id, facts, *, context=None, plan=None, context_hash=None, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None):
+    with generation_budget(settings.scenario_total_timeout_seconds):
+        return _run_scenario(session_id, facts, context=context, plan=plan, context_hash=context_hash,
+            discovery_evidence=discovery_evidence, discovery_ready=discovery_ready,
+            readiness_evidence=readiness_evidence, discovery_topics=discovery_topics,
+            discovery_requirements=discovery_requirements)
+
+
+def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=None, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None):
     try:
         graph, selected = _prepare_context(facts, context, plan, context_hash, discovery_evidence, discovery_ready, readiness_evidence, discovery_topics, discovery_requirements)
     except (ValidationError, ContextIntegrityError) as error:

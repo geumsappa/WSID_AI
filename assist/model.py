@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Protocol
 
 from .contracts import (
@@ -43,10 +44,15 @@ FACT_MENTIONS = {
 }
 CLARIFICATION_TEXT = {
     "transferredMoney": "사기 의심 상대에게 돈을 보낸 적이 있나요?",
-    "installedApp": "상대방이 알려준 앱을 설치한 적이 있나요?",
+    "installedApp": "문자 링크나 상대방 안내로 앱을 설치한 적이 있나요?",
     "sharedInformation": "상대방에게 개인·금융정보를 넘긴 적이 있나요?",
     "contactContinues": "사기 의심 상대와 지금도 연락을 이어가고 있나요?",
 }
+
+
+# "앱이 깔렸는지 모르겠어", "어떻게 확인해?"처럼 사용자가 이미 모른다고 했거나 확인 방법을 묻는 질문.
+# 이때 "설치한 적 있나요?"라고 되물으면 같은 걸 또 묻는 셈이라, 추가 질문 없이 확인 방법을 조건부로 답해요.
+UNSURE = re.compile(r"모르겠|모르는데|몰라|모름|기억이 ?안|확인.{0,4}(방법|하는 ?법|어떻게)|어떻게.{0,6}(알|확인|점검)")
 
 
 def allowed_fact_keys(request: PlanRequest, intent: QuestionIntent) -> list[str]:
@@ -54,6 +60,8 @@ def allowed_fact_keys(request: PlanRequest, intent: QuestionIntent) -> list[str]
         return []
     # 후속 요청(question=null)이면 history의 원래 질문으로 언급 여부를 봐요 (v1.1 history가 있을 때만)
     question = request.question or previous_user(request)
+    if request.question and UNSURE.search(request.question):
+        return []
     return [key for key in CLARIFICATION_TEXT
             if (key == INTENT_FACTS.get(intent) or any(word in question for word in FACT_MENTIONS[key]))
             and getattr(request.facts, key) == "UNKNOWN" and key not in request.askedFactKeys]
@@ -72,6 +80,7 @@ TRANSFER_RESPONSE, DEVICE_SAFETY, INFO_LEAK_RESPONSE, CONTACT_RESPONSE, GENERAL.
 (예: 링크·앱 → installedApp, 송금·입금 → transferredMoney, 신분증·비밀번호 → sharedInformation, 연락 → contactContinues).
 그 밖의 관련 위험은 묻지 말고 답변에서 조건부로 다룬다. GENERAL은 question에 언급된 사실만 묻는다.
 이미 물었거나 횟수가 소진된 사실은 다시 묻지 않고 SEARCH로 진행한다.
+사용자가 그 사실을 모른다고 했거나 확인 방법을 물으면 되묻지 말고 SEARCH로 확인·점검 방법을 찾는다.
 확인할 수 없는 사실은 추측하지 말고 조건부 설명 가능성을 검토한다.
 질문 문장은 생성하지 않는다. 필요한 사실 키만 선택한다.
 출력 키는 decision(SEARCH/NEED_USER_INPUT/OUT_OF_SCOPE), questionIntent, factKey.

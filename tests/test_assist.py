@@ -598,7 +598,7 @@ def test_model_question_text_is_ignored_and_fixed_for_both_paths():
     for model in (UnsafeQuestionModel(), UnsafeEvidenceModel()):
         result = run(plan_request(), model=model)
         assert result.status == "NEED_USER_INPUT"
-        assert result.clarification.content == "상대방이 알려준 앱을 설치한 적이 있나요?"
+        assert result.clarification.content == "문자 링크나 상대방 안내로 앱을 설치한 적이 있나요?"
         assert result.clarification.options == ["YES", "NO", "UNKNOWN"]
 
 

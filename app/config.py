@@ -38,6 +38,7 @@ class Settings:
     # 시나리오는 길게 생성하므로 대기시간을 따로 둠 (훈련 시작 전 로딩 화면 1번)
     scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "110"))
     scenario_timeout_seconds: float = float(os.getenv("SCENARIO_TIMEOUT_SECONDS", "25"))
+    solution_reply_timeout_seconds: float = float(os.getenv("SOLUTION_REPLY_TIMEOUT_SECONDS", "12"))
     evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "25"))
     # 가상 훈련 대화 전체 최대 턴 수 (요구사항 초안: 핵심 장면 12턴 / 전체 15턴)
     training_max_turns: int = int(os.getenv("TRAINING_MAX_TURNS", "15"))

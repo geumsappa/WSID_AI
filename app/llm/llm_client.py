@@ -82,7 +82,9 @@ def anthropic_text(system_prompt: str, user_content: str, *, max_tokens: int = 1
               if len(system_text) >= 2500 else system_text)
     request = dict(
         model=model or settings.llm_model,
-        max_tokens=max(max_tokens, 1024),  # JSON 이 중간에 잘리면 전체가 실패해서 넉넉하게
+        # Claude 는 같은 JSON 을 GPT 보다 길게 써요. 상한에서 잘리면 JSON 이 깨져 호출 전체가 버려지므로 2배로 넉넉히
+        # (요금은 실제로 쓴 만큼만 나가요)
+        max_tokens=min(max(max_tokens * 2, 4096), 16000),
         system=system,
         messages=[{"role": "user", "content": user_content}],
         temperature=settings.llm_temperature,

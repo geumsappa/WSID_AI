@@ -34,6 +34,8 @@ class Settings:
                                if os.getenv("LLM_PROVIDER", "mock").strip().lower() == "openai" else ""))
     # 상황 파악 질문용 모델 (비우면 LLM_MODEL). 질문 만들기는 가벼운 일이라 claude-haiku-5-5 처럼 싼 모델로 충분해요
     discovery_model: str = os.getenv("DISCOVERY_MODEL", "").strip()
+    # 시나리오 만들기 전 계획·후보 비교·검토 단계 모델 (비우면 LLM_MODEL). 단계가 여러 번이라 빠른 모델이 유리해요
+    pipeline_model: str = os.getenv("PIPELINE_MODEL", "").strip()
     # Claude 대사 다양성 (training_prompt_notes.md §5-3 권장 0.6~0.8)
     llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.7"))
     max_context_turns: int = int(os.getenv("MAX_CONTEXT_TURNS", "5"))

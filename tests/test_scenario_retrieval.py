@@ -69,6 +69,16 @@ def _candidate(graph, plan, use):
     return {"context": graph, "anchorClaims": plan["anchorClaims"], "personalizationBasis": plan["personalizationBasis"], "candidates": [first, second]}
 
 
+def _single_plan(bundle):
+    plan = deepcopy(bundle["candidates"][0])
+    plan.update(recipientActorId=bundle["context"]["userActorId"],
+        anchorClaims=bundle["anchorClaims"], personalizationBasis=bundle["personalizationBasis"],
+        contactSetup={"contactBasis": "FICTIONAL_FIRST_CONTACT", "senderRole": plan["impersonatedRole"],
+            "contactPremise": "훈련에서 가정한 첫 사칭 연락", "knowledgePremise": "사용자가 말한 이용 경험을 언급하는 가상 주장",
+            "evidenceIds": [bundle["context"]["evidence"][0]["id"]], "fictionalAssumptions": ["새로운 사칭 연락"]})
+    return {"context": bundle["context"], "selectedPlan": plan}
+
+
 def _comparison(bundle, verdict):
     return {"alternativesDistinct": True, "distinctionReason": "접근 인물이 다름", "assessments": [
         {"candidateId": p["id"], "review": deepcopy(verdict), "grounding": 2 if i == 0 else 1,
@@ -79,7 +89,7 @@ def test_pre_generation_evidence_survives_public_contract(monkeypatch, grounded_
     use = _use_pattern(monkeypatch, grounded_model)
     bundle = _candidate(graph_data, plan_data, use)
     verdict = {**review_data, "referencesSupported": True}
-    grounded_model[1].update(candidate_plan=bundle, candidate_compare=_comparison(bundle, verdict), semantic_review=verdict)
+    grounded_model[1].update(generation_plan=_single_plan(bundle), semantic_review=verdict)
     result = training_api.scenario(ScenarioRequest(fraudTypeCode="MESSENGER_PHISHING", facts={"discoveryReady": True,
         "discoveryEvidence": [{"turn": 1, "text": graph_data["evidence"][0]["quote"]}]}))
     evidence = result.scenario["generationEvidence"]
@@ -94,7 +104,7 @@ def test_pre_generation_evidence_survives_public_contract(monkeypatch, grounded_
     assert result.scenario["basedOnCases"] == []
     assert not any("messages" in key or "query" in key for key in evidence)
     tasks = [task for task, _ in grounded_model[0]]
-    assert tasks == ["candidate_plan", "candidate_compare", "scenario_generate", "semantic_review", "scenario_classify"]
+    assert tasks == ["generation_plan", "scenario_generate", "semantic_review", "scenario_classify"]
 
 
 def test_reference_claim_requires_independent_comparison_support(monkeypatch, grounded_model, graph_data, plan_data, review_data):
@@ -108,8 +118,7 @@ def test_reference_claim_requires_independent_comparison_support(monkeypatch, gr
 def test_generated_story_losing_its_reference_is_rejected(monkeypatch, grounded_model, graph_data, plan_data, review_data):
     use = _use_pattern(monkeypatch, grounded_model)
     bundle = _candidate(graph_data, plan_data, use)
-    grounded_model[1].update(candidate_plan=bundle,
-        candidate_compare=_comparison(bundle, {**review_data, "referencesSupported": True}),
+    grounded_model[1].update(generation_plan=_single_plan(bundle),
         semantic_review={**review_data, "referencesSupported": False})
     with pytest.raises(AiApiError) as exc:
         training_api.scenario(ScenarioRequest(fraudTypeCode="MESSENGER_PHISHING", facts={"discoveryReady": True,

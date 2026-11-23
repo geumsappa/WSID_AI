@@ -133,7 +133,7 @@ def test_received_name_reaches_persona_and_opening(grounded_model, graph_data, p
     result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
     assert result.scenario["persona"]["name"] == "도토리"
     assert "도토리" in result.scenario["openingMessage"]
-    payload = next(payload for task, payload in grounded_model[0] if task == "candidate_plan")
+    payload = next(payload for task, payload in grounded_model[0] if task == "generation_plan")
     assert payload["personalizationTarget"] == "PERSON"
     assert payload["confirmedTopics"]["PERSON_NAME"]["name"] == "도토리"
     writer_payload = next(payload for task, payload in grounded_model[0] if task == "scenario_generate")

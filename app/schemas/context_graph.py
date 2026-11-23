@@ -82,6 +82,8 @@ class ScenarioPlan(Model):
     contactSetup: ContactSetup | None = None
     referenceUses: list[PatternUse] = Field(default_factory=list, max_length=3)
     _retrieval_trace: dict = PrivateAttr(default_factory=dict)
+    _joint_review_required: bool = PrivateAttr(default=False)
+    _review_messages: list[dict] = PrivateAttr(default_factory=list)
     id: str = Field(min_length=1, max_length=50)
     anchorClaims: list[ClaimBinding] = Field(min_length=1, max_length=6)
     recipientActorId: str
@@ -101,6 +103,17 @@ class ScenarioPlan(Model):
 class ReadyScenarioPlan(ScenarioPlan):
     missingInformation: list[str] = Field(default_factory=list, max_length=0,
         description="Selected plans have no blocking unknown facts. Do not list unconfirmed fictional claims or caveats here.")
+
+
+class GenerationPlan(ReadyScenarioPlan):
+    contactSetup: ContactSetup
+    desiredOutcome: str = Field(min_length=1, max_length=160)
+    escalation: str = Field(min_length=1, max_length=600)
+    requestedActions: list[Literal[tuple(ALLOWED_REQUESTS)]] = Field(min_length=1, max_length=4)
+
+
+class SinglePlanProposal(Extraction):
+    selectedPlan: GenerationPlan
 
 
 class IntakePlan(Extraction):

@@ -762,7 +762,7 @@ def test_openai_assist_model_override_and_low_option(monkeypatch):
             calls.append(kwargs)
             text = '{"decision":"SEARCH","questionIntent":"GENERAL","factKey":null}'
             return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=text))])
-    monkeypatch.setattr(app_config, "settings", SimpleNamespace(llm_model="default-model"))
+    monkeypatch.setattr(app_config, "settings", SimpleNamespace(llm_provider="openai", llm_model="default-model"))
     monkeypatch.setattr(openai_client, "async_client", Client)
     monkeypatch.setattr(config, "ASSIST_LLM_MODEL", "")
     monkeypatch.setattr(config, "ASSIST_REASONING_EFFORT", "")

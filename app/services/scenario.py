@@ -1,4 +1,4 @@
-"""Generate only from an evidenced, reviewed plan; never return an unrelated template."""
+"""Ground facts in code, then independently review the plan and draft before release."""
 import json
 import logging
 from pathlib import Path
@@ -14,7 +14,7 @@ from app.schemas.context_graph import ContextGraph, GeneratedScenario, ScenarioP
 from app.schemas.scenario_revision import ScenarioRevision
 from app.services.scenario_revision import apply_revision
 from app.services import scenario_planner
-from app.services.prompt_templates import load_prompt
+from app.services.prompt_templates import load_prompt, response_schema
 from app.services.scenario_classification import classify_story
 from app.services.scenario_retrieval import retrieve_patterns, prompt_patterns, validate_uses, generation_evidence
 from app.services.context_graph import ContextIntegrityError, check_claims, check_graph, check_plan, fingerprint, project_facts
@@ -42,7 +42,7 @@ def _prepare_context(facts, context, plan, context_hash, discovery_evidence=None
                 readiness_evidence = detail.model_dump()
         except (ValueError, ValidationError):
             raise AiApiError(422, "INVALID_REQUEST", "상황 기록 형식을 확인해 주세요.") from None
-        return scenario_planner.choose_generation_plan(messages, readiness_evidence=readiness_evidence, confirmed_topics=discovery_topics, personalization_target=requirements.target)
+        return scenario_planner.prepare_generation_plan(messages, readiness_evidence=readiness_evidence, confirmed_topics=discovery_topics, personalization_target=requirements.target)
     if context is not None:
         graph = ContextGraph.model_validate(scenario_planner.safe_tree(context))
         # Validate stored quotations against the evidence already retained by the server.
@@ -98,6 +98,19 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
     service_quote = service_fact.get("quote", "") if service_fact.get("status") == "KNOWN" else ""
     service_names = [name for name in verified_organizations if name in service_quote]
 
+    # Forward the source independently of the model's extraction and selected focus.
+    # Old saved contexts have only quotations; do not present those as a full transcript.
+    source_messages = [{"turn": item["turn"], "text": scenario_planner.mask_input(item["text"])}
+                       for item in selected._review_messages]
+    source_scope = "USER_STATEMENTS" if discovery_evidence is not None else "LEGACY_FACTS"
+    if not source_messages:
+        source_messages = [{"turn": item.sourceTurn, "text": scenario_planner.mask_input(item.quote)}
+                           for item in graph.evidence]
+        source_scope = "RETAINED_QUOTES"
+    from app.services.basic_training import BASIC_INPUT_SCOPE, SCOPE_INSTRUCTION
+    if BASIC_INPUT_SCOPE.get():
+        source_scope = "FICTIONAL_CONTEXT"
+
     failures = []
     previous_draft = None
     for attempt in range(MAX_ATTEMPTS):
@@ -105,12 +118,12 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
             repairing = previous_draft is not None
             prompt_path = PROMPT_PATH.with_name("scenario_repair.md") if repairing else PROMPT_PATH
             prompt = load_prompt(prompt_path)
-            from app.services.basic_training import BASIC_INPUT_SCOPE, SCOPE_INSTRUCTION
             if BASIC_INPUT_SCOPE.get():
                 prompt += SCOPE_INSTRUCTION
             output_schema = ScenarioRevision if repairing else GeneratedScenario
-            prompt += "\n출력 JSON 스키마:\n" + json.dumps(output_schema.model_json_schema(), ensure_ascii=False)
+            prompt += "\n출력 JSON 스키마:\n" + response_schema(output_schema)
             payload = {"context": graph.model_dump(), "plan": selected.model_dump(),
+                       "userMessages": source_messages, "sourceScope": source_scope,
                        "allowedOrganizations": allowed, "confirmedPersonName": confirmed_name, "confirmedServiceNames": service_names,
                        "speakerIdentity": {"actorId": selected.impersonatedActorId, "displayName": confirmed_name, "role": selected.impersonatedRole},
                        "recipientIdentity": {"actorId": graph.userActorId, "displayName": None}, "retryIssues": failures,
@@ -118,7 +131,7 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
             payload["mode"] = "REPAIR" if repairing else "GENERATE"
             if repairing:
                 payload["previousDraft"] = previous_draft.model_dump()
-            raw = generate_json(prompt, json.dumps(payload, ensure_ascii=False),
+            raw = generate_json(prompt, json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
                 timeout=settings.scenario_timeout_seconds, max_tokens=3000 if repairing else 4000, attempts=1,
                 reasoning_effort=settings.pipeline_reasoning_effort or None)
             generated = (apply_revision(previous_draft, ScenarioRevision.model_validate(raw)) if repairing
@@ -149,7 +162,8 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
             if selected.requestedActions and not set(selected.requestedActions).issubset({scene["request"] for scene in content["keyScenes"]}):
                 failures = ["PLAN_REQUESTED_ACTIONS_CHANGED"]
                 continue
-            verdict = scenario_planner.review(graph, selected, generated={"analysis": normalized["analysis"], "scenario": content})
+            verdict = scenario_planner.review(graph, selected, messages=source_messages, source_scope=source_scope,
+                generated={"analysis": normalized["analysis"], "scenario": content})
             if not verdict.accepts() or (selected.referenceUses and not verdict.referencesSupported):
                 logger.warning("Scenario semantic review rejected: attempt=%d codes=%s", attempt + 1, [issue.code for issue in verdict.issues])
                 failures = [issue.code + ": " + scenario_planner.mask_input(issue.detail) for issue in verdict.issues] or ["REFERENCE_OR_SEMANTIC_CHECK_FAILED"]

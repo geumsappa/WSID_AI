@@ -12,6 +12,7 @@ from app.guard.sensitive import mask_sensitive
 from app.llm.llm_client import LLMError, generate_json, generation_budget
 from app.schemas.fast_discovery import ConversationDecision, FactUpdate, EvidenceMessage
 from app.services.scenario_planner import mask_input
+from app.services.prompt_templates import load_prompt
 
 logger = logging.getLogger(__name__)
 PROMPT = Path(__file__).resolve().parents[1] / "prompts" / "discovery_brief.md"
@@ -141,7 +142,7 @@ def _exploration(topics, question_history):
 
 
 def _requirements(decision, topics=None):
-    satisfied = {item.topic for item in decision.questionAssessments if item.status in {"ANSWERED", "UNNECESSARY"}}
+    satisfied = {item.topic for item in decision.questionAssessments if item.status in {"ANSWERED", "UNNECESSARY"} or item.necessity == "OPTIONAL"}
     required = [topic for topic in dict.fromkeys(decision.requiredTopics) if topic not in satisfied]
     # An identity already marked incomplete cannot disappear behind OTHER readiness.
     if decision.personalizationTarget == "OTHER" and (topics or {}).get("PERSON_NAME", {}).get("status") == "PARTIAL":
@@ -160,16 +161,37 @@ def _is_resolved(topic, topics):
 
 def _ready(topics, decision):
     details = [value for topic, value in topics.items() if topic in CONTEXT_TOPICS and value["status"] == "KNOWN"]
-    ready = (decision.contextSufficient and decision.personalizationTarget != "UNDECIDED"
+    basis = decision.readinessBasis
+    anchored = bool(basis and any(topic in CONTEXT_TOPICS for topic in basis.topics)
+                    and all(topics.get(topic, {}).get("status") == "KNOWN" for topic in basis.topics))
+    ready = ((decision.contextSufficient or anchored) and decision.personalizationTarget != "UNDECIDED"
              and topics.get("ACTIVITY", {}).get("status") == "KNOWN" and bool(details)
              and all(_is_resolved(topic, topics) for topic in _requirements(decision, topics)))
     return bool(ready), details
 
 
 def _select_question(topics, question_history, decision, history):
-    """Only a model-selected, necessary gap may cause a question."""
+    """Allow a factual opening question; check necessity for later detail questions."""
+    if decision.stopRequested:
+        return None
     target = decision.nextTopic
     available = _available_topics(topics, question_history)
+    if topics.get("ACTIVITY", {}).get("status") != "KNOWN" and "ACTIVITY" in available:
+        # A topic preference is not an experience. Elicit the first fact without
+        # requiring a scenario-specific rationale or another model call.
+        previous = {item.get("question") for item in question_history}
+        previous.update(message["text"] for message in history if message["role"] == "ai")
+        proposed = scenario_question(decision.nextQuestion) if target == "ACTIVITY" and decision.nextQuestion.strip() else ""
+        default = (CLARIFICATIONS["ACTIVITY"] if topics.get("ACTIVITY") else
+                   QUESTIONS["ACTIVITY"] if topics else "그 주제와 관련해 최근에 어떤 일이 있었나요?")
+        question = proposed or default
+        if question in previous:
+            return None
+        decision.requiredTopics = ["ACTIVITY"]
+        decision.personalizationTarget = "UNDECIDED"
+        decision.contextSufficient = False
+        decision.readinessBasis = None
+        return "ACTIVITY", question
     # A readiness claim must not skip an explicitly required, still answerable gap.
     if decision.contextSufficient and target is None:
         target = next((topic for topic in _requirements(decision, topics) if topic in available and not _is_resolved(topic, topics)), target)
@@ -195,6 +217,10 @@ def _apply_updates(topics, decision, messages):
         if not _supported(update, messages):
             raise ValueError("Unstated contextual detail")
         topics[update.topic] = update.model_dump(exclude={"topic"})
+    # A name gap explicitly selects a person; do not drop it behind UNDECIDED.
+    if (decision.personalizationTarget == "UNDECIDED" and "PERSON_NAME" in decision.requiredTopics
+            and any(item.topic == "PERSON_NAME" and item.status == "MISSING" for item in decision.questionAssessments)):
+        decision.personalizationTarget = "PERSON"
 
 
 def run_discovery_turn(session_id, history, known_facts=None):
@@ -237,7 +263,7 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                         "done": selected_choice == "BASIC", "fallback_used": False}
         targets = _available_topics(topics, question_history)
         previous_topics = json.dumps(topics, sort_keys=True, ensure_ascii=False)
-        prompt = PROMPT.read_text(encoding="utf-8")
+        prompt = load_prompt(PROMPT)
         payload = {"messages": messages, "knownTopics": topics, "exploration": _exploration(topics, question_history),
                    "questionHistory": question_history, "questionTargets": targets,
                    "previousRequirements": known.get("intakeRequirements", {}),
@@ -248,14 +274,24 @@ def _run_discovery_turn(session_id, history, known_facts=None):
             nonlocal corrections_left
             content = dict(content)
             while True:
-                raw = generate_json(REVIEW_PROMPT.read_text(encoding="utf-8") if review else prompt,
-                                    json.dumps(content, ensure_ascii=False), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
+                raw = generate_json(load_prompt(REVIEW_PROMPT) if review else prompt,
+                                    json.dumps(content, ensure_ascii=False, separators=(",", ":")), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
                                     reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True,
-                                    model=settings.discovery_model or None, cache=True)
+                                    model=getattr(settings, "discovery_model", "") or None, cache=True)
                 try:
+                    updates = raw.get("updates", [])
+                    has_activity = topics.get("ACTIVITY", {}).get("status") == "KNOWN" or any(
+                        isinstance(item, dict) and item.get("topic") == "ACTIVITY" and item.get("status", "KNOWN") == "KNOWN"
+                        for item in (updates if isinstance(updates, list) else []))
+                    if not has_activity:
+                        # Initial factual exploration has no plan-specific question
+                        # justification yet. Do not require or persist that metadata.
+                        raw = {**raw, "questionAssessments": []}
                     result = ConversationDecision.model_validate(raw)
                     if any(not _supported(update, messages) for update in result.updates):
                         raise ValueError("Unstated contextual detail")
+                    if result.readinessBasis and any(not _supported(quote, messages) for quote in result.readinessBasis.evidence):
+                        raise ValueError("Unstated readiness basis")
                     assessment_topics = [item.topic for item in result.questionAssessments]
                     if len(assessment_topics) != len(set(assessment_topics)):
                         raise ValueError("Duplicate question assessment")
@@ -281,7 +317,7 @@ def _run_discovery_turn(session_id, history, known_facts=None):
         unchanged_pause = (known.get("intakePaused") is True and not decision.focusChanged
                            and json.dumps(topics, sort_keys=True, ensure_ascii=False) == previous_topics)
         # Reassess the existing facts once rather than walking through unused topics.
-        if not ready and selected is None and (details or topics.get("ACTIVITY", {}).get("status") == "KNOWN") and not unchanged_pause:
+        if not ready and selected is None and not decision.stopRequested and (details or topics.get("ACTIVITY", {}).get("status") == "KNOWN") and not unchanged_pause:
             reassess_payload = {**payload, "mode": "REASSESS", "knownTopics": topics,
                                 "exploration": _exploration(topics, question_history),
                                 "questionHistory": question_history,
@@ -312,14 +348,15 @@ def _run_discovery_turn(session_id, history, known_facts=None):
             selected = None if ready else _select_question(topics, question_history, decision, history)
         state = {"pipelineVersion": 2, "intakeTurn": turn, "discoveryEvidence": messages,
                  "knownTopics": topics, "questionHistory": question_history,
-                 "discoveryReady": ready, "extractedFacts": [],
+                 "discoveryReady": ready, "extractedFacts": [], "stopRequested": decision.stopRequested,
                  "scenarioMode": "PERSONALIZED", "basicScenarioSelection": None,
                  "basicScenarioOffered": False, "basicConsentPending": False, "intakePaused": False, "readinessEvidence": None,
                  "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)},
+                 "readinessBasis": decision.readinessBasis.model_dump() if decision.readinessBasis else None,
                  "questionAssessments": [item.model_dump() for item in decision.questionAssessments],
                  "questionNeedReview": {"performed": reviewed_question}}
         if ready:
-            detail = max(details, key=lambda item: item["turn"])
+            detail = decision.readinessBasis.evidence[0].model_dump() if decision.readinessBasis else max(details, key=lambda item: item["turn"])
             state["readinessEvidence"] = {"turn": detail["turn"], "quote": mask_input(detail["quote"])}
             question = fallback.DONE_MESSAGE
         elif selected is not None:

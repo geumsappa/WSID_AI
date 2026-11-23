@@ -34,10 +34,18 @@ class FactUpdate(DetailEvidence):
         return self
 
 
+class ReadinessBasis(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    topics: list[Topic] = Field(min_length=1, max_length=4)
+    evidence: list[DetailEvidence] = Field(min_length=1, max_length=3)
+    contactReason: str = Field(min_length=1, max_length=180)
+
+
 class QuestionAssessment(BaseModel):
     model_config = ConfigDict(extra="forbid")
     topic: Topic
     status: Literal["MISSING", "ANSWERED", "UNNECESSARY"]
+    necessity: Literal["REQUIRED", "OPTIONAL"] = "REQUIRED"
     missingDetail: str | None = Field(default="", max_length=120)
     scenarioImpact: str | None = Field(default="", max_length=160)
     reason: str = Field(min_length=1, max_length=180)
@@ -57,7 +65,9 @@ class ConversationDecision(BaseModel):
     updates: list[FactUpdate] = Field(default_factory=list, max_length=12)
     nextTopic: str | None = None
     focusChanged: StrictBool = False
+    stopRequested: StrictBool = False
     contextSufficient: StrictBool = False
+    readinessBasis: ReadinessBasis | None = None
     requiredTopics: list[Topic] = Field(default_factory=list, max_length=5)
     personalizationTarget: Literal["PERSON", "SERVICE", "OTHER", "UNDECIDED"] = "UNDECIDED"
     nextQuestion: str = Field(default="", max_length=180)

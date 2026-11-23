@@ -66,13 +66,14 @@ def test_existing_need_with_adequate_reason_does_not_add_a_review_call(grounded_
     assert len(grounded_model[0]) == 1
 
 
-def test_unjustified_question_is_not_shown(grounded_model):
+def test_opening_exploration_does_not_need_scenario_justification(grounded_model):
     grounded_model[1]["discovery_brief"] = {"updates": [], "personalizationTarget": "OTHER", "nextTopic": "ACTIVITY",
         "requiredTopics": ["ACTIVITY"], "questionAssessments": []}
     result = ask("모르겠어요")
     assert not result.canGenerateScenario
-    assert result.facts["basicScenarioOffered"]
-    assert result.facts["questionHistory"] == []
+    assert not result.facts["basicScenarioOffered"]
+    assert result.facts["questionHistory"][-1]["topic"] == "ACTIVITY"
+    assert result.facts["knownTopics"] == {}
 
 
 def test_review_cannot_cite_an_unstated_user_fact(grounded_model):

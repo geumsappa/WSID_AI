@@ -114,7 +114,7 @@ def test_ocr_classification_uses_openai_settings(monkeypatch):
     monkeypatch.setattr(rag_config, "FAKE", False)
     monkeypatch.setattr(openai_client, "OpenAI", FakeOpenAI)
     monkeypatch.setattr(openai_client, "settings", SimpleNamespace(
-        llm_api_key="test-key", llm_model="test-model", llm_base_url=""))
+        llm_provider="openai", llm_api_key="test-key", llm_model="test-model", llm_base_url=""))
     monkeypatch.setattr(ocr, "settings", SimpleNamespace(ocr_classify_model=""))
     assert ocr._classify("배송 안내 010-1234-5678") == ("SMS", "배송 안내 문자입니다.")
     assert captured["request"]["model"] == "test-model"

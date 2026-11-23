@@ -12,6 +12,8 @@ from app.schemas.context_graph import ContextGraph, ScenarioPlan, IntakePlan, Ge
 from app.services.context_graph import ContextIntegrityError, check_graph, check_plan
 from app.services.scenario_retrieval import retrieve_patterns, prompt_patterns, validate_uses
 
+from app.services.prompt_templates import load_prompt
+
 logger = logging.getLogger(__name__)
 
 PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
@@ -36,9 +38,7 @@ def safe_tree(value, key=""):
 
 def ask(task, payload, model, *, timeout=None, max_tokens=2500, validate=None):
     prompt_name = "generation_plan" if task == "intake_plan" and payload.get("generationRequested") else task
-    prompt = (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
-    if "{{CONTEXT_FACTS}}" in prompt:
-        prompt = prompt.replace("{{CONTEXT_FACTS}}", (PROMPTS / "context_facts.md").read_text(encoding="utf-8"))
+    prompt = load_prompt(PROMPTS / f"{prompt_name}.md")
     from app.services.basic_training import BASIC_INPUT_SCOPE, SCOPE_INSTRUCTION
     if BASIC_INPUT_SCOPE.get():
         prompt += SCOPE_INSTRUCTION
@@ -159,10 +159,12 @@ def choose_generation_plan(messages, *, readiness_evidence=None, confirmed_topic
             if reference_trace is not None and not candidate.referenceUses:
                 raise ContextIntegrityError("basic_training_requires_case_reference")
     feedback = []
+    previous_proposal = None
     for attempt in range(2):
         proposal = ask("candidate_plan", {"messages": messages, "readinessEvidence": readiness_evidence,
             "confirmedTopics": confirmed_topics, "personalizationTarget": personalization_target, "channels": ALLOWED_CHANNELS, "allowedActions": ALLOWED_REQUESTS,
-            "revisionFeedback": feedback, "retrievedPatterns": prompt_patterns(trace)}, CandidateProposal, max_tokens=4000,
+            "revisionFeedback": feedback, "previousProposal": previous_proposal,
+            "retrievedPatterns": prompt_patterns(trace)}, CandidateProposal, max_tokens=4000,
             validate=validate_proposal)
         candidates = {candidate.id: _approach_plan(proposal, candidate) for candidate in proposal.candidates}
         def validate_comparison(result):
@@ -181,8 +183,7 @@ def choose_generation_plan(messages, *, readiness_evidence=None, confirmed_topic
             selected = candidates[winner.candidateId]
             selected._retrieval_trace = trace
             return proposal.context, selected
-        if comparison.alternativesDistinct and not eligible:
-            break
+        previous_proposal = proposal.model_dump()
         feedback = (["REPETITIVE_PATTERN: " + mask_input(comparison.distinctionReason)] if not comparison.alternativesDistinct else [])
         feedback += [issue.code + ": " + mask_input(issue.detail) for item in comparison.assessments for issue in item.review.issues]
         logger.warning("Candidate comparison rejected: distinct=%s eligible=%d", comparison.alternativesDistinct, len(eligible))

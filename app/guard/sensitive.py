@@ -74,7 +74,7 @@ SURNAMES = set("김이박최정강조윤장임한오서신권황안송류유홍�
 NAME_ONLY = re.compile(r"^\s*([가-힣]{2,4}?)(?:입니다|이에요|예요|이요|요)?\s*[.!]?\s*$")
 NAME_LEAD = re.compile(r"^\s*([가-힣]{2,4}?)(?:이고|이구요|이고요|고요|,)\s*")
 NOT_NAMES = {"아니요", "아니오", "싫어요", "몰라요", "모르겠어요", "왜요", "네네", "그래요", "알겠어요", "잠시만요",
-             "누구세요", "누구", "어디", "무슨", "기억", "모름", "괜찮아요", "글쎄요", "안돼요", "됐어요", "고객님", "확인", "정말"}
+             "누구세요", "누구", "어디", "무슨", "기억", "모름", "또는", "별명", "닉네임", "대신", "괜찮아요", "글쎄요", "안돼요", "됐어요", "고객님", "확인", "정말"}
 
 
 def _labels(requested_info: list[str], words: tuple[str, ...], default: str) -> list[str]:
@@ -105,7 +105,9 @@ def mask_name_address(text: str, requested_info: list[str] | None = None) -> tup
 
     def named(match: re.Match) -> str:
         nonlocal masked
-        if match.group(2) in NOT_NAMES:
+        # Joined conjunction "이름이나" is a question label, while a declared
+        # actual name such as "이름은 이나" must still be masked.
+        if match.group(0) == match.group(1) + "이나" or match.group(2) in NOT_NAMES:
             return match.group(0)
         masked = True
         return match.group(0).replace(match.group(2), f"[{name_label}]", 1)

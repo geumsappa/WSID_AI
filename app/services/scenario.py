@@ -11,7 +11,10 @@ from app.guard.scenario_guard import mentioned_organizations, validate_and_norma
 from app.guard.sensitive import mask_sensitive
 from app.llm.llm_client import LLMError, generate_json, generation_budget
 from app.schemas.context_graph import ContextGraph, GeneratedScenario, ScenarioPlan
+from app.schemas.scenario_revision import ScenarioRevision
+from app.services.scenario_revision import apply_revision
 from app.services import scenario_planner
+from app.services.prompt_templates import load_prompt
 from app.services.scenario_classification import classify_story
 from app.services.scenario_retrieval import retrieve_patterns, prompt_patterns, validate_uses, generation_evidence
 from app.services.context_graph import ContextIntegrityError, check_claims, check_graph, check_plan, fingerprint, project_facts
@@ -96,22 +99,38 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
     service_names = [name for name in verified_organizations if name in service_quote]
 
     failures = []
+    previous_draft = None
     for attempt in range(MAX_ATTEMPTS):
         try:
-            prompt = PROMPT_PATH.read_text(encoding="utf-8")
+            repairing = previous_draft is not None
+            prompt_path = PROMPT_PATH.with_name("scenario_repair.md") if repairing else PROMPT_PATH
+            prompt = load_prompt(prompt_path)
             from app.services.basic_training import BASIC_INPUT_SCOPE, SCOPE_INSTRUCTION
             if BASIC_INPUT_SCOPE.get():
                 prompt += SCOPE_INSTRUCTION
-            prompt += "\n출력 JSON 스키마:\n" + json.dumps(GeneratedScenario.model_json_schema(), ensure_ascii=False)
+            output_schema = ScenarioRevision if repairing else GeneratedScenario
+            prompt += "\n출력 JSON 스키마:\n" + json.dumps(output_schema.model_json_schema(), ensure_ascii=False)
             payload = {"context": graph.model_dump(), "plan": selected.model_dump(),
-                       "allowedOrganizations": allowed, "confirmedPersonName": confirmed_name, "confirmedServiceNames": service_names, "retryIssues": failures,
+                       "allowedOrganizations": allowed, "confirmedPersonName": confirmed_name, "confirmedServiceNames": service_names,
+                       "speakerIdentity": {"actorId": selected.impersonatedActorId, "displayName": confirmed_name, "role": selected.impersonatedRole},
+                       "recipientIdentity": {"actorId": graph.userActorId, "displayName": None}, "retryIssues": failures,
                        "retrievedPatterns": prompt_patterns(selected._retrieval_trace) if selected._retrieval_trace else []}
-            generated = GeneratedScenario.model_validate(generate_json(prompt, json.dumps(payload, ensure_ascii=False),
-                timeout=settings.scenario_timeout_seconds, max_tokens=4000, attempts=1,
-                reasoning_effort=settings.pipeline_reasoning_effort or None))
+            payload["mode"] = "REPAIR" if repairing else "GENERATE"
+            if repairing:
+                payload["previousDraft"] = previous_draft.model_dump()
+            raw = generate_json(prompt, json.dumps(payload, ensure_ascii=False),
+                timeout=settings.scenario_timeout_seconds, max_tokens=3000 if repairing else 4000, attempts=1,
+                reasoning_effort=settings.pipeline_reasoning_effort or None)
+            generated = (apply_revision(previous_draft, ScenarioRevision.model_validate(raw)) if repairing
+                         else GeneratedScenario.model_validate(raw))
+            # The selected actor's verified display name is server-owned context,
+            # not creative text for the model to rename on a body-repair attempt.
+            if confirmed_name:
+                generated.scenario.persona.name = confirmed_name
             check_claims(generated.preservedClaims, graph)
             if {claim.eventId for claim in generated.preservedClaims} != {claim.eventId for claim in selected.anchorClaims}:
                 raise ContextIntegrityError("missing_preserved_claim")
+            previous_draft = generated.model_copy(deep=True)
             normalized, errors = validate_and_normalize({"analysis": generated.analysis.model_dump(), "scenario": generated.scenario.model_dump()}, allowed, classified=False)
             if normalized is None:
                 failures = ["FORMAT_OR_SAFETY_CHECK_FAILED", *errors[:8]]

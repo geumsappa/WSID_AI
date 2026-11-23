@@ -33,3 +33,13 @@ def test_nickname_and_unknown_name_are_not_mistaken_for_private_values():
 def test_street_without_house_number_is_still_masked():
     assert mask_name_address("마포구 월드컵로")[0] == "[주소]"
     assert mask_name_address("부산광역시 해운대구 우동 123-4")[0] == "[주소]"
+
+
+def test_name_question_connectors_are_not_names():
+    for text in ["이름이나 별명도 괜찮습니다.", "이름 또는 별명을 알려 주세요.", "실명 대신 별명으로 불러도 되나요?"]:
+        assert mask_name_address(text) == (text, [])
+
+
+def test_name_that_resembles_a_question_connector_still_gets_masked():
+    assert mask_name_address("이름은 이나예요")[0] == "이름은 [이름]예요"
+    assert mask_name_address("이나입니다", ["이름"])[0] == "[이름]입니다"

@@ -47,7 +47,8 @@ def score_facts(facts, ready, expected, questions):
     checks["no_exact_duplicate_facts"] = len(details) == len(set(details))
     if not ready:
         checks["followup_present"] = bool(questions and questions[-1].strip())
-        checks["no_exact_repeated_question"] = len(questions) == len(set(questions))
+        actual_questions = [item["question"] for item in facts["questionHistory"] if item.get("question")] if isinstance(facts.get("questionHistory"), list) else questions
+        checks["no_exact_repeated_question"] = len(actual_questions) == len(set(actual_questions))
     return checks
 
 
@@ -69,14 +70,42 @@ def score_scenario(scenario, expected):
     visible = json.dumps({k: scenario.get(k) for k in ("title", "persona", "background", "openingMessage")}, ensure_ascii=False)
     for word in expected.get("scenario_contains", []):
         checks[f"scenario_context:{word}"] = word in visible
+    checks["scenario_mode"] = bool(scenario) and scenario.get("generationMode", "PERSONALIZED") == expected.get("mode", "PERSONALIZED")
+    if "persona_name" in expected:
+        checks["persona_name"] = (scenario.get("persona") or {}).get("name") == expected["persona_name"]
+        checks["opening_name"] = expected["persona_name"] in (scenario.get("openingMessage") or "")
+    if "min_scenes" in expected:
+        checks["scene_count"] = len(scenario.get("keyScenes") or []) >= expected["min_scenes"]
+    if expected.get("mode") == "BASIC":
+        checks["basic_facts_separated"] = scenario.get("sourceFacts") == [] and bool(scenario.get("fictionalContext"))
+        evidence = scenario.get("generationEvidence") or {}
+        used = evidence.get("usedForGeneration") or []
+        retrieved = {row.get("caseId") for row in evidence.get("retrievedBeforeGeneration", [])}
+        checks["basic_source_preserved"] = (bool(used) and bool(evidence.get("sourceAttributions"))
+            and all(row.get("caseId") in retrieved for row in used)
+            and scenario.get("basicCaseId") in {row.get("caseId") for row in used})
     return checks
 
 
 def score_turns(turns, expectations):
     checks = {}
     for index, expected in enumerate(expectations):
+        present = index < len(turns)
+        result = turns[index]["result"] if present else {}
+        facts = result.get("facts", {})
         if "ready" in expected:
-            checks[f"turn_readiness:{index + 1}"] = index < len(turns) and turns[index]["result"]["canGenerateScenario"] is expected["ready"]
+            checks[f"turn_readiness:{index + 1}"] = present and result.get("canGenerateScenario") is expected["ready"]
+        if "basic_offered" in expected:
+            checks[f"basic_offer:{index + 1}"] = present and bool(facts.get("basicScenarioOffered")) is expected["basic_offered"]
+        if "next_topic" in expected:
+            history = facts.get("questionHistory") or []
+            current = history[-1] if history and history[-1].get("afterTurn") == facts.get("intakeTurn") else {}
+            checks[f"question_topic:{index + 1}"] = present and current.get("topic") == expected["next_topic"]
+        if "mode" in expected:
+            checks[f"intake_mode:{index + 1}"] = present and facts.get("scenarioMode", "PERSONALIZED") == expected["mode"]
+        if "name" in expected:
+            name = facts.get("knownTopics", {}).get("PERSON_NAME", {})
+            checks[f"confirmed_name:{index + 1}"] = present and name.get("status") == "KNOWN" and name.get("name") == expected["name"]
     return checks
 
 
@@ -124,6 +153,29 @@ def summarize_stages(calls):
     return stages
 
 
+def functional_pass(row):
+    return row.get("error") is None and bool(row["checks"]) and all(row["checks"].values())
+
+
+def summarize_modes(rows):
+    result = {}
+    for mode in ("PERSONALIZED", "BASIC"):
+        selected = [row for row in rows if row.get("expected_mode") == mode]
+        generated = [row for row in selected if row.get("error") is None and bool(row.get("scenario"))
+                     and row["checks"].get("scenario_schema", True)
+                     and row["scenario"].get("generationMode", "PERSONALIZED") == mode]
+        passed = sum(functional_pass(row) for row in selected)
+        attempted = sum(any(call.get("stage") == "scenario" for call in row["calls"]) for row in selected)
+        calls = [call for row in selected for call in row["calls"] if call.get("stage") == "scenario"]
+        result[mode] = {"requested": len(selected), "attempted": attempted, "blocked_before_generation": len(selected) - attempted,
+            "generated": len(generated), "functional_passes": passed,
+            "attempt_success_rate": round(len(generated) / attempted, 4) if attempted else None,
+            "generation_success_rate": round(len(generated) / len(selected), 4) if selected else None,
+            "functional_pass_rate": round(passed / len(selected), 4) if selected else None,
+            "generation_latency": latency_stats([call["seconds"] for call in calls])}
+    return result
+
+
 def summarize(rows):
     metrics = defaultdict(lambda: {"passed": 0, "total": 0})
     for row in rows:
@@ -138,12 +190,12 @@ def summarize(rows):
     task_names = sorted({call["stage"] for call in llm_calls})
     return {
         "runs": len(rows), "completed": sum(r["error"] is None for r in rows),
-        "functional_passes": sum(all(r["checks"].values()) for r in rows),
-        "without_fallback_passes": sum(all(r["checks"].values()) and bool(r["calls"]) and not any(c["fallback"] for c in r["calls"]) for r in rows),
+        "functional_passes": sum(functional_pass(r) for r in rows),
+        "without_fallback_passes": sum(functional_pass(r) and bool(r["calls"]) and not any(c["fallback"] for c in r["calls"]) for r in rows),
         "fallback_calls": sum(c["fallback"] for c in calls), "service_calls": len(calls),
         "fallback_rate": round(sum(c["fallback"] for c in calls) / len(calls), 4) if calls else None,
         "mean_run_seconds": round(sum(r["seconds"] for r in rows) / len(rows), 3) if rows else None,
-        "metrics": dict(metrics), "stages": summarize_stages(calls),
+        "metrics": dict(metrics), "stages": summarize_stages(calls), "generation_modes": summarize_modes(rows),
         "run_latency": latency_stats([row["seconds"] for row in rows]),
         "model_stages": {task: {"calls": sum(call["stage"] == task for call in llm_calls),
                          "failures": sum(call["stage"] == task and call["status"] == "failed" for call in llm_calls),
@@ -153,11 +205,12 @@ def summarize(rows):
 
 def run_case(case, repeat):
     from app.services import discovery, training_api
-    from app.services import scenario, scenario_planner, fast_discovery
+    from app.services import scenario, scenario_planner, fast_discovery, basic_training
     from app.schemas.discovery import DiscoveryRequest
     from app.schemas.training_api import ScenarioRequest
 
-    row = {"case_id": case["id"], "repeat": repeat, "checks": {}, "calls": [], "model_calls": [], "reviews": [], "verified_context": None, "intake_decisions": [], "candidate_comparisons": [], "turns": [], "scenario": None, "error": None}
+    row = {"case_id": case["id"], "repeat": repeat, "checks": {}, "calls": [], "model_calls": [], "reviews": [], "verified_context": None, "intake_decisions": [], "candidate_comparisons": [], "turns": [], "scenario": None, "error": None,
+           "expected_mode": case["expected"].get("mode", "PERSONALIZED") if case.get("generate_scenario") else None}
     facts, conversation, questions, ready = {}, [], [], False
     started = time.perf_counter()
 
@@ -176,6 +229,15 @@ def run_case(case, repeat):
         def wrapped(system, content, **kwargs):
             task = system.splitlines()[0].removeprefix("TASK: ")
             result = measure_call(row["model_calls"], task, lambda: original(system, content, **kwargs))
+            if task == "semantic_review":
+                row.setdefault("semantic_review_attempts", []).append(scenario_planner.safe_tree(result))
+            if task == "scenario_generate":
+                row.setdefault("scenario_draft_attempts", []).append(scenario_planner.safe_tree(result))
+                payload = json.loads(content)
+                row.setdefault("scenario_generation_attempts", []).append({"mode": payload.get("mode", "GENERATE"),
+                    "issues": payload.get("retryIssues", []), "response": scenario_planner.safe_tree(result)})
+            if task == "discovery_question_review":
+                row.setdefault("question_need_reviews", []).append(scenario_planner.safe_tree(result))
             if task == "discovery_brief":
                 row.setdefault("discovery_decisions", []).append(scenario_planner.safe_tree(result))
             if task in ("intake_plan", "candidate_plan"):
@@ -186,7 +248,7 @@ def run_case(case, repeat):
         return wrapped
 
     try:
-        with patch.object(discovery, "run_context_turn", side_effect=observe(discovery.run_context_turn)), patch.object(training_api, "run_scenario", side_effect=observe(training_api.run_scenario)), patch.object(scenario_planner, "generate_json", side_effect=observe_model(scenario_planner.generate_json)), patch.object(scenario, "generate_json", side_effect=observe_model(scenario.generate_json)), patch.object(fast_discovery, "generate_json", side_effect=observe_model(fast_discovery.generate_json)):
+        with patch.object(discovery, "run_context_turn", side_effect=observe(discovery.run_context_turn)), patch.object(training_api, "run_scenario", side_effect=observe(training_api.run_scenario)), patch.object(basic_training, "generate_basic", side_effect=observe(basic_training.generate_basic)), patch.object(scenario_planner, "generate_json", side_effect=observe_model(scenario_planner.generate_json)), patch.object(scenario, "generate_json", side_effect=observe_model(scenario.generate_json)), patch.object(fast_discovery, "generate_json", side_effect=observe_model(fast_discovery.generate_json)):
             for user_input in case["inputs"]:
                 result = measure_call(row["calls"], "discovery", lambda: discovery.discover(
                     DiscoveryRequest(conversation=conversation, knownFacts=facts, currentInput=user_input)))
@@ -209,7 +271,7 @@ def run_case(case, repeat):
                         ScenarioRequest(facts=facts, fraudTypeCode=facts.get("fraudTypeCode") or case["expected"].get("code", "SMISHING"))))
                     row["scenario"] = generated.scenario
                     row["checks"].update(score_scenario(generated.scenario, case["expected"]))
-                    if row["verified_context"] is not None:
+                    if row["verified_context"] is not None and generated.scenario.get("generationMode", "PERSONALIZED") != "BASIC":
                         from app.schemas.context_graph import ContextGraph
                         from app.services.context_graph import project_facts
                         verified = {"contextGraph": row["verified_context"],
@@ -226,7 +288,7 @@ def run_case(case, repeat):
         row["checks"]["execution"] = False
         # Errors cannot silently disappear from applicable metric denominators.
         pending = score_facts(facts, ready, case["expected"], questions)
-        pending.update(score_turns([], case.get("turn_expectations", [])))
+        row["checks"].update(score_turns(row["turns"], case.get("turn_expectations", [])))
         if case.get("generate_scenario"):
             pending.update(score_scenario({}, case["expected"]))
         for name in pending:
@@ -277,9 +339,11 @@ def write_report(folder, report):
     (folder / "results.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     with (folder / "manual-review.csv").open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.writer(stream)
-        writer.writerow(["case_id", "repeat", "naturalness_0_2", "plausibility_0_2", "fact_fiction_separation_0_2", "notes", "scenario", "questions"])
+        writer.writerow(["case_id", "repeat", "expected_mode", "generated_mode", "naturalness_0_2", "plausibility_0_2", "fact_fiction_separation_0_2", "notes", "scenario", "questions"])
         for row in report["results"]:
-            writer.writerow([row["case_id"], row["repeat"], "", "", "", "", json.dumps(row["scenario"], ensure_ascii=False), json.dumps([t["result"]["nextQuestion"] for t in row["turns"]], ensure_ascii=False)])
+            writer.writerow([row["case_id"], row["repeat"], row.get("expected_mode", ""),
+                             (row.get("scenario") or {}).get("generationMode", "PERSONALIZED" if row.get("scenario") else ""),
+                             "", "", "", "", json.dumps(row["scenario"], ensure_ascii=False), json.dumps([t["result"]["nextQuestion"] for t in row["turns"]], ensure_ascii=False)])
     summary = report["summary"]
     lines = ["# 상황 파악·시나리오 생성 평가", "", f"실행 모드: {report['mode']} / 반복 결과: {summary['runs']}건", "",
              "mock 결과는 평가 도구 점검용이며 실제 AI 품질 점수가 아닙니다.", "",
@@ -289,6 +353,11 @@ def write_report(folder, report):
              "| 자동 평가 항목 | 통과 | 평가 수 | 비율 |", "| --- | ---: | ---: | ---: |"]
     for name, metric in summary["metrics"].items():
         lines.append(f"| {name} | {metric['passed']} | {metric['total']} | {metric['rate']:.1%} |")
+    lines.extend(["", "## 맞춤·기본 훈련 분리", "",
+        "기본 훈련 성공은 맞춤 생성 성공으로 합산하지 않습니다. 생성 성공과 전체 기능 기준 통과도 구분합니다.", "",
+        "| 종류 | 생성 기대 사례 | 실제 생성 호출 | 호출 전 미완료 | 생성 완료 | 전체 기능 통과 |", "| --- | ---: | ---: | ---: | ---: | ---: |"])
+    for mode, data in summary.get("generation_modes", {}).items():
+        lines.append(f"| {mode} | {data['requested']} | {data['attempted']} | {data['blocked_before_generation']} | {data['generated']} | {data['functional_passes']} |")
     lines.extend(timing_report(summary))
     lines.extend(["", "미실행 항목은 측정하지 않음. 예외는 해당 평가 항목의 실패로 집계합니다.",
                   "자연스러움·개연성·사실/가상 구분은 manual-review.csv에서 수동 채점하세요. 공란은 미평가입니다."])
@@ -305,7 +374,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.repeats <= 20:
         parser.error("--repeats must be between 1 and 20")
-    cases = json.loads(CASES.read_text(encoding="utf-8"))
+    cases_bytes = CASES.read_bytes()
+    cases = json.loads(cases_bytes)
     if args.case_ids:
         unknown = set(args.case_ids) - {case["id"] for case in cases}
         if unknown:
@@ -320,20 +390,28 @@ def main(argv=None):
     from app.config import settings
     if args.live and (settings.llm_provider not in ("openai", "anthropic") or not settings.llm_api_key or not settings.llm_model):
         parser.error("--live requires LLM_PROVIDER=openai/anthropic, LLM_API_KEY and LLM_MODEL")
+    artifact_sha256 = {name: hashlib.sha256((Path(__file__).resolve().parents[2] / name).read_bytes()).hexdigest()
+                  for name in ("app/services/fast_discovery.py", "app/services/basic_training.py", "app/services/scenario.py",
+                               "app/services/scenario_planner.py", "app/services/scenario_retrieval.py", "app/services/scenario_revision.py", "app/guard/scenario_guard.py",
+                               "app/schemas/context_graph.py", "app/schemas/scenario_revision.py", "app/schemas/fast_discovery.py", "app/schemas/sim.py",
+                               "app/data/scenario_patterns.json", "evaluations/discovery_scenario/runner.py")}
+    prompt_sha256 = {name: hashlib.sha256((Path(__file__).resolve().parents[2] / "app" / "prompts" / name).read_bytes()).hexdigest()
+                                for name in ("discovery_brief.md", "discovery_question_review.md", "candidate_plan.md", "candidate_compare.md", "intake_plan.md", "generation_plan.md", "context_facts.md", "semantic_review.md", "scenario.md", "scenario_repair.md", "scenario_quality_criteria.md", "scenario_classify.md")}
     rows = []
     for case in cases:
         for repeat in range(1, args.repeats + 1):
             row = run_case(case, repeat)
             rows.append(row)
-            print(f"{case['id']} #{repeat}: {'PASS' if all(row['checks'].values()) else 'FAIL'} ({row['seconds']}s)")
+            print(f"{case['id']} #{repeat}: {'PASS' if functional_pass(row) else 'FAIL'} ({row['seconds']}s)")
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     report = {"created_at": stamp, "mode": "live" if args.live else "mock", "provider": settings.llm_provider,
               "model": settings.llm_model if args.live else "mock", "results": rows, "summary": summarize(rows),
-              "repeats": args.repeats, "cases_sha256": hashlib.sha256(CASES.read_bytes()).hexdigest(),
-              "protocol": "candidate-selection-v1", "pipeline_reasoning_effort": settings.pipeline_reasoning_effort or "provider-default",
+              "repeats": args.repeats, "cases_sha256": hashlib.sha256(cases_bytes).hexdigest(),
+              "protocol": "candidate-selection-v2-explicit-basic",
+              "artifact_sha256": artifact_sha256,
+              "pipeline_reasoning_effort": settings.pipeline_reasoning_effort or "provider-default",
               "discovery_reasoning_effort": settings.discovery_reasoning_effort or "provider-default",
-              "prompt_sha256": {name: hashlib.sha256((Path(__file__).resolve().parents[2] / "app" / "prompts" / name).read_bytes()).hexdigest()
-                                for name in ("discovery_brief.md", "candidate_plan.md", "candidate_compare.md", "intake_plan.md", "generation_plan.md", "context_facts.md", "semantic_review.md", "scenario.md", "scenario_classify.md")}}
+              "prompt_sha256": prompt_sha256}
     folder = args.output / stamp
     write_report(folder, report)
     print(f"Report: {folder.resolve()}")

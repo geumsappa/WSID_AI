@@ -158,3 +158,60 @@ def test_timing_markdown_has_separate_groups_and_missing_values():
     markdown = "\n".join(timing_report(summary))
     for label in ("상황 파악", "시나리오 생성", "기본 대체 없이 반환", "기본 응답 대체 후 반환", "예외로 실패", "중앙값", "P95", "미측정"):
         assert label in markdown
+
+
+def test_name_in_title_alone_does_not_pass_display_and_opening_checks():
+    checks = score_scenario({"title": "도토리의 부탁", "persona": {"name": "친구"}, "openingMessage": "안녕"},
+                            {"persona_name": "도토리"})
+    assert not checks["persona_name"] and not checks["opening_name"]
+
+
+def test_question_topic_must_belong_to_current_turn():
+    result = {"facts": {"intakeTurn": 3, "questionHistory": [{"topic": "PERSON_NAME", "afterTurn": 2}]}, "canGenerateScenario": False}
+    assert not score_turns([{"result": result}], [{"next_topic": "PERSON_NAME"}])["question_topic:1"]
+    result["facts"]["questionHistory"][0]["afterTurn"] = 3
+    assert score_turns([{"result": result}], [{"next_topic": "PERSON_NAME"}])["question_topic:1"]
+
+
+def test_basic_training_must_keep_fiction_and_source_provenance_separate():
+    scenario = {"generationMode": "BASIC", "basicCaseId": "case-a", "sourceFacts": [], "fictionalContext": "가상 설정",
+        "generationEvidence": {"retrievedBeforeGeneration": [{"caseId": "case-a"}],
+            "usedForGeneration": [{"caseId": "case-a"}], "sourceAttributions": ["공식 출처"]}}
+    checks = score_scenario(scenario, {"mode": "BASIC"})
+    assert checks["basic_facts_separated"] and checks["basic_source_preserved"]
+    scenario["sourceFacts"] = [{"detail": "만든 설정을 실제 사용자 사실로 취급"}]
+    scenario["generationEvidence"]["usedForGeneration"] = [{"caseId": "unretrieved"}]
+    checks = score_scenario(scenario, {"mode": "BASIC"})
+    assert not checks["basic_facts_separated"] and not checks["basic_source_preserved"]
+
+
+def test_modes_keep_generation_failure_in_denominator_and_never_count_basic_as_personalized():
+    def row(mode, scenario, error=None, checks=None):
+        return {"expected_mode": mode, "scenario": scenario, "error": error, "checks": checks or {"execution": error is None},
+                "calls": [], "seconds": 0}
+    rows = [row("BASIC", {"generationMode": "BASIC"}), row("PERSONALIZED", None, "TimeoutError"),
+            row("PERSONALIZED", {"generationMode": "BASIC"}, checks={"scenario_mode": False})]
+    modes = summarize(rows)["generation_modes"]
+    assert modes["BASIC"]["requested"] == 1 and modes["BASIC"]["generation_success_rate"] == 1
+    assert modes["PERSONALIZED"]["requested"] == 2 and modes["PERSONALIZED"]["generation_success_rate"] == 0
+
+
+def test_error_or_empty_checks_cannot_be_reported_as_a_functional_pass():
+    rows = [{"checks": {"readiness": True}, "error": "RuntimeError", "calls": [], "seconds": 1},
+            {"checks": {}, "error": None, "calls": [], "seconds": 0}]
+    assert summarize(rows)["functional_passes"] == 0
+
+
+def test_empty_or_schema_invalid_scenario_is_not_a_generation_success():
+    rows = [{"expected_mode": "PERSONALIZED", "scenario": story, "error": None,
+             "checks": {"scenario_schema": False}, "calls": [], "seconds": 0}
+            for story in ({}, {"generationMode": "PERSONALIZED"})]
+    assert summarize(rows)["generation_modes"]["PERSONALIZED"]["generated"] == 0
+    assert not score_scenario({}, {})["scenario_mode"]
+
+
+def test_repeated_pause_notices_are_not_counted_as_repeated_questions():
+    checks = score_facts({"questionHistory": []}, False, {}, ["기본 훈련을 선택할 수 있어요", "기본 훈련을 선택할 수 있어요"])
+    assert checks["no_exact_repeated_question"]
+    checks = score_facts({"questionHistory": [{"question": "같은 질문?"}, {"question": "같은 질문?"}]}, False, {}, ["안내"])
+    assert not checks["no_exact_repeated_question"]

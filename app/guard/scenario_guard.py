@@ -81,7 +81,10 @@ def find_unsafe_text(text: str, allowed_organizations: list[str] | None = None) 
     """실제 사기에 악용될 수 있는 내용을 찾는다."""
     problems = []
     organization_text = text
-    for allowed in sorted(set(allowed_organizations or []) & set(REAL_NAMES), key=len, reverse=True):
+    # The caller supplies names grounded in user evidence. A verified full name
+    # may contain a catalogue short name (e.g. a platform's former full brand).
+    # Remove the whole verified name before checking its nested catalogue terms.
+    for allowed in sorted({name.strip() for name in (allowed_organizations or []) if isinstance(name, str) and name.strip()}, key=len, reverse=True):
         organization_text = organization_text.replace(allowed, "")
     for name in REAL_NAMES:
         if name in organization_text:
@@ -260,5 +263,5 @@ def validate_and_normalize(data: dict, allowed_organizations: list[str] | None =
         analysis.pop("riskTypeReason", None)
         for field in ("riskType", "fraudSubtype", "basedOnCases"):
             scenario.pop(field, None)
-    scenario["allowedOrganizations"] = [name for name in (allowed_organizations or []) if name in REAL_NAMES]
+    scenario["allowedOrganizations"] = list(dict.fromkeys(name.strip() for name in (allowed_organizations or []) if isinstance(name, str) and name.strip()))
     return {"analysis": analysis, "scenario": scenario}, []

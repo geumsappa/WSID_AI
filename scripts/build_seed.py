@@ -2,6 +2,10 @@
 """seed_chunks.jsonl 생성기.
 Claude가 2026-11-16~17에 원문을 열어 확인한 내용을 '요약' 형태로 정리한 청크입니다.
 원본 PDF 파싱 결과(parse_pdfs.py)가 생기면 같은 doc_id 의 seed 청크는 지우고 원문 청크로 대체하세요.
+
+새 자료는 data/corpus/manual_chunks.jsonl 에 한 줄씩 추가하세요(같은 레코드 형식, 자료별 verified_at).
+이 스크립트는 아래 DOCS 와 manual_chunks.jsonl 을 합쳐 seed_chunks.jsonl 을 다시 만들기 때문에,
+seed_chunks.jsonl 을 직접 고치면 다음 실행 때 사라집니다.
 """
 import json, sys
 from pathlib import Path
@@ -207,6 +211,17 @@ def main():
                 }
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 n_all += 1
+        manual = out.with_name("manual_chunks.jsonl")
+        seen = set()
+        for line in manual.read_text(encoding="utf-8").splitlines() if manual.exists() else []:
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            if rec["chunk_id"] in seen or rec["doc_id"] in {d[0] for d in DOCS}:
+                raise SystemExit(f"manual_chunks.jsonl 중복 청크: {rec['chunk_id']}")
+            seen.add(rec["chunk_id"])
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            n_all += 1
     print(f"seed 청크 {n_all}개 → {out}")
 
 

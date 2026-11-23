@@ -20,8 +20,9 @@ from rag.guard import has_forbidden
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_PIXELS = 16_000_000
 MAX_TEXT_LENGTH = 1000  # Spring /extract description 상한과 같음. 넘으면 잘라서 전달
-OCR_TIMEOUT_SECONDS = 15
-# 예산: OCR 15초(대기 포함) + 분류 대기 1초 + 분류 10초 = 최대 26초 < Spring OCR 응답 제한 30초
+OCR_TIMEOUT_SECONDS = settings.ocr_timeout_seconds
+# 예산(기본값): OCR 15초(대기 포함) + 분류 대기 1초 + 분류 10초 = 최대 26초 < Spring OCR 응답 제한 30초.
+# OCR_TIMEOUT_SECONDS를 늘리면 Spring AI_OCR_READ_TIMEOUT도 함께 늘려요.
 CLASSIFY_TIMEOUT_SECONDS = settings.ocr_classify_timeout_seconds
 CLASSIFY_QUEUE_WAIT_SECONDS = 1
 OCR_QUEUE_WAIT_SECONDS = settings.ocr_queue_wait_seconds

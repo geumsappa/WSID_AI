@@ -31,11 +31,19 @@ OUTCOMES = {"safe", "risky", "neutral"}
 INFO_REQUEST = "개인정보 제공"
 TYPE_IT_MARK = "여기에 적어 주세요"  # '직접 입력하라'는 재요구를 이미 했는지 알아보는 표시
 # 실제 사기범은 처음 몇 마디는 신뢰를 쌓는 데 써요. 이 답변 수까지는 요구 문장을 억지로 덧붙이지 않아요.
-WARMUP_TURNS = 2
+WARMUP_TURNS = 1
 APP_CLICK_EVENT = "[훈련 행동: 가상 앱 설치 링크 누름]"
 # 훈련은 실제 문자·앱 화면을 보내지 않아요. 사용자가 알 수 없는 코드를 꺼내는 대사는 바꿔요.
 # ("인증번호는 앱 설치 후 표시돼요"처럼 요구가 아닌 말도 다음 턴에 그 번호를 묻게 만들어서 함께 바꿔요)
 UNAVAILABLE_THING = re.compile(r"인증\s*(번호|코드)|OTP|보안\s*카드|승인\s*번호|확인\s*코드|앱\s*(화면)?에\s*(표시|뜬|나온|나타난)", re.I)
+# 사기범이 역할을 깨고 예방 조언을 하는 대사 (예: "실제 정보는 보내지 마시고 공식 경로에서 확인하세요")
+ROLE_BREAK = re.compile(r"보내지\s*마(세요|시고|십시오)|입력하지\s*마(세요|시고)|적지\s*마(세요|시고)"
+                        r"|공식\s*(경로|채널|앱|홈페이지|사이트|대표\s*번호|고객센터)(에서|로|으로)\s*(직접\s*|따로\s*|별도로\s*)?확인(해\s*(주세요|보세요)|하세요|하시기\s*바랍니다)"
+                        r"|사기(일|인|에\s*주의|를\s*조심)|주의하세요|훈련(입니다|이에요|이라서|이니)")
+# 실제로 무언가를 시키는 말 (링크·정보·돈·앱). 두 번 연속 이런 말 없이 맴돌면 시간 끌기로 봐요
+DEMAND_WORDS = re.compile(r"\[모의링크\]|\[모의앱\]|링크|계좌|성함|이름|주소|생년월일|연락처|번호|입금|송금|보내\s*주|설치|입력|적어|등록|수수료|인증")
+# 대화 속 인물 대사에서 "가상" 같은 설명 말을 빼요 (몰입을 깨는 표현)
+VIRTUAL_WORD = re.compile(r"\(가상\)|가상의\s*|가상\s+(?=[가-힣])")
 # 사용자가 앱 링크를 누르지 않았는데 설치가 끝났다고 말하는 대사
 INSTALL_DONE = re.compile(r"설치(가|는|를)?\s*(확인|완료)\s*(됐|되었|했|하셨|되셨)|설치(하셨|해\s*주셨)(군요|네요|으니|으면)")
 
@@ -93,7 +101,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     try:
         data = generate_json(
             _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns),
-            _build_transcript(history, masked_last),
+            _build_transcript(history, masked_last, scene_now, _scene(scenes, min(current_scene + 1, total_scenes))),
             max_tokens=1000,
         )
     except LLMError:
@@ -166,6 +174,35 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         if problems:
             logger.warning("session=%s 사기범 대사 가드레일 차단: %s", session_id, problems)
         persona_message = _fallback_line(scene_next, request_type)
+        used_fallback = True
+
+    # 5-a) 사기범이 역할을 깨고 예방 조언을 하면 장면에 맞는 사기범 대사로 바꿔요 (조언은 결과 리포트에서 해요)
+    if ROLE_BREAK.search(persona_message):
+        logger.info("session=%s 역할을 깬 대사 교체", session_id)
+        persona_message = _fallback_line(scene_next, request_type)
+        used_fallback = True
+    persona_message = VIRTUAL_WORD.sub("", persona_message).strip()
+
+    # 5-c) 같은 부탁을 되풀이하거나(직전 대사와 거의 같음), 두 번 연속 아무것도 요구하지 않고 맴돌면
+    #      장면을 진행시키는 요구를 해요. 첫 답변(신뢰 쌓기)과 마지막 인사는 빼요
+    recent_persona = [m["text"] for m in history if m["role"] == "persona"][-2:]
+    repeated = any(_similar(persona_message, old) >= 0.55 for old in recent_persona)
+    stalling = (user_turns > WARMUP_TURNS and not type_it and recent_persona
+                and not DEMAND_WORDS.search(persona_message) and not DEMAND_WORDS.search(recent_persona[-1]))
+    if (repeated or stalling) and not data.get("scenarioComplete"):
+        forward = scene_next if scene_next.get("request", "대화 지속") != "대화 지속" else _scene(scenes, min(next_scene + 1, total_scenes))
+        forward_request = forward.get("request", "개인정보 제공")
+        if forward_request == "대화 지속":
+            forward_request = INFO_REQUEST
+        logger.info("session=%s 맴도는 대사 진행 (repeated=%s) -> %s", session_id, repeated, forward_request)
+        # 시간 끌기면 자연스러운 앞말은 살리고 요구를 이어 붙여요. 같은 말 반복이면 요구 대사로 바꿔요
+        line = (_request_info_line(_requested(forward) or [fallback.TRAINING_DEFAULT_INFO])
+                if forward_request == INFO_REQUEST else _fallback_line(forward, forward_request))
+        persona_message = line if repeated else f"{persona_message.rstrip()} {line}"[:300]
+        if forward is not scene_next and next_scene == current_scene:  # 장면은 한 번에 한 칸까지만
+            next_scene = min(next_scene + 1, total_scenes)
+            scene_next = forward
+        request_type = forward_request
         used_fallback = True
 
     # 5-b) 훈련에서 일어나지 않은 일을 전제로 한 대사 바로잡기
@@ -291,15 +328,37 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns) 
     )
 
 
-def _build_transcript(history: list[dict], masked_last: str) -> str:
+def _build_transcript(history: list[dict], masked_last: str, scene_now: dict | None = None,
+                      scene_after: dict | None = None) -> str:
     """LLM 에 보낼 대본. 사용자의 실제 개인정보 값은 가려진 상태로만 보낸다."""
     lines = []
     for i, m in enumerate(history):
         speaker = "사기범" if m["role"] == "persona" else "훈련에서 확인한 행동" if m["role"] == "event" else "사용자"
         text = masked_last if i == len(history) - 1 else mask_sensitive(m["text"])[0]
         lines.append(f"{speaker}: {' '.join(text.split())}")
+    # 같은 말을 맴돌지 않게: 이번에 노릴 행동과 직전 대사를 따로 짚어 줘요
+    last_persona = next((' '.join(m["text"].split()) for m in reversed(history) if m["role"] == "persona"), "")
+    guide = []
+    if scene_now:
+        info = ", ".join(_requested(scene_now))
+        guide.append(f"- 지금 장면 목표: {scene_now.get('goal', '')} / 시킬 행동: {scene_now.get('request', '')}"
+                     + (f" ({info})" if info else ""))
+    if scene_after and scene_after is not scene_now:
+        guide.append(f"- 다음 장면 행동: {scene_after.get('request', '')}")
+    if last_persona:
+        guide.append(f"- 직전 사기범 대사: \"{last_persona[:200]}\" → 이 말과 다른 내용으로, 대화를 한 걸음 더 진행시키세요.")
     return ("지금까지의 훈련 대화입니다.\n\n" + "\n".join(lines)
+            + ("\n\n[다음 대사 안내]\n" + "\n".join(guide) if guide else "")
             + "\n\n사용자의 마지막 답변을 판정하고, 규칙에 따라 JSON 으로만 응답하세요.")
+
+
+def _similar(a: str, b: str) -> float:
+    """두 대사가 얼마나 비슷한지 (글자 두 개 묶음 기준 겹침 비율 0~1)"""
+    def grams(text: str) -> set[str]:
+        compact = "".join(ch for ch in text if ch.isalnum())
+        return {compact[i:i + 2] for i in range(len(compact) - 1)}
+    ga, gb = grams(a), grams(b)
+    return len(ga & gb) / len(ga | gb) if ga and gb else 0.0
 
 
 def _clean_judgment(raw, scenario: dict) -> dict:

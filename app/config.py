@@ -17,6 +17,9 @@ class Settings:
     ocr_classify_timeout_seconds: float = float(os.getenv("OCR_CLASSIFY_TIMEOUT_SECONDS", "10"))
     # 다른 OCR 요청이 처리 중일 때 기다리는 최대 시간(초). OCR 15초 예산 안에서 차감
     ocr_queue_wait_seconds: float = float(os.getenv("OCR_QUEUE_WAIT_SECONDS", "5"))
+    # 사진 전체 글자 인식 제한(대기 포함). CPU가 느리면 사진 한 장에 15초를 넘길 수 있어 환경별로 조정.
+    # Spring AI_OCR_READ_TIMEOUT은 이 값 + 분류 대기·분류 시간보다 길어야 해요.
+    ocr_timeout_seconds: float = float(os.getenv("OCR_TIMEOUT_SECONDS", "15"))
     ocr_executable: str = os.getenv("OCR_EXECUTABLE", "tesseract").strip()
     ocr_languages: str = os.getenv("OCR_LANGUAGES", "kor+eng").strip()
     llm_provider: str = os.getenv("LLM_PROVIDER", "mock").strip().lower()
@@ -35,6 +38,7 @@ class Settings:
     # 시나리오는 길게 생성하므로 대기시간을 따로 둠 (훈련 시작 전 로딩 화면 1번)
     scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "110"))
     scenario_timeout_seconds: float = float(os.getenv("SCENARIO_TIMEOUT_SECONDS", "25"))
+    solution_reply_timeout_seconds: float = float(os.getenv("SOLUTION_REPLY_TIMEOUT_SECONDS", "12"))
     evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "25"))
     # 가상 훈련 대화 전체 최대 턴 수 (요구사항 초안: 핵심 장면 12턴 / 전체 15턴)
     training_max_turns: int = int(os.getenv("TRAINING_MAX_TURNS", "15"))

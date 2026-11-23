@@ -80,7 +80,8 @@ def anthropic_text(system_prompt: str, user_content: str, *, max_tokens: int = 1
                    timeout: float | None = None, model: str | None = None, cache: bool = False) -> str:
     """Claude 한 번 호출 → 답변 글자. 다른 모듈(RAG·OCR)도 이 함수를 같이 써요."""
     client = _reusable_anthropic_client(settings.llm_api_key)
-    system_text = system_prompt + "\n\n설명이나 코드블록 없이 JSON 객체 하나만 출력하세요."
+    # 줄바꿈·들여쓰기도 전부 답 토큰이라 한 줄로 쓰게 해요 (특히 Haiku 가 보기 좋게 길게 쓰는 편)
+    system_text = system_prompt + "\n\n설명이나 코드블록 없이 JSON 객체 하나만, 줄바꿈·들여쓰기 없이 한 줄로 출력하세요. 문자열 값은 필요한 만큼만 짧게 쓰세요."
     parts = system_text.split(CACHE_BREAK)
     # 프롬프트 캐싱: 긴 규칙 프롬프트는 매번 똑같아서 한 번 저장해 두면 5분 안의 다음 호출은 입력 요금의 10%만 내요.
     # (그래서 훈련 프롬프트는 매 턴 바뀌는 값을 사용자 메시지 쪽으로 옮겨 두었어요)

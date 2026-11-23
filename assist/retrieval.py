@@ -12,6 +12,18 @@ from .contracts import CandidateReference, VerifiedReference
 from .upstream import ReferenceIndexUnavailable, call
 
 
+def _grams(text: str) -> set[str]:
+    compact = "".join(ch for ch in str(text) if ch.isalnum())
+    return {compact[i:i + 2] for i in range(len(compact) - 1)}
+
+
+def _overlap(query: str, ref: dict) -> float:
+    """임베딩 없이 쓰는 검색 점수: 질문 글자 묶음 중 문단에 있는 비율 (0~1)."""
+    q = _grams(query)
+    doc = _grams(" ".join(str(ref.get(key, "")) for key in ("title", "excerpt", "text", "content")))
+    return len(q & doc) / len(q) if q and doc else 0.0
+
+
 class ReferenceRetriever:
     @staticmethod
     def _load():
@@ -39,6 +51,11 @@ class ReferenceRetriever:
         vectors, references, _ = self._load()
         if not references:
             return []
+        from rag.openai_client import has_embeddings
+        if not has_embeddings():
+            # Claude 만 쓰고 OpenAI 키가 없으면: 질문과 문단의 글자 두 개 묶음 겹침으로 순위를 매겨요
+            scores = np.asarray([_overlap(query, ref) for ref in references], dtype=np.float32)
+            return self._rank(scores, references, facts, k, fraud_type)
         if config.FAKE:
             from rag.openai_client import _fake_vec
             vector = _fake_vec(query, config.EMBED_DIM)
@@ -52,6 +69,10 @@ class ReferenceRetriever:
         q = np.asarray(vector, dtype=np.float32)
         q /= np.linalg.norm(q) + 1e-12
         scores = vectors @ q
+        return self._rank(scores, references, facts, k, fraud_type)
+
+    @staticmethod
+    def _rank(scores, references: list[dict], facts: dict, k: int, fraud_type: str | None) -> list[dict]:
         wanted = set(situations_for(facts))
         candidates = []
         codes = set()

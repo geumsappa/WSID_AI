@@ -259,3 +259,14 @@ def test_대사에서_가상이라는_말을_뺌(monkeypatch):
         "personaMessage": "안녕하세요, 가상 한빛마켓(가상) 담당자입니다."})
     r = training.run_training_turn("s1", _scenario(), 1, _history("누구세요?"))
     assert "가상" not in r["personaMessage"]
+
+
+def test_두_번_연속_아무것도_요구하지_않고_맴돌면_요구를_이어_붙임(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "neutral"}, "nextScene": 2, "requestType": "대화 지속",
+        "personaMessage": "확인되는 동안 여기서 같이 상황을 봐주시면 될 것 같아요."})
+    history = [{"role": "persona", "text": "안녕하세요, 결제가 계속 처리 중이라네요."}, {"role": "user", "text": "넵 안녕하세요"},
+               {"role": "persona", "text": "처리 상황 확인할 때까지만 채팅으로 같이 봐주실 수 있을까요?"}, {"role": "user", "text": "넵"}]
+    r = training.run_training_turn("s1", _scenario(), 1, history)
+    assert r["personaMessage"].startswith("확인되는 동안")
+    assert training.DEMAND_WORDS.search(r["personaMessage"])  # 링크·정보 같은 실제 요구가 붙음

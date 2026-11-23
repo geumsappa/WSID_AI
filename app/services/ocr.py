@@ -154,12 +154,17 @@ def _recognize(data: bytes, timeout: float) -> str:
     return result.stdout.decode("utf-8", errors="replace").strip()
 
 
-def _classify(text: str) -> tuple[str, str | None]:
+def _mask(text: str) -> str:
+    """민감정보, '인증번호' 같은 말 뒤의 숫자, 링크, 전화번호를 가린 글자."""
     masked, _ = mask_sensitive(text)
     requested = [word for word in NUMERIC_INFO_WORDS if word.lower() in text.lower()]
     masked, _ = mask_requested_numbers(masked, requested)
     masked = _URL.sub("[링크]", masked)
-    masked = PHONE_PATTERN.sub("[전화번호]", masked)
+    return PHONE_PATTERN.sub("[전화번호]", masked)
+
+
+def _classify(text: str) -> tuple[str, str | None]:
+    masked = _mask(text)
     raw = generate_json(_SYSTEM, f"<사진 속 글자>\n{masked}\n</사진 속 글자>",
                         {"imageType": "OTHER", "summary": None},
                         model=settings.ocr_classify_model or None, timeout=CLASSIFY_TIMEOUT_SECONDS)
@@ -205,4 +210,5 @@ def extract_text(images: list[bytes]) -> OcrResult:
             image_type, summary = future.result(timeout=CLASSIFY_TIMEOUT_SECONDS)
         except Exception:
             pass  # 텍스트는 유지한다. 실행 중인 호출은 끝날 때 슬롯을 반환한다.
-    return OcrResult(recognizedText=text, usable=True, imageType=image_type, summary=summary)
+    return OcrResult(recognizedText=text, usable=True, imageType=image_type, summary=summary,
+                     maskedText=_mask(text))

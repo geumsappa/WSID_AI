@@ -44,13 +44,33 @@ REFUND_NOTICE_CODES = {"REF_LAW_REFUND_PROCEDURE_V1_P2", "REF_FSS_2026_07_NONFAC
 SHORT_REPLY = re.compile(r"^\s*(예|네|응|아니|아뇨|모름|모르|잘 ?모르|송금|정보 ?제공|앱 ?설치|연락 ?지속)")
 
 
+# 사진 턴: Spring이 사진 업로드를 "[사진 · 메신저 대화] 요약: … / 사진 속 글자: …" 형태의 USER 턴으로 보내요.
+# 사용자가 물은 말이 아니라 사진에서 읽은 상황이라, 원래 질문으로 쓰지 않고 따로 다뤄요.
+PHOTO_PREFIX = "[사진"
+PHOTO_TURNS_FOR_MODEL = 2
+PHOTO_CHARS = 1200
+PHOTO_QUERY_CHARS = 400
+
+
+def is_photo(turn) -> bool:
+    return turn.role == "USER" and turn.content.startswith(PHOTO_PREFIX)
+
+
 def previous_user(request: PlanRequest | AnswerRequest) -> str:
     """history에서 가장 최근의 '질문다운' 사용자 말. history에는 이번 질문 앞의 대화만 넣는다는 전제라,
-    확인 질문 뒤 후속 PLAN·ANSWER(question=null)에서는 이게 원래 질문이에요."""
+    확인 질문 뒤 후속 PLAN·ANSWER(question=null)에서는 이게 원래 질문이에요. 사진 턴은 질문이 아니라 건너뛰어요."""
     for turn in reversed(request.history or []):
+        if is_photo(turn):
+            continue
         if turn.role == "USER" and not (len(turn.content) <= 20 and SHORT_REPLY.match(turn.content)):
             return turn.content
     return ""
+
+
+def photo_text(request: PlanRequest | AnswerRequest) -> str:
+    """최근 사진 턴 내용(검색어용). 사진이 없으면 빈 문자열."""
+    photos = [t.content for t in (request.history or []) if is_photo(t)][-PHOTO_TURNS_FOR_MODEL:]
+    return " ".join(photos)[:PHOTO_QUERY_CHARS]
 
 
 # "둘 다", "그거"처럼 앞 답변에 나온 것을 가리키는 말. 이때는 직전 도우미 답변도 주제에 넣어요
@@ -101,7 +121,14 @@ def drop_refund_notice(references: list[dict], fraud_type: str | None, text: str
 
 
 def history_for_model(request: PlanRequest | AnswerRequest) -> list[dict] | None:
-    """모델에 넘길 최근 대화 (최근 6턴, 턴당 600자). 없으면 None."""
+    """모델에 넘길 대화. 일반 턴은 최근 6턴·턴당 600자, 사진 턴은 대화가 길어져도 밀려나지 않게
+    최근 2개를 턴당 1200자로 항상 넣어요. 원래 순서는 유지해요. 없으면 None."""
     if not request.history:
         return None
-    return [{"role": t.role, "content": t.content[:HISTORY_CHARS]} for t in request.history[-HISTORY_FOR_MODEL:]]
+    turns = list(request.history)
+    photos = {i for i, t in enumerate(turns) if is_photo(t)}
+    keep_photos = sorted(photos)[-PHOTO_TURNS_FOR_MODEL:]
+    others = [i for i in range(len(turns)) if i not in photos][-HISTORY_FOR_MODEL:]
+    return [{"role": turns[i].role,
+             "content": turns[i].content[:PHOTO_CHARS if i in photos else HISTORY_CHARS]}
+            for i in sorted(set(keep_photos) | set(others))]

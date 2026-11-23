@@ -32,10 +32,15 @@ def test_ocr_returns_text_with_sensitive_output(client, monkeypatch):
     monkeypatch.setattr(ocr, "_recognize", lambda *_: "거래 안내 문구")
     response = client.post(OCR, files=files, headers=HEADERS)
     assert response.status_code == 200
-    assert response.json() == {"success": True, "data": {"recognizedText": "거래 안내 문구", "usable": True, "imageType": "SMS", "summary": "거래 안내입니다."}}
+    assert response.json() == {"success": True, "data": {"recognizedText": "거래 안내 문구", "usable": True, "imageType": "SMS",
+                                                         "summary": "거래 안내입니다.", "maskedText": "거래 안내 문구"}}
 
-    monkeypatch.setattr(ocr, "_recognize", lambda *_: "테스트 전화 010-1234-5678")
-    assert client.post(OCR, files=files, headers=HEADERS).json()["data"]["recognizedText"] == "테스트 전화 010-1234-5678"
+    # 원문은 그대로, maskedText는 전화번호·링크·인증번호 뒤 숫자를 가린 글자
+    monkeypatch.setattr(ocr, "_recognize", lambda *_: "테스트 전화 010-1234-5678 http://bad.kr/a 인증번호 482913")
+    data = client.post(OCR, files=files, headers=HEADERS).json()["data"]
+    assert data["recognizedText"] == "테스트 전화 010-1234-5678 http://bad.kr/a 인증번호 482913"
+    assert "010-1234-5678" not in data["maskedText"] and "bad.kr" not in data["maskedText"]
+    assert "482913" not in data["maskedText"] and "[전화번호]" in data["maskedText"] and "[링크]" in data["maskedText"]
     monkeypatch.setattr(ocr, "_recognize", lambda *_: "")
     response = client.post(OCR, files=files, headers=HEADERS)
     assert response.status_code == 422
@@ -50,7 +55,8 @@ def test_ocr_classifier_failure_keeps_text(client, monkeypatch):
         raise RuntimeError("model failure")
     monkeypatch.setattr(ocr, "_classify", fail)
     result = client.post(OCR, files={"images": ("test.png", image.getvalue(), "image/png")}, headers=HEADERS)
-    assert result.json()["data"] == {"recognizedText": "송금했습니다", "usable": True, "imageType": "OTHER", "summary": None}
+    assert result.json()["data"] == {"recognizedText": "송금했습니다", "usable": True, "imageType": "OTHER", "summary": None,
+                                     "maskedText": "송금했습니다"}
 
 
 def test_ocr_classifier_timeout_keeps_text(client, monkeypatch):
@@ -69,7 +75,8 @@ def test_ocr_classifier_timeout_keeps_text(client, monkeypatch):
     monkeypatch.setattr(ocr, "CLASSIFY_TIMEOUT_SECONDS", 0.01)
     try:
         result = client.post(OCR, files={"images": ("test.png", image.getvalue(), "image/png")}, headers=HEADERS)
-        assert result.json()["data"] == {"recognizedText": "문자 내용", "usable": True, "imageType": "OTHER", "summary": None}
+        assert result.json()["data"] == {"recognizedText": "문자 내용", "usable": True, "imageType": "OTHER", "summary": None,
+                                         "maskedText": "문자 내용"}
     finally:
         release.set()
         assert finished.wait(2)

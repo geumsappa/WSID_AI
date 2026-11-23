@@ -17,7 +17,8 @@ from .contracts import (
 from .clarify import FACT_QUERIES, ConditionSeed, propose_condition, validate_clarification
 from rag.facts import FACT_PHRASES
 
-from .context import REFERENTIAL, drop_refund_notice, previous_ai, previous_user, topic_codes, topic_text
+from .context import (REFERENTIAL, drop_refund_notice, photo_text, previous_ai, previous_user, topic_codes,
+                      topic_text)
 from .model import AssistModel, INTENT_QUERIES, allowed_fact_keys
 from .upstream import request_id
 
@@ -214,6 +215,10 @@ class AssistService:
             query += "\n이전 질문: " + prev[:300]
         if request.question and REFERENTIAL.search(request.question) and previous_ai(request):
             query += "\n이전 답변: " + previous_ai(request)[:300]
+        # 사진을 올린 상담이면 "이 계좌로 보내도 돼요?"처럼 사진을 가리키는 질문의 대상을 검색에 넣어요
+        photo = photo_text(request)
+        if photo:
+            query += "\n사진 내용: " + photo
         if request.fraudType is not None:
             query += "\n사기 유형: " + request.fraudType
         query += "\n사실: " + ", ".join(f"{key}={value}" for key, value in request.facts.model_dump().items())

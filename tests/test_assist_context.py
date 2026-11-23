@@ -211,3 +211,34 @@ def test_topic_codes_put_current_question_topics_in_top_five():
     assert "REF_EASYLAW_CIVIL_FILING_V1_P1" in top5
     assert codes.index("REF_EASYLAW_VICTIM_INFO_V1_P1") >= 3  # 이전 질문으로만 걸린 주제는 뒤로
     assert topic_codes("지급명령은 어떻게 해요?", "지급명령은 어떻게 해요?")[0] == "REF_EASYLAW_PAYMENT_ORDER_V1_P1"
+
+
+# 사진 턴: Spring이 사진 업로드를 "[사진 · 종류] 요약: … / 사진 속 글자: …" USER 턴으로 보내요.
+PHOTO = {"role": "USER", "content": "[사진 · 메신저 대화] 요약: 상대가 계좌 정보를 보냈고 사기 계좌로 조회된다고 하자 상대가 사기라고 답했어요."
+                                    "\n사진 속 글자: 어쩌긴 사기지 그럼"}
+
+
+def test_photo_turn_is_not_taken_as_original_question():
+    from assist.context import photo_text
+    request = PlanRequest.model_validate(plan(question=None, questionIntent="TRANSFER_RESPONSE", history=[
+        {"role": "USER", "content": "판매자가 보낸 계좌로 돈을 보내도 되나요?"},
+        {"role": "AI", "content": "앱을 설치했나요?"},
+        PHOTO]))
+    assert previous_user(request) == "판매자가 보낸 계좌로 돈을 보내도 되나요?"
+    assert "사기 계좌로 조회" in photo_text(request)
+
+
+def test_photo_turn_stays_in_model_input_after_long_conversation():
+    from assist.context import history_for_model
+    long_tail = [{"role": "USER" if i % 2 == 0 else "AI", "content": f"대화 {i}"} for i in range(8)]
+    request = PlanRequest.model_validate(plan(question="이 계좌로 보내도 돼요?", history=[PHOTO, *long_tail]))
+    turns = history_for_model(request)
+    assert turns[0]["content"].startswith("[사진")  # 6턴 밖으로 밀려나지 않고 원래 순서대로 맨 앞에 있어요
+    assert len(turns) == 7 and [t["content"] for t in turns[1:]] == [f"대화 {i}" for i in range(2, 8)]
+
+
+def test_photo_content_is_added_to_search_query():
+    retriever = Retriever()
+    request = PlanRequest.model_validate(plan(question="이 계좌로 보내도 돼요?", history=[PHOTO]))
+    asyncio.run(AssistService(FakeAssistModel(), retriever).run(request))
+    assert "사진 내용: [사진 · 메신저 대화]" in retriever.calls[0]["query"]

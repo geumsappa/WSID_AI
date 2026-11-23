@@ -39,7 +39,7 @@ class Settings:
     # Claude 대사 다양성 (training_prompt_notes.md §5-3 권장 0.6~0.8)
     llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.7"))
     max_context_turns: int = int(os.getenv("MAX_CONTEXT_TURNS", "5"))
-    planning_timeout_seconds: float = float(os.getenv("PLANNING_TIMEOUT_SECONDS", "25"))
+    planning_timeout_seconds: float = float(os.getenv("PLANNING_TIMEOUT_SECONDS", "60"))
     verification_timeout_seconds: float = float(os.getenv("VERIFICATION_TIMEOUT_SECONDS", "20"))
     pipeline_reasoning_effort: str = os.getenv("PIPELINE_REASONING_EFFORT", "").strip()
     discovery_reasoning_effort: str = os.getenv("DISCOVERY_REASONING_EFFORT", "").strip()
@@ -47,7 +47,8 @@ class Settings:
     discovery_timeout_seconds: float = float(os.getenv("DISCOVERY_TIMEOUT_SECONDS", "60"))
     discovery_total_timeout_seconds: float = float(os.getenv("DISCOVERY_TOTAL_TIMEOUT_SECONDS", "110"))
     # 시나리오는 길게 생성하므로 대기시간을 따로 둠 (훈련 시작 전 로딩 화면 1번)
-    scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "110"))
+    # Claude Sonnet 은 단계 5번에 80~120초 걸려요. Spring AI_SCENARIO_READ_TIMEOUT(160초)보다 짧게
+    scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "150"))
     scenario_timeout_seconds: float = float(os.getenv("SCENARIO_TIMEOUT_SECONDS", "25"))
     solution_reply_timeout_seconds: float = float(os.getenv("SOLUTION_REPLY_TIMEOUT_SECONDS", "12"))
     # 리포트 생성. Spring 평가 대기(AI_EVALUATION_READ_TIMEOUT 40초)보다 짧게

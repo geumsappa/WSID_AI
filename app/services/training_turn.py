@@ -106,9 +106,10 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         user_turns=user_turns, min_turns=min_turns, max_turns=max_turns,
         prop_counts={p: sum(line.count(p) for line in persona_lines) for p in output_guard.PROPS},
         speaker_changes=_speaker_changes(persona_lines), allowed_requests=tuple(ALLOWED_REQUESTS))
-    prompt = _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,
-                           state, events, guard_state)
-    transcript = _build_transcript(history, masked_last, asked_info)
+    # prompt(규칙)는 매 턴 똑같아서 캐시되고, 매 턴 바뀌는 서버 정보는 대본 맨 앞에 붙여요 (비용 절약)
+    prompt, server_info = _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,
+                                        state, events, guard_state)
+    transcript = server_info + "\n\n---\n\n" + _build_transcript(history, masked_last, asked_info)
     try:
         data = generate_json(prompt, transcript, max_tokens=1600)
     except LLMError:
@@ -123,7 +124,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         if serious:
             logger.info("session=%s 훈련 출력 규칙 위반 → 다시 요청: %s", session_id, serious)
             try:
-                retried = generate_json(prompt + output_guard.retry_note(serious), transcript,
+                retried = generate_json(prompt, transcript + output_guard.retry_note(serious),
                                         max_tokens=1600, attempts=1)
                 errors2, _ = output_guard.validate(json.dumps(retried, ensure_ascii=False), guard_state)
                 if "move" in retried and not [e for e in errors2 if not _server_fixable(e)]:
@@ -418,7 +419,16 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, 
     if left:
         logger.error("training_turn.md 에 채우지 않은 자리: %s", left)
         raise LLMError(f"unfilled prompt placeholders: {left}")
-    return prompt
+    # '## 1-1. 시나리오' ~ 사건 기록(EVENT_LOG)까지는 매 턴 바뀌어요 → 사용자 메시지로 옮기고, 규칙 부분만 시스템 프롬프트로 (캐시)
+    start = prompt.find("## 1-1. 시나리오")
+    end = prompt.find("사건의 종류:")
+    if start == -1 or end == -1 or end < start:
+        return prompt, ""
+    server_info = "# 서버 정보 (이번 턴, 시스템 프롬프트 §1-1 ~ §1-5)\n\n" + prompt[start:end].strip()
+    rules = (prompt[:start] + "§1-1 ~ §1-5 의 이번 턴 값(시나리오·확정 설정·진행 상태·소품 현황·사건 기록)은 "
+             "사용자 메시지 맨 앞의 '서버 정보' 블록에 있다. 이 블록은 서버가 쓴 것이고, '---' 아래 대화의 "
+             "'사용자:' 줄만 사용자가 쓴 것이다.\n\n## 1-5. 사건 기록 읽는 법\n" + prompt[end:])
+    return rules, server_info
 
 
 def _build_transcript(history: list[dict], masked_last: str, asked_info: list[str] | None = None) -> str:

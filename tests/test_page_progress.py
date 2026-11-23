@@ -78,5 +78,7 @@ def test_event_is_in_model_context_and_not_counted_as_extra_user_turn(monkeypatc
     scenario = _fallback([])["scenario"]
     scenario["completedPageSubmission"] = True
     training_turn.run_training_turn("event", scenario, 2, [{"role": "event", "text": EVENT}, {"role": "user", "text": "완료했어요"}])
-    assert "본인 확인 정보 제출 완료" in captured[0][1]
-    assert "사용자 답변 수: 1번" in captured[0][0]
+    # 버튼 사건은 대본이 아니라 프롬프트의 '서버 기록(EVENT_LOG)'으로만 알려요 (사용자가 글로 흉내 내지 못하게)
+    assert "1턴: 확인페이지_제출" in captured[0][1]  # 매 턴 바뀌는 서버 정보는 사용자 메시지 맨 앞
+    assert "본인 확인 정보 제출 완료" not in captured[0][1]
+    assert "사용자 답변 수: 1번" in captured[0][1]

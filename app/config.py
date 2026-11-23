@@ -27,6 +27,15 @@ class Settings:
     llm_model: str = os.getenv("LLM_MODEL", "").strip()
     llm_base_url: str = os.getenv("LLM_BASE_URL", "").strip()
     llm_timeout_seconds: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "10"))
+    # 피해 대응 RAG 검색용 임베딩 키 (Claude 에는 임베딩 API 가 없어요).
+    # 비우면 LLM_PROVIDER=openai 일 때만 LLM_API_KEY 를 쓰고, 그 밖에는 글자 겹침 검색으로 대신해요.
+    openai_api_key: str = (os.getenv("OPENAI_API_KEY", "").strip()
+                           or (os.getenv("LLM_API_KEY", "").strip()
+                               if os.getenv("LLM_PROVIDER", "mock").strip().lower() == "openai" else ""))
+    # 상황 파악 질문용 모델 (비우면 LLM_MODEL). 질문 만들기는 가벼운 일이라 claude-haiku-5-5 처럼 싼 모델로 충분해요
+    discovery_model: str = os.getenv("DISCOVERY_MODEL", "").strip()
+    # Claude 대사 다양성 (training_prompt_notes.md §5-3 권장 0.6~0.8)
+    llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.7"))
     max_context_turns: int = int(os.getenv("MAX_CONTEXT_TURNS", "5"))
     planning_timeout_seconds: float = float(os.getenv("PLANNING_TIMEOUT_SECONDS", "25"))
     verification_timeout_seconds: float = float(os.getenv("VERIFICATION_TIMEOUT_SECONDS", "20"))

@@ -36,6 +36,12 @@ APP_CLICK_EVENT = "[훈련 행동: 가상 앱 설치 링크 누름]"
 # 훈련은 실제 문자·앱 화면을 보내지 않아요. 사용자가 알 수 없는 코드를 꺼내는 대사는 바꿔요.
 # ("인증번호는 앱 설치 후 표시돼요"처럼 요구가 아닌 말도 다음 턴에 그 번호를 묻게 만들어서 함께 바꿔요)
 UNAVAILABLE_THING = re.compile(r"인증\s*(번호|코드)|OTP|보안\s*카드|승인\s*번호|확인\s*코드|앱\s*(화면)?에\s*(표시|뜬|나온|나타난)", re.I)
+# 사기범이 역할을 깨고 예방 조언을 하는 대사 (예: "실제 정보는 보내지 마시고 공식 경로에서 확인하세요")
+ROLE_BREAK = re.compile(r"보내지\s*마(세요|시고|십시오)|입력하지\s*마(세요|시고)|적지\s*마(세요|시고)"
+                        r"|공식\s*(경로|채널|앱|홈페이지|사이트|대표\s*번호|고객센터)(에서|로|으로)\s*(직접\s*|따로\s*|별도로\s*)?확인(해\s*(주세요|보세요)|하세요|하시기\s*바랍니다)"
+                        r"|사기(일|인|에\s*주의|를\s*조심)|주의하세요|훈련(입니다|이에요|이라서|이니)")
+# 대화 속 인물 대사에서 "가상" 같은 설명 말을 빼요 (몰입을 깨는 표현)
+VIRTUAL_WORD = re.compile(r"\(가상\)|가상의\s*|가상\s+(?=[가-힣])")
 # 사용자가 앱 링크를 누르지 않았는데 설치가 끝났다고 말하는 대사
 INSTALL_DONE = re.compile(r"설치(가|는|를)?\s*(확인|완료)\s*(됐|되었|했|하셨|되셨)|설치(하셨|해\s*주셨)(군요|네요|으니|으면)")
 
@@ -167,6 +173,13 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
             logger.warning("session=%s 사기범 대사 가드레일 차단: %s", session_id, problems)
         persona_message = _fallback_line(scene_next, request_type)
         used_fallback = True
+
+    # 5-a) 사기범이 역할을 깨고 예방 조언을 하면 장면에 맞는 사기범 대사로 바꿔요 (조언은 결과 리포트에서 해요)
+    if ROLE_BREAK.search(persona_message):
+        logger.info("session=%s 역할을 깬 대사 교체", session_id)
+        persona_message = _fallback_line(scene_next, request_type)
+        used_fallback = True
+    persona_message = VIRTUAL_WORD.sub("", persona_message).strip()
 
     # 5-b) 훈련에서 일어나지 않은 일을 전제로 한 대사 바로잡기
     #  - 인증번호·OTP·앱 화면 속 번호처럼 사용자가 받을 수 없는 값을 요구하면

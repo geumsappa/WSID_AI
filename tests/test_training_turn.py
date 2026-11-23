@@ -243,3 +243,19 @@ def test_앱_링크를_누른_뒤에는_설치_확인을_말해도_됨(monkeypat
 
 def test_시나리오의_인증번호_요구는_걸러짐():
     assert training._requested({"requestedInfo": ["계좌번호", "인증번호", "OTP 번호"]}) == ["계좌번호"]
+
+
+def test_사기범이_예방_조언을_하면_사기범_대사로_바꿈(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "safe"}, "nextScene": 1, "requestType": "링크 클릭",
+        "personaMessage": "확인했습니다. 실제 성함은 보내지 마시고, 공식 경로에서 확인해 주세요."})
+    r = training.run_training_turn("s1", _scenario(), 1, _history("네?", "그렇군요"))
+    assert "보내지 마" not in r["personaMessage"] and "공식 경로" not in r["personaMessage"]
+
+
+def test_대사에서_가상이라는_말을_뺌(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
+        "judgment": {"outcome": "neutral"}, "nextScene": 1, "requestType": "대화 지속",
+        "personaMessage": "안녕하세요, 가상 한빛마켓(가상) 담당자입니다."})
+    r = training.run_training_turn("s1", _scenario(), 1, _history("누구세요?"))
+    assert "가상" not in r["personaMessage"]

@@ -29,7 +29,8 @@ class Settings:
     verification_timeout_seconds: float = float(os.getenv("VERIFICATION_TIMEOUT_SECONDS", "20"))
     pipeline_reasoning_effort: str = os.getenv("PIPELINE_REASONING_EFFORT", "").strip()
     discovery_reasoning_effort: str = os.getenv("DISCOVERY_REASONING_EFFORT", "").strip()
-    discovery_timeout_seconds: float = float(os.getenv("DISCOVERY_TIMEOUT_SECONDS", "5"))
+    # 상황 질문 지시문(discovery_brief.md)이 길어 5초로는 응답이 안 와요. 백엔드 대기(20초)보다는 짧게 둬요
+    discovery_timeout_seconds: float = float(os.getenv("DISCOVERY_TIMEOUT_SECONDS", "15"))
     # 시나리오는 길게 생성하므로 대기시간을 따로 둠 (훈련 시작 전 로딩 화면 1번)
     scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "110"))
     scenario_timeout_seconds: float = float(os.getenv("SCENARIO_TIMEOUT_SECONDS", "25"))

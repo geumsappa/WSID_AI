@@ -50,3 +50,76 @@ def mask_requested_numbers(text: str, requested_info: list[str]) -> tuple[str, l
         return text, []
     label = labels[0]
     return SHORT_NUMBER.sub(f"[{label}]", text), [label]
+
+
+# ---------------- 이름·주소 (외부 AI로 보내기 전에 규칙으로 먼저 가림) ----------------
+# 이름·주소는 정해진 숫자 모양이 없어서 예전에는 AI가 찾아 가렸어요(원문이 AI로 먼저 감).
+# 흔한 형태는 여기서 먼저 가리고, AI는 규칙이 놓친 것만 보조로 찾게 해요.
+
+# 주소: "서울시 마포구 ○○로 12", "○○구 ○○동 123-4", "101동 202호" 같은 형태
+ADDRESS_PATTERN = re.compile(
+    r"(?:(?:[가-힣]{1,10}(?:특별시|광역시|특별자치시|특별자치도|도|시)|서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)\s+)?"   # 시·도 (없어도 됨)
+    r"[가-힣]{1,10}(?:시|군|구)\s+"                                           # 시·군·구
+    r"[가-힣0-9]{1,15}(?:로|길|동|읍|면|리)"                                  # 도로명·동
+    r"(?:\s*\d{1,5}(?:-\d{1,5})?(?:\s*번길\s*\d{1,5}(?:-\d{1,5})?)?)?"       # 번지
+    r"(?:[\s,]*[가-힣A-Za-z0-9]{0,15}(?:아파트|빌라|오피스텔|맨션))?"
+    r"(?:[\s,]*\d{1,4}\s*동)?(?:[\s,]*\d{1,5}\s*호)?"
+)
+UNIT_PATTERN = re.compile(r"(?<![\d가-힣])\d{1,4}\s*동\s*\d{1,5}\s*호")
+
+# 이름: "제 이름은 홍길동", "성함: 홍길동" 처럼 이름이라고 밝힌 경우
+NAMED_PATTERN = re.compile(r"(이름|성함|본명)(?:은|는|이|가)?\s*[:：]?\s*(?:제\s*)?([가-힣]{2,4}?)(?=$|[\s,.!?]|입니다|이에요|예요|이요|요|이고|이구요)")
+# 이름을 요구받은 직후 "홍길동", "홍길동입니다", "홍길동이고 …" 처럼 답한 경우 (흔한 성씨로 시작할 때만)
+SURNAMES = set("김이박최정강조윤장임한오서신권황안송류유홍전고문양손배백허남심노하곽성차주우구민진나지엄채원천방공현함변염여추도소석선설마길연위표명기반왕금옥육인맹제모탁국어은편용예경봉사부")
+NAME_ONLY = re.compile(r"^\s*([가-힣]{2,4}?)(?:입니다|이에요|예요|이요|요)?\s*[.!]?\s*$")
+NAME_LEAD = re.compile(r"^\s*([가-힣]{2,4}?)(?:이고|이구요|이고요|고요|,)\s*")
+NOT_NAMES = {"아니요", "아니오", "싫어요", "몰라요", "모르겠어요", "왜요", "네네", "그래요", "알겠어요", "잠시만요",
+             "누구세요", "누구", "어디", "무슨", "괜찮아요", "글쎄요", "안돼요", "됐어요", "고객님", "확인", "정말"}
+
+
+def _labels(requested_info: list[str], words: tuple[str, ...], default: str) -> list[str]:
+    hit = [r for r in requested_info if any(w in r for w in words)]
+    return hit[:1] or [default]
+
+
+def _looks_like_name(word: str) -> bool:
+    return 2 <= len(word) <= 4 and word[0] in SURNAMES and word not in NOT_NAMES and not word.endswith(("요", "다", "까", "죠", "네"))
+
+
+def mask_name_address(text: str, requested_info: list[str] | None = None) -> tuple[str, list[str]]:
+    """이름·주소를 [이름]·[주소]로 가리고, 찾은 종류를 돌려준다.
+
+    requested_info: 사기범이 방금 요구한 정보. '이름'을 요구받았을 때만 이름 단독 답변을 이름으로 봐요
+    (평소 대화의 짧은 답을 이름으로 잘못 가리지 않게).
+    """
+    requested_info = requested_info or []
+    found: list[str] = []
+    address_label = _labels(requested_info, ("주소", "배송지", "거주지"), "주소")[0]
+    if ADDRESS_PATTERN.search(text) or UNIT_PATTERN.search(text):
+        text = UNIT_PATTERN.sub(f"[{address_label}]", ADDRESS_PATTERN.sub(f"[{address_label}]", text))
+        found.append(address_label)
+
+    name_label = _labels(requested_info, ("이름", "성함", "성명"), "이름")[0]
+    asked_name = any(w in r for r in requested_info for w in ("이름", "성함", "성명"))
+    masked = False
+
+    def named(match: re.Match) -> str:
+        nonlocal masked
+        if match.group(2) in NOT_NAMES:
+            return match.group(0)
+        masked = True
+        return match.group(0).replace(match.group(2), f"[{name_label}]", 1)
+
+    text = NAMED_PATTERN.sub(named, text)
+    if asked_name and not masked:
+        only = NAME_ONLY.match(text)
+        lead = NAME_LEAD.match(text)
+        if only and _looks_like_name(only.group(1)):
+            text = text.replace(only.group(1), f"[{name_label}]", 1)
+            masked = True
+        elif lead and _looks_like_name(lead.group(1)):
+            text = text.replace(lead.group(1), f"[{name_label}]", 1)
+            masked = True
+    if masked:
+        found.append(name_label)
+    return text, found

@@ -17,7 +17,7 @@ from app.schemas.training_api import (
 )
 from app.services.scenario import run_scenario
 from app.scenario_data import SUBTYPE_TO_FRAUD_CODE
-from app.services.training_turn import APP_CLICK_EVENT, run_training_turn
+from app.services.training_turn import APP_CLICK_EVENT, TRANSFER_EVENT, run_training_turn
 
 CATEGORIES = {
     "SECONDHAND_TRADE": "거래(중고·쇼핑)", "SMISHING": "택배·배송",
@@ -26,6 +26,7 @@ CATEGORIES = {
 }
 LINK = "[모의링크]"
 APP_LINK = "[모의앱]"
+ACCOUNT = "[모의계좌]"  # 화면에서 훈련용 입금 계좌 카드로 보여요 (실제 계좌번호는 쓰지 않음)
 MAX_LINKS = 2  # 같은 링크를 계속 붙이면 대화가 기계적으로 보여서 대화 전체에서 2번까지만 보내요
 BANK_PAGE = MockPage(templateCode="BANK_NOTICE", title="금융 안내",
                      institutionName="금융안내센터", screenCode="LOGIN_CHECK")
@@ -78,7 +79,7 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
 
 def simulation(request: SimulationRequest) -> SimulationResult:
     data = _scenario(request.scenario)
-    known_events = {"[훈련 행동: 본인 확인 정보 제출 완료]", "[훈련 행동: 공식 경로 확인]", APP_CLICK_EVENT}
+    known_events = {"[훈련 행동: 본인 확인 정보 제출 완료]", "[훈련 행동: 공식 경로 확인]", APP_CLICK_EVENT, TRANSFER_EVENT}
     history = [{"role": "event" if message.sender == "SYSTEM" else "user" if message.sender == "USER" else "persona",
                 "text": message.content} for message in request.messages
                if message.sender != "SYSTEM" or message.content in known_events]
@@ -136,17 +137,20 @@ def _place_links(result: dict, history: list[dict], submitted: bool) -> str:
     """
     reply = result["personaMessage"]
     if result.get("done"):
-        return reply.replace(APP_LINK, "").strip()
+        return reply.replace(APP_LINK, "").replace(ACCOUNT, "").strip()
     request_type = result.get("requestType")
     persona_lines = [message["text"] for message in history if message["role"] == "persona"]
     last_persona = persona_lines[-1] if persona_lines else ""
     app_clicked = any(message["role"] == "event" and message["text"] == APP_CLICK_EVENT for message in history)
-    if request_type == "앱 설치":
+    transferred = any(message["role"] == "event" and message["text"] == TRANSFER_EVENT for message in history)
+    if request_type == "송금":
+        reply = reply.replace(LINK, ACCOUNT)  # 송금 장면에서는 결제 링크 대신 입금 계좌를 보여줘요
         reply = reply.replace(LINK, APP_LINK)  # 앱 설치 장면의 링크는 앱 설치 링크로 보여줘요
-    for token, wanted in ((LINK, request_type == "링크 클릭" and not submitted),
-                          (APP_LINK, request_type == "앱 설치" and not app_clicked)):
+    for token, wanted, done in ((LINK, request_type == "링크 클릭" and not submitted, False),
+                                (APP_LINK, request_type == "앱 설치" and not app_clicked, app_clicked),
+                                (ACCOUNT, request_type == "송금" and not transferred, transferred)):
         sent = sum(line.count(token) for line in persona_lines)
-        if token in reply and (sent >= MAX_LINKS or (token == APP_LINK and app_clicked)):
+        if token in reply and (sent >= MAX_LINKS or done):
             reply = reply.replace(token, "").strip()
         elif wanted and token not in reply and sent < MAX_LINKS and token not in last_persona:
             reply = f"{reply.rstrip()} {token}"
@@ -177,6 +181,7 @@ def evaluate(request: EvaluationRequest) -> EvaluationResult:
         attemptedMockLogin="MOCK_LOGIN_ATTEMPT" in actions,
         checkedOfficialChannel="OFFICIAL_CHANNEL_CHECK" in actions,
         clickedAppLink="MOCK_APP_CLICK" in actions,
+        attemptedTransfer="MOCK_TRANSFER" in actions,
     )
     # 평가하는 모델이 "AI"를 자기 쪽으로 착각해 사기범을 평가하지 않도록, 보낸 사람을 역할 이름으로 바꿔서 넘겨요.
     role_names = {"USER": "훈련자(평가 대상)", "AI": "가상 사기범(평가 대상 아님)", "SYSTEM": "시스템 기록"}
@@ -210,6 +215,7 @@ turnFeedback은 훈련자 답변(turn 번호가 붙은 메시지) 중 대응이 
 - 인사·단순 질문처럼 판단할 게 없는 답변은 넣지 않습니다. 훈련자가 적은 실제 값(이름, 번호 등)은 옮겨 쓰지 않고 종류만 씁니다.
 SEND_MOCK_ID_CARD, SEND_MOCK_BANKBOOK, SEND_MOCK_PHOTO는 훈련 중 사진 제공 요청에 응한 행동입니다.
 가상 사진 제공은 위험 행동으로 평가하되 실제 사진이 전송됐다고 쓰지 마세요.
+MOCK_TRANSFER는 가상 사기범이 알려 준 입금 계좌([모의계좌])로 송금 버튼을 누른 행동입니다. 위험 행동으로 평가하되 실제로 돈이 나갔다고 쓰지 마세요.
 MOCK_APP_CLICK은 가상 사기범이 보낸 앱 설치 링크([모의앱])를 누른 행동입니다. 위험 행동으로 평가하되 실제로 앱이 설치됐다고 쓰지 마세요.
 가상 사기범이 알려준 번호로 전화해 확인하겠다는 것은 공식 확인이 아닙니다. 공식 앱·공식 홈페이지·대표번호를 훈련자가 직접 찾아 확인해야 올바른 대응입니다.
 대화의 [모의링크]는 '링크', [모의앱]은 '앱 설치 링크'라고 부르세요. [화자: ...] 표시는 사기범 쪽 담당자가 바뀐 연출입니다."""
@@ -232,6 +238,8 @@ MOCK_APP_CLICK은 가상 사기범이 보낸 앱 설치 링크([모의앱])를 �
                          "SEND_MOCK_PHOTO": "사진"}
         required_feedback = [f"{subject} 제공 요청에 응했어요. 실제 상황에서는 출처를 확인하기 전 자료를 보내지 마세요."
                              for code, subject in photo_actions.items() if code in actions]
+        if "MOCK_TRANSFER" in actions:
+            required_feedback.append("대화에서 받은 계좌로 송금하려 했어요. 돈을 보내기 전에 공식 앱의 안전결제나 공식 채널로 먼저 확인하세요.")
         if "MOCK_APP_CLICK" in actions:
             required_feedback.append("문자·메신저로 받은 앱 설치 링크를 눌렀어요. 앱은 공식 앱 마켓에서 직접 검색해 설치하세요.")
         result.improvements = list(dict.fromkeys([*required_feedback, *result.improvements]))[:10]

@@ -38,7 +38,7 @@ def test_spring_scenario_reply_evaluation_contract():
         assert report["overallFeedback"]
         assert report["turnFeedback"] == []
         assert report["mockPageEvaluation"] == {
-            "openedPage": True, "attemptedMockLogin": False, "checkedOfficialChannel": True, "clickedAppLink": False,
+            "openedPage": True, "attemptedMockLogin": False, "checkedOfficialChannel": True, "clickedAppLink": False, "attemptedTransfer": False,
         }
         assert "officialContacts" not in report
 

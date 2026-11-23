@@ -44,6 +44,8 @@ class SimulationResult(BaseModel):
     # 사용자 답변에서 이름·주소처럼 패턴이 없는 개인정보를 AI가 찾아 가린 문장 (예: "[이름, 주소 입력함]").
     # 가릴 게 없으면 None. Spring은 원문 대신 이 값을 저장하고 화면에도 이 값을 보여 줘요.
     maskedInput: str | None = Field(default=None, max_length=300)
+    # 다음 턴에 시나리오와 함께 그대로 돌려받는 훈련 상태 (확정 설정 newFacts 누적, 직전 수, 장면별 신뢰·압박 횟수)
+    trainingState: dict | None = None
 
 
 class EvaluationAction(BaseModel):

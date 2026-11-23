@@ -28,7 +28,7 @@ def test_openai_generation_and_embedding_use_config(monkeypatch):
     monkeypatch.setattr(config, 'FAKE', False)
     monkeypatch.setattr(config, 'EMBED_DIM', 2)
     monkeypatch.setattr(openai_client, '_client', Client)
-    monkeypatch.setattr(openai_client, 'settings', SimpleNamespace(llm_model='example-model'))
+    monkeypatch.setattr(openai_client, 'settings', SimpleNamespace(llm_provider='openai', llm_model='example-model'))
     assert openai_client.generate_json('system', 'input', {}) == {'ok': True}
     assert openai_client.embed(['test'], 'RETRIEVAL_QUERY') == [[0.5, 0.6]]
     assert calls[0]['timeout'] is None and calls[1]['model'] == 'example-model'
@@ -67,7 +67,7 @@ def test_assist_calls_openai_and_validates_response(monkeypatch):
             calls.append(kwargs)
             text = '{"decision":"SEARCH","questionIntent":"GENERAL","factKey":null}'
             return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=text))])
-    monkeypatch.setattr(app_config, 'settings', SimpleNamespace(llm_model='example-model'))
+    monkeypatch.setattr(app_config, 'settings', SimpleNamespace(llm_provider='openai', llm_model='example-model'))
     monkeypatch.setattr(openai_client, 'async_client', Client)
     result = asyncio.run(OpenAIAssistModel()._generate('system', {}, Assessment))
     assert result.decision == 'SEARCH'

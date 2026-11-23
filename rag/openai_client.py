@@ -12,10 +12,20 @@ from . import config
 
 
 def _options(timeout: float | None = None):
+    """OpenAI 클라이언트 설정. Claude 를 쓸 때는 임베딩(검색)에만 쓰여서 OPENAI_API_KEY 를 써요."""
+    if settings.llm_provider == 'anthropic':
+        if not settings.openai_api_key:
+            raise RuntimeError('임베딩 검색에는 OPENAI_API_KEY 가 필요해요.')
+        return dict(api_key=settings.openai_api_key, timeout=timeout or config.TIMEOUT_SEC, max_retries=0)
     if not settings.llm_api_key:
         raise RuntimeError('LLM_API_KEY를 설정해 주세요.')
     return dict(api_key=settings.llm_api_key, base_url=settings.llm_base_url or None,
                 timeout=timeout or config.TIMEOUT_SEC, max_retries=0)
+
+
+def has_embeddings() -> bool:
+    """실제 임베딩 검색이 가능한지 (아니면 글자 겹침 검색으로 대신해요)."""
+    return config.FAKE or settings.llm_provider != 'anthropic' or bool(settings.openai_api_key)
 
 
 def _client(timeout: float | None = None):
@@ -61,6 +71,9 @@ def generate_json(system: str, user: str, fake_result: dict, *,
     model = model or settings.llm_model
     if not model:
         raise RuntimeError('LLM_MODEL을 설정해 주세요.')
+    if settings.llm_provider == 'anthropic':
+        from app.llm.llm_client import anthropic_text, parse_json
+        return parse_json(anthropic_text(system, user, model=model, timeout=timeout or config.TIMEOUT_SEC))
     client = _client(timeout)
     try:
         response = client.chat.completions.create(

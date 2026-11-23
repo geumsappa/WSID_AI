@@ -9,7 +9,7 @@ from test_fast_discovery import ask
 
 
 def offer(grounded_model):
-    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": None}
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": None, "stopRequested": True}
     result = ask("없어")
     assert not result.canGenerateScenario
     assert result.facts["basicScenarioOffered"]
@@ -22,12 +22,16 @@ def test_bare_yes_is_consent_only_after_offer(grounded_model):
     first = ask("네")
     assert not first.canGenerateScenario
     assert first.facts.get("basicScenarioSelection") is None
+    assert not first.facts["basicScenarioOffered"]
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": None, "stopRequested": True}
+    paused = ask("더 생각나는 게 없어요", first.facts)
+    assert paused.facts["basicScenarioOffered"]
     calls = len(grounded_model[0])
-    accepted = ask("네", first.facts)
+    accepted = ask("네", paused.facts)
     assert accepted.canGenerateScenario
     assert accepted.facts["scenarioMode"] == "BASIC"
-    assert accepted.facts["basicScenarioSelection"]["consentTurn"] == 2
-    assert accepted.facts["discoveryEvidence"] == [{"turn": 1, "text": "네"}, {"turn": 2, "text": "네"}]
+    assert accepted.facts["basicScenarioSelection"]["consentTurn"] == 3
+    assert accepted.facts["discoveryEvidence"] == [{"turn": 1, "text": "네"}, {"turn": 2, "text": "더 생각나는 게 없어요"}, {"turn": 3, "text": "네"}]
     assert len(grounded_model[0]) == calls  # choice needs no LLM
 
 

@@ -61,6 +61,7 @@ class MockPageEvaluation(BaseModel):
     attemptedMockLogin: bool
     checkedOfficialChannel: bool
     clickedAppLink: bool = False
+    attemptedTransfer: bool = False
 
 
 class TurnFeedback(BaseModel):

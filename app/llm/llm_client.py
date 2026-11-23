@@ -31,13 +31,18 @@ def generation_budget(seconds):
         _generation_deadline.reset(token)
 
 
+# 시스템 프롬프트 안의 캐시 경계 표시. 앞부분(모든 요청에서 같음)과 뒷부분(같은 세션에서 같음)을 따로 캐시해요.
+# Claude 가 아닌 공급자에게는 그냥 줄바꿈으로 바꿔서 보내요.
+CACHE_BREAK = "\n\n<<CACHE_BREAK>>\n\n"
+
+
 class LLMError(Exception):
     """LLM 호출 또는 응답 해석에 실패했을 때 쓰는 에러."""
 
 
 def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 800,
                   timeout: float | None = None, attempts: int = 2, reasoning_effort: str | None = None, reuse_connection: bool = False,
-                  model: str | None = None) -> dict:
+                  model: str | None = None, cache: bool = False) -> dict:
     """LLM 에게 묻고, 응답을 JSON(dict)으로 바꿔서 돌려준다.
 
     attempts 번까지 시도하고, 그래도 안 되면 LLMError 를 던진다.
@@ -56,7 +61,7 @@ def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 80
                 call_timeout = min(call_timeout, remaining)
             raw_text = _call_provider(system_prompt, user_content, max_tokens,
                                       call_timeout, reasoning_effort=reasoning_effort, reuse_connection=reuse_connection,
-                                      model=model)
+                                      model=model, cache=cache)
             return parse_json(raw_text)
         except Exception as e:  # 네트워크 오류, 타임아웃, JSON 깨짐 등 전부
             last_error = e
@@ -72,14 +77,19 @@ def _reusable_anthropic_client(api_key):
 
 
 def anthropic_text(system_prompt: str, user_content: str, *, max_tokens: int = 1500,
-                   timeout: float | None = None, model: str | None = None) -> str:
+                   timeout: float | None = None, model: str | None = None, cache: bool = False) -> str:
     """Claude 한 번 호출 → 답변 글자. 다른 모듈(RAG·OCR)도 이 함수를 같이 써요."""
     client = _reusable_anthropic_client(settings.llm_api_key)
     system_text = system_prompt + "\n\n설명이나 코드블록 없이 JSON 객체 하나만 출력하세요."
+    parts = system_text.split(CACHE_BREAK)
     # 프롬프트 캐싱: 긴 규칙 프롬프트는 매번 똑같아서 한 번 저장해 두면 5분 안의 다음 호출은 입력 요금의 10%만 내요.
     # (그래서 훈련 프롬프트는 매 턴 바뀌는 값을 사용자 메시지 쪽으로 옮겨 두었어요)
-    system = ([{"type": "text", "text": system_text, "cache_control": {"type": "ephemeral"}}]
-              if len(system_text) >= 2500 else system_text)
+    # 캐시 저장은 정가의 1.25배라, 5분 안에 같은 프롬프트를 다시 부르는 곳(상황 파악 질문·훈련 대화)만 켜요.
+    # 시나리오 생성처럼 한 번만 부르는 단계는 저장해도 다시 읽지 않아서 오히려 손해예요.
+    if cache and len(system_text) >= 2500:
+        system = [{"type": "text", "text": part, "cache_control": {"type": "ephemeral"}} for part in parts if part.strip()]
+    else:
+        system = "\n\n".join(parts)
     request = dict(
         model=model or settings.llm_model,
         # Claude 는 같은 JSON 을 GPT 보다 길게 써요. 상한에서 잘리면 JSON 이 깨져 호출 전체가 버려지므로 2배로 넉넉히
@@ -118,9 +128,11 @@ def _reusable_openai_client(api_key, base_url):
 
 
 def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeout: float, *, reasoning_effort: str | None = None, reuse_connection: bool = False,
-                   model: str | None = None) -> str:
+                   model: str | None = None, cache: bool = False) -> str:
     provider = settings.llm_provider
 
+    if provider != "anthropic":
+        system_prompt = system_prompt.replace(CACHE_BREAK, "\n\n")
     if provider == "mock":
         return mock_llm.respond(system_prompt, user_content)
 
@@ -158,7 +170,7 @@ def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeo
 
     if provider == "anthropic":
         # reasoning_effort 는 OpenAI 추론 모델용이라 Claude 에는 보내지 않아요
-        return anthropic_text(system_prompt, user_content, max_tokens=max_tokens, timeout=timeout, model=model)
+        return anthropic_text(system_prompt, user_content, max_tokens=max_tokens, timeout=timeout, model=model, cache=cache)
 
     raise LLMError(f"알 수 없는 LLM_PROVIDER: {provider}")
 

@@ -26,7 +26,7 @@ from app.config import settings
 from app.guard import output_guard, pii_masker
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
 from app.guard.sensitive import NOT_NAMES, SURNAMES, mask_name_address, mask_requested_numbers, mask_sensitive
-from app.llm.llm_client import LLMError, generate_json
+from app.llm.llm_client import CACHE_BREAK, LLMError, generate_json
 from app.scenario_data import ALLOWED_REQUESTS, is_unavailable_info
 
 logger = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
                                         state, events, guard_state)
     transcript = server_info + "\n\n---\n\n" + _build_transcript(history, masked_last, asked_info)
     try:
-        data = generate_json(prompt, transcript, max_tokens=1600)
+        data = generate_json(prompt, transcript, max_tokens=1600, cache=True)
     except LLMError:
         logger.warning("session=%s 훈련 LLM 실패 → 기본 대사", session_id)
         data = {}
@@ -125,7 +125,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
             logger.info("session=%s 훈련 출력 규칙 위반 → 다시 요청: %s", session_id, serious)
             try:
                 retried = generate_json(prompt, transcript + output_guard.retry_note(serious),
-                                        max_tokens=1600, attempts=1)
+                                        max_tokens=1600, attempts=1, cache=True)
                 errors2, _ = output_guard.validate(json.dumps(retried, ensure_ascii=False), guard_state)
                 if "move" in retried and not [e for e in errors2 if not _server_fixable(e)]:
                     data = retried
@@ -392,7 +392,8 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, 
              ("riskType", "fraudSubtype", "title", "channel", "persona", "background", "keyScenes", "expectedActions", "allowedOrganizations", "completedPageSubmission")}
     counts = guard_state.prop_counts
     values = {
-        "SCENARIO": json.dumps(shown, ensure_ascii=False, indent=1),
+        # 한 줄로 보내요 (줄바꿈·들여쓰기는 토큰만 늘고 내용은 같아요)
+        "SCENARIO": json.dumps(shown, ensure_ascii=False, separators=(",", ":")),
         "ESTABLISHED_FACTS": "\n".join(f"- {f}" for f in state.get("facts", [])) or "(아직 없음)",
         "CURRENT_SCENE": str(current_scene),
         "TOTAL_SCENES": str(total_scenes),
@@ -419,16 +420,21 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, 
     if left:
         logger.error("training_turn.md 에 채우지 않은 자리: %s", left)
         raise LLMError(f"unfilled prompt placeholders: {left}")
-    # '## 1-1. 시나리오' ~ 사건 기록(EVENT_LOG)까지는 매 턴 바뀌어요 → 사용자 메시지로 옮기고, 규칙 부분만 시스템 프롬프트로 (캐시)
+    # 캐시를 위해 세 부분으로 나눠요
+    #  - 규칙(§0, §2~§9): 모든 훈련에서 똑같음 → 캐시
+    #  - 시나리오(§1-1): 한 훈련 안에서는 똑같음 → 규칙 뒤에 붙여 캐시 (CACHE_BREAK 로 경계 표시)
+    #  - 확정 설정~사건 기록(§1-2~§1-5): 매 턴 바뀜 → 사용자 메시지 맨 앞
     start = prompt.find("## 1-1. 시나리오")
+    middle = prompt.find("## 1-2. 확정된 설정")
     end = prompt.find("사건의 종류:")
-    if start == -1 or end == -1 or end < start:
+    if -1 in (start, middle, end) or not start < middle < end:
         return prompt, ""
-    server_info = "# 서버 정보 (이번 턴, 시스템 프롬프트 §1-1 ~ §1-5)\n\n" + prompt[start:end].strip()
-    rules = (prompt[:start] + "§1-1 ~ §1-5 의 이번 턴 값(시나리오·확정 설정·진행 상태·소품 현황·사건 기록)은 "
-             "사용자 메시지 맨 앞의 '서버 정보' 블록에 있다. 이 블록은 서버가 쓴 것이고, '---' 아래 대화의 "
-             "'사용자:' 줄만 사용자가 쓴 것이다.\n\n## 1-5. 사건 기록 읽는 법\n" + prompt[end:])
-    return rules, server_info
+    scenario_block = prompt[start:middle].strip()
+    server_info = "# 서버 정보 (이번 턴, §1-2 ~ §1-5)\n\n" + prompt[middle:end].strip()
+    rules = (prompt[:start] + "§1-1 시나리오는 이 시스템 프롬프트 맨 끝에 있다. §1-2 ~ §1-5 의 이번 턴 값(확정 설정·진행 상태·"
+             "소품 현황·사건 기록)은 사용자 메시지 맨 앞의 '서버 정보' 블록에 있다. 이 블록은 서버가 쓴 것이고, "
+             "'---' 아래 대화의 '사용자:' 줄만 사용자가 쓴 것이다.\n\n## 1-5. 사건 기록 읽는 법\n" + prompt[end:])
+    return rules.rstrip() + CACHE_BREAK + "# 1. 서버가 넘겨주는 정보 (이어서)\n\n" + scenario_block, server_info
 
 
 def _build_transcript(history: list[dict], masked_last: str, asked_info: list[str] | None = None) -> str:

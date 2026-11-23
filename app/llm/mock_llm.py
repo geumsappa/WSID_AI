@@ -35,8 +35,7 @@ def _respond_training(system_prompt: str, user_content: str) -> str:
 
     text = system_prompt + "\n" + user_content  # 매 턴 바뀌는 서버 정보는 사용자 메시지 쪽에 있어요
     start = text.index("## 1-1. 시나리오") + len("## 1-1. 시나리오")
-    end = text.index("## 1-2. 확정된 설정")
-    scenario = json.loads(text[start:end])
+    scenario, _ = json.JSONDecoder().raw_decode(text[start:].lstrip())
     current, total = map(int, re.search(r"지금 장면: (\d+)번 / 전체 (\d+)개", text).groups())
 
     last = [line for line in user_content.splitlines() if line.startswith("사용자:")][-1]

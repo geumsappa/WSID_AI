@@ -96,6 +96,8 @@ def anthropic_text(system_prompt: str, user_content: str, *, max_tokens: int = 1
             raise
         request.pop("temperature")
         response = client.messages.create(**request)
+    if getattr(response, "stop_reason", "") == "max_tokens":
+        logger.warning("claude 응답이 max_tokens(%s)에서 잘렸어요 → JSON 이 깨질 수 있어요", request["max_tokens"])
     usage = getattr(response, "usage", None)
     if usage is not None:  # 비용 확인용: 캐시에서 읽은 토큰이 많을수록 싸요
         logger.info("claude tokens model=%s in=%s cache_read=%s cache_write=%s out=%s", request["model"],

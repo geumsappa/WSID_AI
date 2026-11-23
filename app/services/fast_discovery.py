@@ -250,7 +250,8 @@ def _run_discovery_turn(session_id, history, known_facts=None):
             while True:
                 raw = generate_json(REVIEW_PROMPT.read_text(encoding="utf-8") if review else prompt,
                                     json.dumps(content, ensure_ascii=False), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
-                                    reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True)
+                                    reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True,
+                                    model=settings.discovery_model or None)
                 try:
                     result = ConversationDecision.model_validate(raw)
                     if any(not _supported(update, messages) for update in result.updates):

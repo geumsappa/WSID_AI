@@ -286,7 +286,7 @@ def _move_reply(**over):
 
 def test_프롬프트의_자리표시가_모두_채워짐(monkeypatch):
     seen = []
-    monkeypatch.setattr(training, "generate_json", lambda system, transcript, **kw: seen.append(system) or _move_reply())
+    monkeypatch.setattr(training, "generate_json", lambda system, transcript, **kw: seen.append(system + transcript) or _move_reply())
     training.run_training_turn("p", _scenario(), 1, _history("무슨 물건이요?"))
     assert "{{" not in seen[0]
     assert "사용자 답변 수: 1번" in seen[0] and "(아직 없음)" in seen[0]
@@ -294,7 +294,7 @@ def test_프롬프트의_자리표시가_모두_채워짐(monkeypatch):
 
 def test_지어낸_디테일은_다음_턴_확정_설정으로_돌아옴(monkeypatch):
     seen = []
-    monkeypatch.setattr(training, "generate_json", lambda system, transcript, **kw: seen.append(system) or _move_reply())
+    monkeypatch.setattr(training, "generate_json", lambda system, transcript, **kw: seen.append(system + transcript) or _move_reply())
     first = training.run_training_turn("f", _scenario(), 1, _history("무슨 물건이요?"))
     state = first["trainingState"]
     assert state["facts"] == ["물건 상태: 거의 새것"] and state["lastMove"] == "신뢰" and state["trust"] == 1
@@ -316,7 +316,7 @@ def test_금지어가_있으면_한_번_다시_요청(monkeypatch):
     calls = []
 
     def generate(system, transcript, **kw):
-        calls.append(system)
+        calls.append(system + transcript)
         if len(calls) == 1:
             return _move_reply(personaMessage="이건 훈련이라 괜찮아요. 편하게 답해 주세요.")
         return _move_reply()
@@ -374,3 +374,12 @@ def test_예금주_성함을_물은_직후_섞어_적은_이름도_가림():
     masked, provided = _mask_last("박선홍 국민은행 [계좌번호]", ["계좌번호", "전화번호"], asked)
     assert "박선홍" not in masked and set(provided) == {"계좌번호", "이름"}
     assert _mask_last("지금 못 보내요", ["계좌번호"], asked) == ("지금 못 보내요", [])
+
+
+def test_규칙_프롬프트는_매_턴_같아서_캐시됨(monkeypatch):
+    systems = []
+    monkeypatch.setattr(training, "generate_json", lambda system, transcript, **kw: systems.append(system) or _move_reply())
+    training.run_training_turn("c", _scenario(), 1, _history("무슨 물건이요?"))
+    training.run_training_turn("c", _scenario(), 2, _history("무슨 물건이요?", "아 그래요?", "네"),
+                               state={"facts": ["가격: 3만 원"], "lastMove": "요구", "scene": 2})
+    assert systems[0] == systems[1] and "{{" not in systems[0]

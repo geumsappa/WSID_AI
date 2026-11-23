@@ -33,10 +33,10 @@ def _respond_training(system_prompt: str, user_content: str) -> str:
 
     from app import fallback
 
-    start = system_prompt.index("## 이번 훈련 시나리오") + len("## 이번 훈련 시나리오")
-    end = system_prompt.index("## 현재 진행 상황")
-    scenario = json.loads(system_prompt[start:end])
-    current, total = map(int, re.search(r"지금 장면: (\d+)번 / 전체 (\d+)개", system_prompt).groups())
+    text = system_prompt + "\n" + user_content  # 매 턴 바뀌는 서버 정보는 사용자 메시지 쪽에 있어요
+    start = text.index("## 1-1. 시나리오") + len("## 1-1. 시나리오")
+    scenario, _ = json.JSONDecoder().raw_decode(text[start:].lstrip())
+    current, total = map(int, re.search(r"지금 장면: (\d+)번 / 전체 (\d+)개", text).groups())
 
     last = [line for line in user_content.splitlines() if line.startswith("사용자:")][-1]
     if "[" in last:  # 가려진 개인정보 표시 = 실제로 입력함

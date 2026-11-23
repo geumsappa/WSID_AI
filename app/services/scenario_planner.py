@@ -46,7 +46,8 @@ def ask(task, payload, model, *, timeout=None, max_tokens=2500, validate=None):
     content = dict(payload)
     for attempt in range(2):
         raw = generate_json(prompt, json.dumps(content, ensure_ascii=False, separators=(",", ":")), timeout=timeout or settings.planning_timeout_seconds,
-                            max_tokens=max_tokens, attempts=1, reasoning_effort=settings.pipeline_reasoning_effort or None)
+                            max_tokens=max_tokens, attempts=1, reasoning_effort=settings.pipeline_reasoning_effort or None,
+                            model=getattr(settings, "pipeline_model", "") or None)
         try:
             result = model.model_validate(safe_tree(raw))
             if validate:

@@ -276,7 +276,8 @@ def _run_discovery_turn(session_id, history, known_facts=None):
             while True:
                 raw = generate_json(load_prompt(REVIEW_PROMPT) if review else prompt,
                                     json.dumps(content, ensure_ascii=False, separators=(",", ":")), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
-                                    reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True)
+                                    reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True,
+                                    model=getattr(settings, "discovery_model", "") or None)
                 try:
                     updates = raw.get("updates", [])
                     has_activity = topics.get("ACTIVITY", {}).get("status") == "KNOWN" or any(

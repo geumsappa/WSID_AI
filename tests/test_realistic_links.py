@@ -46,3 +46,17 @@ def test_리포트_타임라인은_있는_답변_번호와_안전한_문장만_�
     result = _turn_feedback(raw, user_turns=3)
     assert [item.turn for item in result] == [1, 2]
     assert _turn_feedback(None, user_turns=3) == []
+
+
+def test_송금_장면에서는_입금_계좌를_보여줌():
+    reply = _place_links({"personaMessage": "계좌는 따로 안내드릴게요", "requestType": "송금"}, _persona("예약금 보내 주세요"), False)
+    assert reply.endswith("[모의계좌]")
+    changed = _place_links({"personaMessage": "여기로 보내 주세요 [모의링크]", "requestType": "송금"}, _persona("안녕하세요"), False)
+    assert "[모의계좌]" in changed and "[모의링크]" not in changed
+
+
+def test_송금한_뒤에는_계좌를_다시_보내지_않음():
+    from app.services.training_api import TRANSFER_EVENT
+    history = _persona("이 계좌로요 [모의계좌]") + [{"role": "event", "text": TRANSFER_EVENT}]
+    reply = _place_links({"personaMessage": "확인됐어요. 수수료도 [모의계좌]", "requestType": "송금"}, history, False)
+    assert "[모의계좌]" not in reply

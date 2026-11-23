@@ -27,8 +27,19 @@ class Settings:
     llm_model: str = os.getenv("LLM_MODEL", "").strip()
     llm_base_url: str = os.getenv("LLM_BASE_URL", "").strip()
     llm_timeout_seconds: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "10"))
+    # 피해 대응 RAG 검색용 임베딩 키 (Claude 에는 임베딩 API 가 없어요).
+    # 비우면 LLM_PROVIDER=openai 일 때만 LLM_API_KEY 를 쓰고, 그 밖에는 글자 겹침 검색으로 대신해요.
+    openai_api_key: str = (os.getenv("OPENAI_API_KEY", "").strip()
+                           or (os.getenv("LLM_API_KEY", "").strip()
+                               if os.getenv("LLM_PROVIDER", "mock").strip().lower() == "openai" else ""))
+    # 상황 파악 질문용 모델 (비우면 LLM_MODEL). 질문 만들기는 가벼운 일이라 claude-haiku-5-5 처럼 싼 모델로 충분해요
+    discovery_model: str = os.getenv("DISCOVERY_MODEL", "").strip()
+    # 시나리오 만들기 전 계획·후보 비교·검토 단계 모델 (비우면 LLM_MODEL). 단계가 여러 번이라 빠른 모델이 유리해요
+    pipeline_model: str = os.getenv("PIPELINE_MODEL", "").strip()
+    # Claude 대사 다양성 (training_prompt_notes.md §5-3 권장 0.6~0.8)
+    llm_temperature: float = float(os.getenv("LLM_TEMPERATURE", "0.7"))
     max_context_turns: int = int(os.getenv("MAX_CONTEXT_TURNS", "5"))
-    planning_timeout_seconds: float = float(os.getenv("PLANNING_TIMEOUT_SECONDS", "25"))
+    planning_timeout_seconds: float = float(os.getenv("PLANNING_TIMEOUT_SECONDS", "60"))
     verification_timeout_seconds: float = float(os.getenv("VERIFICATION_TIMEOUT_SECONDS", "20"))
     pipeline_reasoning_effort: str = os.getenv("PIPELINE_REASONING_EFFORT", "").strip()
     discovery_reasoning_effort: str = os.getenv("DISCOVERY_REASONING_EFFORT", "").strip()
@@ -36,10 +47,12 @@ class Settings:
     discovery_timeout_seconds: float = float(os.getenv("DISCOVERY_TIMEOUT_SECONDS", "60"))
     discovery_total_timeout_seconds: float = float(os.getenv("DISCOVERY_TOTAL_TIMEOUT_SECONDS", "110"))
     # 시나리오는 길게 생성하므로 대기시간을 따로 둠 (훈련 시작 전 로딩 화면 1번)
-    scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "110"))
+    # Claude Sonnet 은 단계 5번에 80~120초 걸려요. Spring AI_SCENARIO_READ_TIMEOUT(160초)보다 짧게
+    scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "150"))
     scenario_timeout_seconds: float = float(os.getenv("SCENARIO_TIMEOUT_SECONDS", "25"))
     solution_reply_timeout_seconds: float = float(os.getenv("SOLUTION_REPLY_TIMEOUT_SECONDS", "12"))
-    evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "25"))
+    # 리포트 생성. Spring 평가 대기(AI_EVALUATION_READ_TIMEOUT 40초)보다 짧게
+    evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "35"))
     # 가상 훈련 대화 전체 최대 턴 수 (요구사항 초안: 핵심 장면 12턴 / 전체 15턴)
     training_max_turns: int = int(os.getenv("TRAINING_MAX_TURNS", "15"))
     # 이 답변 수 전에는 시나리오가 끝나도 종료하지 않고 대화를 이어가요 (사용자가 확실히 끊으면 예외)

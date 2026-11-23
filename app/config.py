@@ -29,6 +29,7 @@ class Settings:
     verification_timeout_seconds: float = float(os.getenv("VERIFICATION_TIMEOUT_SECONDS", "20"))
     pipeline_reasoning_effort: str = os.getenv("PIPELINE_REASONING_EFFORT", "").strip()
     discovery_reasoning_effort: str = os.getenv("DISCOVERY_REASONING_EFFORT", "").strip()
+    # 상황 답변: 호출 60초, 재시도·교정 포함 110초. BE 120초·FE 130초와 함께 조정해요.
     discovery_timeout_seconds: float = float(os.getenv("DISCOVERY_TIMEOUT_SECONDS", "60"))
     discovery_total_timeout_seconds: float = float(os.getenv("DISCOVERY_TOTAL_TIMEOUT_SECONDS", "110"))
     # 시나리오는 길게 생성하므로 대기시간을 따로 둠 (훈련 시작 전 로딩 화면 1번)

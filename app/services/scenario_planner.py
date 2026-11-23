@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from app.config import settings
-from app.guard.sensitive import mask_sensitive
+from app.guard.sensitive import mask_name_address, mask_sensitive
 from app.llm.llm_client import generate_json
 from app.schemas.context_graph import ContextGraph, ScenarioPlan, IntakePlan, GenerationIntakePlan, SemanticReview, CandidateProposal, CandidateComparison
 from app.services.context_graph import ContextIntegrityError, check_graph, check_plan
@@ -19,6 +19,7 @@ PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
 
 def mask_input(text):
     text = mask_sensitive(text)[0]
+    text = mask_name_address(text)[0]  # 주소·"제 이름은 ○○○"도 외부 AI로 보내기 전에 가려요
     return re.sub(r"https?://\S+|www\.\S+|(?<!\w)[\w-]+\.(?:com|net|org|kr|co|io|me|ly)(?:/\S*)?", "[링크]", text, flags=re.IGNORECASE)
 
 

@@ -117,7 +117,9 @@ def test_followup_without_question_can_ask_fact_mentioned_in_original_question()
 
     body = plan(question=None, questionIntent="TRANSFER_RESPONSE", askedFactKeys=["transferredMoney"],
                 remainingClarifications=2, history=[{"role": "USER", "content": "돈 보냈는데 앱도 지워야 해요?"}])
-    assert run(body, model=AskApp()).clarification.factKey == "installedApp"
+    # 질문 문장은 검색된 근거로 만들므로, 앱 설치를 다루는 근거가 있어야 물을 수 있어요
+    app_ref = {"code": "APP_GUIDE", "version": "1", "title": "악성 앱 대응", "excerpt": "설치한 앱을 삭제합니다."}
+    assert run(body, model=AskApp(), retriever=Retriever([app_ref])).clarification.factKey == "installedApp"
     # history가 없으면 v1처럼 의도에 연결된 사실만 물을 수 있어서 검색으로 넘어가요
     body.pop("history")
     assert run(body, model=AskApp()).status != "NEED_USER_INPUT"

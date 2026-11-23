@@ -105,3 +105,21 @@ def generation_evidence(plan):
             "sourceAttributions": list(dict.fromkeys(rows[use.caseId]["source"]["attributionText"] for use in plan.referenceUses)),
             "attributionRequired": bool(plan.referenceUses),
             "note": "Retrieved factual techniques are distinct from post-generation similarity matches; fictional dialogue is newly generated."}
+
+
+def basic_pattern_selection(text, case_id=None):
+    """Explicit catalogue choice, distinct from a relevant search hit."""
+    data, digest, *_ = _index()  # Reuse the licensed/reviewed registry checks.
+    trace = retrieve_patterns(text, limit=1)
+    if case_id is not None:
+        row = next((item for item in data["records"] if item["id"] == case_id), None)
+        if row is None:
+            raise ValueError("Unknown basic training case")
+        trace["patterns"] = [{**row, "score": None}]
+        trace["status"] = "EXPLICIT_CATALOG_SELECTION"
+    elif not trace["patterns"]:
+        # Stable representative case; never present this as a user-context match.
+        trace["patterns"] = [{**data["records"][0], "score": None}]
+        trace["status"] = "DEFAULT_CATALOG_SELECTION"
+    trace["selectionMode"] = "BASIC"
+    return trace

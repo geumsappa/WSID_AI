@@ -9,7 +9,7 @@ from app import fallback
 from app.api_errors import AiApiError
 from app.config import settings
 from app.guard.sensitive import mask_sensitive
-from app.llm.llm_client import LLMError, generate_json
+from app.llm.llm_client import LLMError, generate_json, generation_budget
 from app.schemas.fast_discovery import ConversationDecision, FactUpdate, EvidenceMessage
 from app.services.scenario_planner import mask_input
 
@@ -139,8 +139,11 @@ def _exploration(topics, question_history):
             "knownTopics": [topic for topic, value in topics.items() if value.get("status") == "KNOWN"]}
 
 
-def _requirements(decision):
+def _requirements(decision, topics=None):
     required = list(dict.fromkeys(decision.requiredTopics))
+    # An identity already marked incomplete cannot disappear behind OTHER readiness.
+    if decision.personalizationTarget == "OTHER" and (topics or {}).get("PERSON_NAME", {}).get("status") == "PARTIAL":
+        required = list(dict.fromkeys(["PERSON_NAME", *required]))
     if decision.personalizationTarget == "PERSON":
         required = ["PERSON_NAME", "PEOPLE", *[topic for topic in required if topic not in {"PERSON_NAME", "PEOPLE"}]]
     if decision.personalizationTarget == "SERVICE" and "SERVICE" not in required:
@@ -157,7 +160,7 @@ def _ready(topics, decision):
     details = [value for topic, value in topics.items() if topic in CONTEXT_TOPICS and value["status"] == "KNOWN"]
     ready = (decision.contextSufficient and decision.personalizationTarget != "UNDECIDED"
              and topics.get("ACTIVITY", {}).get("status") == "KNOWN" and bool(details)
-             and all(_is_resolved(topic, topics) for topic in _requirements(decision)))
+             and all(_is_resolved(topic, topics) for topic in _requirements(decision, topics)))
     return bool(ready), details
 
 
@@ -167,10 +170,11 @@ def _select_question(topics, question_history, decision, history):
     available = _available_topics(topics, question_history)
     # A readiness claim must not skip an explicitly required, still answerable gap.
     if decision.contextSufficient and target is None:
-        target = next((topic for topic in _requirements(decision) if topic in available and not _is_resolved(topic, topics)), target)
-    if target not in available or target not in _requirements(decision):
+        target = next((topic for topic in _requirements(decision, topics) if topic in available and not _is_resolved(topic, topics)), target)
+    if target not in available or target not in _requirements(decision, topics):
         return None
-    if target == "PERSON_NAME" and decision.personalizationTarget != "PERSON":
+    if (target == "PERSON_NAME" and decision.personalizationTarget != "PERSON"
+            and not (decision.personalizationTarget == "OTHER" and topics.get("PERSON_NAME", {}).get("status") == "PARTIAL")):
         return None
     previous = {item.get("question") for item in question_history}
     previous.update(message["text"] for message in history if message["role"] == "ai")
@@ -189,6 +193,12 @@ def _apply_updates(topics, decision, messages):
 
 
 def run_discovery_turn(session_id, history, known_facts=None):
+    # Leave a margin before Spring's 120s and the browser's 130s limits.
+    with generation_budget(settings.discovery_total_timeout_seconds):
+        return _run_discovery_turn(session_id, history, known_facts)
+
+
+def _run_discovery_turn(session_id, history, known_facts=None):
     if not history:
         return {"state": {}, "next_question": fallback.FIRST_QUESTION, "done": False, "fallback_used": False}
     if history[-1]["role"] != "user":
@@ -202,6 +212,23 @@ def run_discovery_turn(session_id, history, known_facts=None):
             raise ValueError("Invalid question history")
         question_history = [item for item in question_history if isinstance(item, dict)
                             and item.get("topic") in QUESTIONS and type(item.get("afterTurn")) is int][-20:]
+        from app.services.basic_training import OFFER, REMINDER, MORE, READY, choice
+        if known.get("basicScenarioOffered") is True or known.get("intakePaused") is True:
+            selected_choice = choice(history[-1]["text"], allow_affirmative=known.get("basicConsentPending") is True)
+            if selected_choice in {"BASIC", "MORE", "DECLINE"}:
+                state = {key: value for key, value in known.items() if key not in
+                         {"canGenerateScenario", "readinessEvidence", "basicScenarioSelection", "scenarioMode"}}
+                state.update(intakeTurn=turn, discoveryEvidence=messages, discoveryReady=False,
+                             basicScenarioOffered=True, basicConsentPending=False, intakePaused=True,
+                             scenarioMode="PERSONALIZED", basicScenarioSelection=None, readinessEvidence=None)
+                if selected_choice == "BASIC":
+                    from app.services.scenario_retrieval import basic_pattern_selection
+                    trace = basic_pattern_selection(" ".join(item["text"] for item in messages[:-1]))
+                    state.update(discoveryReady=True, scenarioMode="BASIC", basicScenarioOffered=False,
+                        intakePaused=False, basicScenarioSelection={"caseId": trace["patterns"][0]["id"],
+                            "consentTurn": turn, "selectionReason": trace["status"], "corpusHash": trace["corpusHash"]})
+                return {"state": state, "next_question": READY if selected_choice == "BASIC" else MORE,
+                        "done": selected_choice == "BASIC", "fallback_used": False}
         targets = _available_topics(topics, question_history)
         previous_topics = json.dumps(topics, sort_keys=True, ensure_ascii=False)
         prompt = PROMPT.read_text(encoding="utf-8")
@@ -216,7 +243,7 @@ def run_discovery_turn(session_id, history, known_facts=None):
             content = dict(content)
             while True:
                 raw = generate_json(prompt, json.dumps(content, ensure_ascii=False),
-                                    max_tokens=1100, timeout=settings.discovery_timeout_seconds, attempts=1,
+                                    max_tokens=1100, timeout=settings.discovery_timeout_seconds, attempts=2,
                                     reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True)
                 try:
                     result = ConversationDecision.model_validate(raw)
@@ -245,7 +272,7 @@ def run_discovery_turn(session_id, history, known_facts=None):
                                 "exploration": _exploration(topics, question_history),
                                 "questionHistory": question_history,
                                 "questionTargets": _available_topics(topics, question_history),
-                                "previousRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision)}}
+                                "previousRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)}}
             reassessed = decide(reassess_payload)
             # This pass may simplify a plan, but cannot erase the user's current facts.
             if reassessed.focusChanged:
@@ -257,7 +284,9 @@ def run_discovery_turn(session_id, history, known_facts=None):
         state = {"pipelineVersion": 2, "intakeTurn": turn, "discoveryEvidence": messages,
                  "knownTopics": topics, "questionHistory": question_history,
                  "discoveryReady": ready, "extractedFacts": [],
-                 "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision)}}
+                 "scenarioMode": "PERSONALIZED", "basicScenarioSelection": None,
+                 "basicScenarioOffered": False, "basicConsentPending": False, "intakePaused": False, "readinessEvidence": None,
+                 "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)}}
         if ready:
             detail = max(details, key=lambda item: item["turn"])
             state["readinessEvidence"] = {"turn": detail["turn"], "quote": mask_input(detail["quote"])}
@@ -267,9 +296,11 @@ def run_discovery_turn(session_id, history, known_facts=None):
             state["questionHistory"] = [*question_history, {"topic": target, "afterTurn": turn, "question": question}][-20:]
         else:
             state["intakePaused"] = True
+            state["basicScenarioOffered"] = True
+            state["basicConsentPending"] = True
             # Spring persists every AI reply and rejects blank generated text.
             # Keep waiting without repeating a question or manufacturing readiness.
-            question = "알겠습니다. 내용을 더 추가하실 때 이어서 진행할게요." if known.get("intakePaused") is True else "말씀하신 내용은 기억하고 있어요. 더 떠오르는 구체적인 일이 있으면 이어서 알려 주세요."
+            question = REMINDER if known.get("basicScenarioOffered") is True else OFFER
         return {"state": state, "next_question": question,
                 "done": ready, "fallback_used": False,
                 "masked_text": mask_input(history[-1]["text"]),

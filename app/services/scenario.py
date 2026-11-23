@@ -21,7 +21,7 @@ PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts" / "scenario.md"
 MAX_ATTEMPTS = 2
 
 
-def _prepare_context(facts, context, plan, context_hash, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None):
+def _prepare_context(facts, context, plan, context_hash, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None, basic_trace=None):
     if discovery_evidence is not None:
         from app.services.fast_discovery import load_evidence, load_topics
         from app.schemas.fast_discovery import DetailEvidence, IntakeRequirements
@@ -50,7 +50,7 @@ def _prepare_context(facts, context, plan, context_hash, discovery_evidence=None
         if selected is None or context_hash != fingerprint(graph):
             raise ContextIntegrityError("missing_or_stale_plan")
         check_plan(selected, graph)
-        selected._retrieval_trace = retrieve_patterns(" ".join(item.quote for item in graph.evidence))
+        selected._retrieval_trace = basic_trace if basic_trace is not None else retrieve_patterns(" ".join(item.quote for item in graph.evidence))
         validate_uses(selected.referenceUses, selected._retrieval_trace)
         return graph, selected
     # Backwards compatibility for clients providing legacy facts, with fresh extraction and review.
@@ -61,17 +61,17 @@ def _prepare_context(facts, context, plan, context_hash, discovery_evidence=None
     return scenario_planner.choose_generation_plan(messages, readiness_evidence=readiness_evidence, confirmed_topics=discovery_topics)
 
 
-def run_scenario(session_id, facts, *, context=None, plan=None, context_hash=None, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None):
+def run_scenario(session_id, facts, *, context=None, plan=None, context_hash=None, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None, basic_trace=None):
     with generation_budget(settings.scenario_total_timeout_seconds):
         return _run_scenario(session_id, facts, context=context, plan=plan, context_hash=context_hash,
             discovery_evidence=discovery_evidence, discovery_ready=discovery_ready,
             readiness_evidence=readiness_evidence, discovery_topics=discovery_topics,
-            discovery_requirements=discovery_requirements)
+            discovery_requirements=discovery_requirements, basic_trace=basic_trace)
 
 
-def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=None, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None):
+def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=None, discovery_evidence=None, discovery_ready=False, readiness_evidence=None, discovery_topics=None, discovery_requirements=None, basic_trace=None):
     try:
-        graph, selected = _prepare_context(facts, context, plan, context_hash, discovery_evidence, discovery_ready, readiness_evidence, discovery_topics, discovery_requirements)
+        graph, selected = _prepare_context(facts, context, plan, context_hash, discovery_evidence, discovery_ready, readiness_evidence, discovery_topics, discovery_requirements, basic_trace)
     except (ValidationError, ContextIntegrityError) as error:
         reason = str(error) if isinstance(error, ContextIntegrityError) else ";".join(
             ".".join(map(str, item["loc"])) + ":" + item["type"] for item in error.errors())
@@ -99,6 +99,9 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
     for attempt in range(MAX_ATTEMPTS):
         try:
             prompt = PROMPT_PATH.read_text(encoding="utf-8")
+            from app.services.basic_training import BASIC_INPUT_SCOPE, SCOPE_INSTRUCTION
+            if BASIC_INPUT_SCOPE.get():
+                prompt += SCOPE_INSTRUCTION
             prompt += "\n출력 JSON 스키마:\n" + json.dumps(GeneratedScenario.model_json_schema(), ensure_ascii=False)
             payload = {"context": graph.model_dump(), "plan": selected.model_dump(),
                        "allowedOrganizations": allowed, "confirmedPersonName": confirmed_name, "confirmedServiceNames": service_names, "retryIssues": failures,

@@ -79,7 +79,7 @@ def test_new_answer_does_not_reuse_a_stale_approved_plan(grounded_model, graph_d
     assert "scenarioPlan" not in result.facts and "planContextHash" not in result.facts
 
 
-def test_provider_failure_is_not_retried_or_replaced_with_a_fake_success(grounded_model):
+def test_exhausted_provider_failure_is_not_replaced_with_a_fake_success(grounded_model):
     from app.llm.llm_client import LLMError
     def offline(payload):
         raise LLMError("private-provider-message")
@@ -157,3 +157,29 @@ def test_generation_uses_writer_instructions_with_shared_grounding_rules(monkeyp
     assert "정보가 부족하면 selectedPlan=null" in captured[1]
     assert all("messages의 사용자 발언만 근거" in prompt for prompt in captured)
     assert all("{{CONTEXT_FACTS}}" not in prompt for prompt in captured)
+
+
+def test_discovery_retries_transient_failure_within_shared_budget(monkeypatch):
+    from app.llm import llm_client as llm
+    from app.services import fast_discovery
+    from types import SimpleNamespace
+    import json
+    now = [100.0]
+    monkeypatch.setattr(llm.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(fast_discovery, "settings", SimpleNamespace(discovery_timeout_seconds=60,
+        discovery_total_timeout_seconds=110, discovery_reasoning_effort=""))
+    calls = []
+    def provider(system, content, max_tokens, timeout, **kwargs):
+        calls.append(timeout)
+        if len(calls) == 1:
+            now[0] += 60
+            raise TimeoutError()
+        return json.dumps({"updates": [{"topic": "ACTIVITY", "status": "KNOWN", "turn": 1, "quote": "코딩했어요"}],
+            "personalizationTarget": "UNDECIDED", "contextSufficient": False,
+            "requiredTopics": ["ACTIVITY_DETAIL"], "nextTopic": "ACTIVITY_DETAIL", "nextQuestion": "어떤 작업이었나요?"})
+    monkeypatch.setattr(llm, "_call_provider", provider)
+    result = fast_discovery.run_discovery_turn("test", [{"role": "user", "text": "코딩했어요"}], {})
+    assert calls == [60, 50]
+    assert result["next_question"] == "어떤 작업이었나요?"
+    assert not result["done"]
+    assert llm._generation_deadline.get() is None

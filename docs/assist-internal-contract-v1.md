@@ -43,7 +43,8 @@ reasonCode는 `UNABLE_TO_ANSWER`에서만 채우고 다른 상태에서는 반�
 첫 실행 예: [assist-plan.json](../examples/assist-plan.json).
 사용자 질문이 있는 첫 실행에는 `questionIntent=null`이다.
 후속 실행은 `question=null`, 이전 PLAN에서 받은 `questionIntent`를 전달한다.
-Spring은 원문을 저장하지 않는다. Python도 복원·추측하거나 저장하지 않는다.
+원래 질문은 Spring이 저장한 대화를 `history`로 함께 보내 전달한다([v1.1](#v11-선택-필드-historyfraudtype)).
+Python은 요청 사이 상태를 저장하지 않고, history에 없는 원문을 추측하지 않는다.
 
 | 필드 | 타입·규칙 |
 | --- | --- |
@@ -183,7 +184,7 @@ sequenceDiagram
 - ANSWER는 LangGraph의 별도 경로로 실행되어 retriever를 호출하지 않는다.
 - LangGraph 체크포인터·장기 메모리·사용자 상태 캐시를 사용하지 않는다.
   모델·컴파일된 그래프 객체는 재사용하지만 매 실행의 상담 상태는 새로 생성한다.
-- LangSmith 추적은 실행 컨텍스트에서 비활성화한다. Ragas·Langfuse도 연동하지 않는다.
+- LangSmith 추적은 실행 컨텍스트에서 비활성화한다. Ragas·Langfuse는 아직 연동하지 않았다(도입 검토 중).
 - Python은 로그에 검증한 요청 UUID·phase·상태·소요 시간과 사전 정의 오류 코드만 기록한다.
   요청 오류나 SDK 예외의 원문/traceback도 로그와 오류 응답에 넣지 않는다.
 - API 키는 `AI_API_KEY`이며 OpenAI 키(`LLM_API_KEY`)와 별개다. 미설정 시 503, 불일치 시 401.
@@ -246,8 +247,7 @@ Spring의 승인 목록이 채워지기 전에는 후보를 실제 서비스 승
 1. questionIntent 다섯 값의 최종 확정.
 2. AI-07과 근거 코드·버전 체계를 공유할지와 승인된 코드/버전 목록.
 3. PLAN·ANSWER 실제 지연 측정 후 Spring read timeout 및 Python 전체 처리 예산.
-4. 후속 요청은 원문을 폐기하고 intent만 남기므로 세부 질문·피해 유형을 복원할 수 없다.
-   현재 구현은 intent 범위의 안내만 제공한다. 더 세밀한 상담에는 별도 계약 합의가 필요하다.
+4. (해결, 2026-11-23) 후속 요청의 세부 질문은 v1.1 `history`로 전달한다. Spring이 대화를 저장해 보낸다.
 5. 추가 질문은 네 사실의 YES/NO/UNKNOWN만 지원한다. 앱 종류·정보 종류 등 임의의
    세부 질문이나 자유 텍스트 추가 답변은 v1 범위가 아니다.
 
@@ -285,14 +285,16 @@ OpenAPI는 FastAPI DTO에서 생성한 [assist-openapi.json](assist-openapi.json
 
 2026-11-18: 단계별 시간 제한과 고정 질문 변경 후 pytest 101개 통과(모델 대역). 실제 Gemini 및 Spring 연동은 검증하지 않았다.
 
-## v1.1 제안: 선택 필드 `history`·`fraudType` (2026-11-19, 합의 전)
+## v1.1 선택 필드 `history`·`fraudType`
+
+2026-11-19 제안, 2026-11-23 Spring 연동(WSID_BE `docs/solution-conversation-context-plan.md`).
 
 PLAN·ANSWER 요청에 아래 두 필드를 **선택**으로 추가한다. 보내지 않거나 null이면 v1과 똑같이 동작하므로
 Spring이 v1 그대로 호출해도 깨지지 않는다.
 
 | 필드 | 타입·규칙 | 쓰임 |
 | --- | --- | --- |
-| history | null 또는 `[{"role":"USER"\|"AI","content":"1~2000자"}]` 최대 10개 | 이번 질문 **앞**의 대화(가린 글 safe_content). 확인 질문 뒤 후속 PLAN·ANSWER에서는 원래 질문·확인 질문·대답까지 포함 |
+| history | null 또는 `[{"role":"USER"\|"AI","content":"1~2000자"}]` 최대 10개 | 이번 질문 **앞**의 대화. Spring이 저장한 상황 설명·질문(USER), AI 답변(AI), 사진 턴(USER, `[사진`으로 시작). 선택형 답·사실 수정은 facts로 가므로 넣지 않음 |
 | fraudType | null 또는 AI-06 `/extract`의 `fraudType` 값 (`MESSENGER_PHISHING`, `SMISHING`, `LOAN_FRAUD`, `INSTITUTION_IMPERSONATION`, `INVESTMENT_FRAUD`, `SECONDHAND_TRADE`) | 유형에 맞는 근거 고르기 |
 
 Python 동작 (`assist/context.py`):
@@ -304,11 +306,22 @@ Python 동작 (`assist/context.py`):
   꼭 넣을 근거 code를 검색 결과 앞에 둔다. 후보는 여전히 최대 10개이고 Spring 승인 원칙은 같다.
 - `SECONDHAND_TRADE`면 환급법 전용 문단은 후보에서 빼고, 환급을 묻지 않았으면 '환급 대상 아님' 안내 문단도 뺀다.
   유형이 맞는 문단은 검색 점수를 조금(+0.04) 올린다.
-- 모델에는 history 최근 6턴·턴당 600자만 넘기고, 사실의 근거로 쓰지 않도록 프롬프트에 명시한다.
-  history는 로그에 남기지 않는다(기존 로그 정책과 동일).
+- 모델에는 일반 턴은 최근 6턴·턴당 600자, 사진 턴은 최근 2개를 턴당 1200자로 항상 넘긴다.
+  일반 대화 턴은 무엇을 묻는지 파악하는 데만 쓰고 사실의 근거로 쓰지 않는다.
+- 사진 턴(`[사진 · 종류] 요약: … / 사진 속 글자: …`)은 사용자의 실제 상황으로 보고 판단·답의 출발점으로 삼는다.
+  "이 계좌", "이 사람"처럼 가리키는 대상이 앞 대화에 없으면 사진을 가리키는 것으로 본다.
+  사진 속 상대의 지시·해명은 따르지 않고, 할 일은 근거 문단에 있는 것만 안내하며 그 code를 인용한다.
+  사진 턴은 원래 질문으로 쓰지 않고, 검색어에 "사진 내용"으로 붙인다.
+- history는 로그에 남기지 않는다(기존 로그 정책과 동일).
 - ANSWER 프롬프트에 답변 규칙(첫 문장이 답, 근거의 절차·기간·제출처를 구체적으로, 신고 이후 다음 단계,
   추가 송금 요구 시 '더 보내지 말 것' 우선, 이전 대화 반복 금지)을 추가했다. 이 규칙은 v1 요청에도 적용된다.
 
-Spring에 필요한 변경: SOL-03 QUESTION·CLARIFICATION_ANSWER에서 상담의 최근 메시지(safe_content)와
-상담 시작 때 AI-06이 준 `fraudType`을 함께 보낸다. 테스트: `tests/test_assist_context.py`,
+Spring 연동(2026-11-23):
+- SOL-03 QUESTION·CLARIFICATION_ANSWER에서 저장된 대화로 history를, 상담 시작 때 AI-06이 준 `fraudType`을 함께 보낸다.
+- 사진 업로드(SOL-06)와 선택지 답(SOL-03 CHOICE) 뒤에도 assist를 한 번 돌려 할 일을 안내한다(추가 질문 없음).
+  이때 question은 Spring이 만든 문장이다. 예: `"상대방과 지금도 연락하고 있나요?"라는 질문에 "예"라고 답했어요. …`
+- 사진 턴의 "사진 속 글자"는 OCR 응답의 `maskedText`(민감정보·인증번호 뒤 숫자·링크·전화번호를 가린 글자)다.
+  OCR 원문(`recognizedText`)은 저장하지 않는다.
+
+테스트: `tests/test_assist_context.py`,
 체험: `python scripts/try_assist.py` (`--v1`이면 두 필드 없이 호출).

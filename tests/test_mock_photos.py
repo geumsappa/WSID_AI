@@ -23,7 +23,7 @@ def test_virtual_photo_submission_is_risky_without_any_image_in_model_input(monk
     captured = []
 
     def answer(system, content, **kwargs):
-        captured.append(content)
+        captured.append(system + "\n" + content)
         return {"judgment": {"outcome": "safe"}, "personaMessage": "확인했습니다.", "nextScene": 1}
 
     monkeypatch.setattr(training_turn, "generate_json", answer)
@@ -37,7 +37,7 @@ def test_virtual_photo_submission_is_risky_without_any_image_in_model_input(monk
     assert response.status_code == 200, response.text
     assert "SENSITIVE_INFO_SHARED" in response.json()["data"]["recognizedActions"]
     assert "RISKY_RESPONSE" in response.json()["data"]["recognizedActions"]
-    assert "가상 신분증 사진 제공" in captured[0]
+    assert "1턴: 신분증사진_제공" in captured[0]  # 사진 제공은 서버 사건 기록(EVENT_LOG)으로 전달
     assert "base64" not in captured[0]
     assert "data:image" not in captured[0]
 

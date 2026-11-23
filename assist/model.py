@@ -223,6 +223,13 @@ class OpenAIAssistModel:
         model = config.ASSIST_LLM_MODEL or settings.llm_model
         if not model:
             raise RuntimeError("LLM_MODEL을 설정해 주세요.")
+        if settings.llm_provider == "anthropic":
+            import asyncio
+
+            from app.llm.llm_client import anthropic_text, parse_json
+            text = await asyncio.to_thread(anthropic_text, system, json.dumps(payload, ensure_ascii=False),
+                                           max_tokens=2000, model=model, timeout=config.ASSIST_ANSWER_TIMEOUT_SEC)
+            return schema.model_validate(parse_json(text))
         options = dict(model=model, response_format={"type": "json_object"},
                        messages=[{"role": "system", "content": system},
                                  {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}])

@@ -186,10 +186,10 @@ class ExpectedAction(BaseModel):
 
 
 class DraftScenario(Model):
-    title: str = Field(min_length=1, max_length=60)
+    title: str = Field(min_length=1, max_length=60, description="사용자에게 보여줄 자연스러운 짧은 제목. 8~20자 정도 권장. 긴 조건이나 사건 전체를 한 제목에 우겨넣지 않는다.")
     channel: DeliveryChannel
     persona: Persona
-    background: str = Field(min_length=1, max_length=300)
+    background: str = Field(min_length=1, max_length=300, description="수신자 관점의 자연스러운 도입 1~2문장. 도착한 연락과 상대가 말하는 용건을 소개한다. 역할 연습·상황 확인·검증 메모를 쓰거나 사칭/거짓 여부를 미리 판정하지 않는다.")
     openingMessage: str = Field(min_length=1, max_length=250)
     keyScenes: list[Scene] = Field(min_length=1, max_length=4)
     expectedActions: list[ExpectedAction] = Field(min_length=1, max_length=5)

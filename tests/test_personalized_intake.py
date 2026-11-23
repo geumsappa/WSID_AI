@@ -30,7 +30,7 @@ def test_activity_and_companion_alone_cannot_complete_even_with_model_approval(g
     assert not first.canGenerateScenario and not second.canGenerateScenario
     assert "별명" in second.nextQuestion
     assert second.facts["questionHistory"][-1]["topic"] == "PERSON_NAME"
-    assert "readinessEvidence" not in second.facts
+    assert second.facts.get("readinessEvidence") is None
     assert len(grounded_model[0]) == 2
 
 
@@ -219,7 +219,7 @@ def test_paused_acknowledgements_return_nonblank_reply_and_new_facts_can_resume(
     decision(grounded_model,[fact("ROLE",3,"자료 찾는 일을 도왔어요")],target="OTHER")
     third=ask("자료 찾는 일을 도왔어요",second.facts)
     assert third.canGenerateScenario
-    assert "intakePaused" not in third.facts
+    assert not third.facts.get("intakePaused")
 
 
 def test_invalid_evidence_gets_one_bounded_correction_before_use(grounded_model):
@@ -242,7 +242,7 @@ def test_service_ready_claim_cannot_skip_identifying_the_service(grounded_model)
     result = ask(text)
     assert not result.canGenerateScenario
     assert result.facts["questionHistory"][-1]["topic"] == "SERVICE"
-    assert "readinessEvidence" not in result.facts
+    assert result.facts.get("readinessEvidence") is None
 
 
 def test_confirmed_service_is_reused_and_missing_time_is_asked_once(grounded_model):
@@ -329,7 +329,7 @@ def test_no_social_interaction_keeps_other_context_routes_open(grounded_model, c
     result = ask("없어요", state)
     assert not result.canGenerateScenario
     assert result.nextQuestion == "어느 곳을 이용하셨어요?"
-    assert "intakePaused" not in result.facts
+    assert not result.facts.get("intakePaused")
     assert result.facts["questionHistory"][-1]["topic"] == "SERVICE"
     assert len(calls) == 2
 
@@ -381,7 +381,43 @@ def test_concrete_solo_task_can_support_readiness_without_social_interaction(gro
     assert result.canGenerateScenario is approved
     if approved:
         assert result.facts["readinessEvidence"]["quote"] == "산책 코스 기록과 추천 웹 서비스"
-        assert "intakePaused" not in result.facts
+        assert not result.facts.get("intakePaused")
         assert result.facts["questionHistory"] == []
     else:
-        assert "readinessEvidence" not in result.facts
+        assert result.facts.get("readinessEvidence") is None
+
+
+def test_other_readiness_cannot_skip_an_incomplete_friend_identity(grounded_model):
+    text = "어제 한신포차에서 친구랑 둘이 닭발과 술 먹었어요. 제가 계산했어요."
+    decision(grounded_model, [fact("ACTIVITY", 1, "술 먹었어요"),
+        fact("PEOPLE", 1, "친구랑 둘이"), fact("PERSON_NAME", 1, "친구랑", "PARTIAL"),
+        fact("SERVICE", 1, "한신포차"), fact("TIME", 1, "어제"),
+        fact("TRANSACTION", 1, "제가 계산했어요")], target="OTHER", required=[])
+    first = ask(text)
+    assert not first.canGenerateScenario
+    assert first.facts["questionHistory"][-1]["topic"] == "PERSON_NAME"
+    assert "PERSON_NAME" in first.facts["intakeRequirements"]["topics"]
+    decision(grounded_model, [fact("PERSON_NAME", 2, "도토리", name="도토리")], target="OTHER")
+    second = ask("별명은 도토리", first.facts)
+    assert second.canGenerateScenario
+    assert second.facts["knownTopics"]["PERSON_NAME"]["name"] == "도토리"
+
+
+def test_service_contact_does_not_collect_an_incidental_partial_friend_name(grounded_model):
+    text = "친구랑 문화센터에서 수강 신청했고 제가 요금을 냈어요"
+    decision(grounded_model, [fact("ACTIVITY", 1, "수강 신청했고"), fact("SERVICE", 1, "문화센터"),
+        fact("TRANSACTION", 1, "제가 요금을 냈어요"), fact("PEOPLE", 1, "친구랑"),
+        fact("PERSON_NAME", 1, "친구랑", "PARTIAL")], target="SERVICE", required=[])
+    result = ask(text)
+    assert result.canGenerateScenario
+    assert result.facts["questionHistory"] == []
+
+
+def test_generation_cannot_bypass_a_pending_person_identity(grounded_model, graph_data):
+    from app.services import scenario_planner
+    from app.services.context_graph import ContextIntegrityError
+    messages = [{"turn": 1, "text": graph_data["evidence"][0]["quote"]}]
+    with pytest.raises(ContextIntegrityError, match="person_identity_still_pending"):
+        scenario_planner.choose_generation_plan(messages,
+            confirmed_topics={"PERSON_NAME": {"status": "PARTIAL"}}, personalization_target="OTHER")
+    assert [task for task, _ in grounded_model[0]] == ["candidate_plan", "candidate_plan"]

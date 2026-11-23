@@ -38,7 +38,7 @@ def test_device_and_service_are_remembered_but_do_not_complete_context(grounded_
     model(grounded_model, [fact("ACCESS", 3, "휴대 기기로요", "PARTIAL")], "ACCESS")
     third = ask("휴대 기기로요", second.facts)
     assert not third.canGenerateScenario
-    assert "readinessEvidence" not in third.facts
+    assert third.facts.get("readinessEvidence") is None
     assert len(third.facts["questionHistory"]) == 3
     assert len(grounded_model[0]) == 3
 

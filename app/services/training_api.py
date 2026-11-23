@@ -52,7 +52,11 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
         facts = [{"category": "기타", "detail": _safe(detail)[:200]}] if detail.strip() else []
     if not facts and request.facts.get("contextGraph") is None and not request.facts.get("discoveryEvidence"):
         raise AiApiError(422, "INVALID_REQUEST", "훈련에 사용할 구체적인 상황을 한 가지 알려 주세요.")
-    result = run_scenario("scenario", facts, context=request.facts.get("contextGraph"),
+    if request.facts.get("scenarioMode") == "BASIC":
+        from app.services.basic_training import generate_basic
+        result = generate_basic(request)
+    else:
+        result = run_scenario("scenario", facts, context=request.facts.get("contextGraph"),
                           plan=request.facts.get("scenarioPlan"), context_hash=request.facts.get("planContextHash"),
                           discovery_evidence=request.facts.get("discoveryEvidence"),
                           discovery_ready=request.facts.get("discoveryReady", False),

@@ -23,3 +23,13 @@ def test_평범한_답은_이름으로_오해하지_않음():
     for answer in ["아니요", "싫어요 왜요", "네 알겠습니다", "고객센터에 확인할게요", "마포구에 살아요"]:
         assert mask_name_address(answer, ["이름"])[0] == answer
     assert mask_name_address("홍길동")[0] == "홍길동"  # 이름을 요구받지 않았으면 그대로
+
+
+def test_nickname_and_unknown_name_are_not_mistaken_for_private_values():
+    for text in ["친구 도토리", "친구 도토리와 이용했고 도토리가 요금을 냈어요", "이름은 기억 안나"]:
+        assert mask_name_address(text) == (text, [])
+
+
+def test_street_without_house_number_is_still_masked():
+    assert mask_name_address("마포구 월드컵로")[0] == "[주소]"
+    assert mask_name_address("부산광역시 해운대구 우동 123-4")[0] == "[주소]"

@@ -39,6 +39,9 @@ def ask(task, payload, model, *, timeout=None, max_tokens=2500, validate=None):
     prompt = (PROMPTS / f"{prompt_name}.md").read_text(encoding="utf-8")
     if "{{CONTEXT_FACTS}}" in prompt:
         prompt = prompt.replace("{{CONTEXT_FACTS}}", (PROMPTS / "context_facts.md").read_text(encoding="utf-8"))
+    from app.services.basic_training import BASIC_INPUT_SCOPE, SCOPE_INSTRUCTION
+    if BASIC_INPUT_SCOPE.get():
+        prompt += SCOPE_INSTRUCTION
     prompt += "\n출력 JSON 스키마:\n" + json.dumps(model.model_json_schema(), ensure_ascii=False)
     content = dict(payload)
     for attempt in range(2):
@@ -122,7 +125,15 @@ def _check_candidates(proposal, messages, confirmed_topics=None, personalization
     if len(set(ids)) != len(ids):
         raise ContextIntegrityError("duplicate_candidate_id")
     signatures = []
+    people = {entity.id for entity in proposal.context.entities if entity.kind == "PERSON"}
     for candidate in proposal.candidates:
+        if candidate.impersonatedActorId in people:
+            if name_fact.get("status") == "PARTIAL":
+                raise ContextIntegrityError("person_identity_still_pending")
+            if personalization_target == "SERVICE":
+                raise ContextIntegrityError("contact_target_changed_from_service_to_person")
+            if name and candidate.impersonatedActorId not in named_actors:
+                raise ContextIntegrityError("confirmed_person_identity_changed")
         if personalization_target == "PERSON" and name and candidate.impersonatedActorId not in named_actors:
             raise ContextIntegrityError("confirmed_person_identity_changed")
         check_plan(_approach_plan(proposal, candidate), proposal.context)
@@ -138,17 +149,21 @@ def _check_candidates(proposal, messages, confirmed_topics=None, personalization
         raise ContextIntegrityError("duplicate_candidate_approach")
 
 
-def choose_generation_plan(messages, *, readiness_evidence=None, confirmed_topics=None, personalization_target=None):
+def choose_generation_plan(messages, *, readiness_evidence=None, confirmed_topics=None, personalization_target=None, reference_trace=None):
     from app.scenario_data import ALLOWED_CHANNELS, ALLOWED_REQUESTS
-    trace = retrieve_patterns(" ".join(message["text"] for message in messages[-6:]))
+    trace = reference_trace if reference_trace is not None else retrieve_patterns(" ".join(message["text"] for message in messages[-6:]))
+    def validate_proposal(proposal):
+        _check_candidates(proposal, messages, confirmed_topics, personalization_target)
+        for candidate in proposal.candidates:
+            validate_uses(candidate.referenceUses, trace)
+            if reference_trace is not None and not candidate.referenceUses:
+                raise ContextIntegrityError("basic_training_requires_case_reference")
     feedback = []
     for attempt in range(2):
         proposal = ask("candidate_plan", {"messages": messages, "readinessEvidence": readiness_evidence,
             "confirmedTopics": confirmed_topics, "personalizationTarget": personalization_target, "channels": ALLOWED_CHANNELS, "allowedActions": ALLOWED_REQUESTS,
             "revisionFeedback": feedback, "retrievedPatterns": prompt_patterns(trace)}, CandidateProposal, max_tokens=4000,
-            validate=lambda result: _check_candidates(result, messages, confirmed_topics, personalization_target))
-        for candidate in proposal.candidates:
-            validate_uses(candidate.referenceUses, trace)
+            validate=validate_proposal)
         candidates = {candidate.id: _approach_plan(proposal, candidate) for candidate in proposal.candidates}
         def validate_comparison(result):
             ids = [item.candidateId for item in result.assessments]

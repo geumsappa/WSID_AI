@@ -155,6 +155,9 @@ class CaseRef(CamelModel):
 
 
 class Scenario(CamelModel):
+    generation_mode: Literal["PERSONALIZED", "BASIC"] = "PERSONALIZED"
+    basic_case_id: str | None = None
+    fictional_context: str | None = None
     risk_type: str = Field(description="위험 유형 대분류 (6종)")
     fraud_subtype: str = Field(description="생성된 이야기의 자유로운 세부 분류명")
     tags: list[str] = Field(default_factory=list)

@@ -176,7 +176,9 @@ def test_discovery_retries_transient_failure_within_shared_budget(monkeypatch):
             raise TimeoutError()
         return json.dumps({"updates": [{"topic": "ACTIVITY", "status": "KNOWN", "turn": 1, "quote": "코딩했어요"}],
             "personalizationTarget": "UNDECIDED", "contextSufficient": False,
-            "requiredTopics": ["ACTIVITY_DETAIL"], "nextTopic": "ACTIVITY_DETAIL", "nextQuestion": "어떤 작업이었나요?"})
+            "requiredTopics": ["ACTIVITY_DETAIL"], "nextTopic": "ACTIVITY_DETAIL", "nextQuestion": "어떤 작업이었나요?",
+            "questionAssessments": [{"topic": "ACTIVITY_DETAIL", "status": "MISSING", "missingDetail": "작업 대상",
+                "scenarioImpact": "작업과 연결된 접근 명분", "reason": "활동 이름만 제공", "evidence": []}]})
     monkeypatch.setattr(llm, "_call_provider", provider)
     result = fast_discovery.run_discovery_turn("test", [{"role": "user", "text": "코딩했어요"}], {})
     assert calls == [60, 50]

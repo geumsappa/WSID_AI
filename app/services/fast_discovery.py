@@ -15,6 +15,7 @@ from app.services.scenario_planner import mask_input
 
 logger = logging.getLogger(__name__)
 PROMPT = Path(__file__).resolve().parents[1] / "prompts" / "discovery_brief.md"
+REVIEW_PROMPT = PROMPT.with_name("discovery_question_review.md")
 MAX_MESSAGES = 20
 MAX_EVIDENCE_CHARS = 9000
 
@@ -140,7 +141,8 @@ def _exploration(topics, question_history):
 
 
 def _requirements(decision, topics=None):
-    required = list(dict.fromkeys(decision.requiredTopics))
+    satisfied = {item.topic for item in decision.questionAssessments if item.status in {"ANSWERED", "UNNECESSARY"}}
+    required = [topic for topic in dict.fromkeys(decision.requiredTopics) if topic not in satisfied]
     # An identity already marked incomplete cannot disappear behind OTHER readiness.
     if decision.personalizationTarget == "OTHER" and (topics or {}).get("PERSON_NAME", {}).get("status") == "PARTIAL":
         required = list(dict.fromkeys(["PERSON_NAME", *required]))
@@ -175,6 +177,9 @@ def _select_question(topics, question_history, decision, history):
         return None
     if (target == "PERSON_NAME" and decision.personalizationTarget != "PERSON"
             and not (decision.personalizationTarget == "OTHER" and topics.get("PERSON_NAME", {}).get("status") == "PARTIAL")):
+        return None
+    assessment = next((item for item in decision.questionAssessments if item.topic == target), None)
+    if assessment is None or assessment.status != "MISSING":
         return None
     previous = {item.get("question") for item in question_history}
     previous.update(message["text"] for message in history if message["role"] == "ai")
@@ -220,7 +225,8 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                          {"canGenerateScenario", "readinessEvidence", "basicScenarioSelection", "scenarioMode"}}
                 state.update(intakeTurn=turn, discoveryEvidence=messages, discoveryReady=False,
                              basicScenarioOffered=True, basicConsentPending=False, intakePaused=True,
-                             scenarioMode="PERSONALIZED", basicScenarioSelection=None, readinessEvidence=None)
+                             scenarioMode="PERSONALIZED", basicScenarioSelection=None, readinessEvidence=None,
+                             questionAssessments=[], questionNeedReview={"performed": False})
                 if selected_choice == "BASIC":
                     from app.services.scenario_retrieval import basic_pattern_selection
                     trace = basic_pattern_selection(" ".join(item["text"] for item in messages[:-1]))
@@ -238,24 +244,30 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                    "previousQuestions": [mask_input(message["text"]) for message in history if message["role"] == "ai"][-5:]}
 
         corrections_left = 1
-        def decide(content):
+        def decide(content, *, review=False):
             nonlocal corrections_left
             content = dict(content)
             while True:
-                raw = generate_json(prompt, json.dumps(content, ensure_ascii=False),
-                                    max_tokens=1100, timeout=settings.discovery_timeout_seconds, attempts=2,
+                raw = generate_json(REVIEW_PROMPT.read_text(encoding="utf-8") if review else prompt,
+                                    json.dumps(content, ensure_ascii=False), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
                                     reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True)
                 try:
                     result = ConversationDecision.model_validate(raw)
                     if any(not _supported(update, messages) for update in result.updates):
                         raise ValueError("Unstated contextual detail")
+                    assessment_topics = [item.topic for item in result.questionAssessments]
+                    if len(assessment_topics) != len(set(assessment_topics)):
+                        raise ValueError("Duplicate question assessment")
+                    if any(not _supported(quote, messages) for item in result.questionAssessments for quote in item.evidence):
+                        raise ValueError("Unstated question justification")
                     return result
                 except (ValidationError, ValueError) as error:
                     if not corrections_left:
                         raise
                     corrections_left -= 1
-                    content["schemaErrors"] = ([{"path": ".".join(map(str, item["loc"])), "type": item["type"]} for item in error.errors()] if isinstance(error, ValidationError) else [{"path": "updates.quote", "type": "exact_user_quote_required"}])
-                    content["formatCorrection"] = "schemaErrors의 각 오류를 수정하세요. updates는 최대 12개, quote는 180자 이하입니다. 이미 knownTopics에 있는 사실을 반복 출력하지 마세요. 사용자 원문에서 연속된 짧은 부분을 그대로 quote에 복사하고 해당 turn을 사용하세요. 어미·조사·띄어쓰기를 고치거나 인용 안에 생략표시를 넣지 마세요. 이름/호칭도 인용 안의 값이어야 합니다. 사실을 추가하지 마세요."
+                    content["schemaErrors"] = ([{"path": ".".join(map(str, item["loc"])), "type": item["type"]} for item in error.errors()] if isinstance(error, ValidationError) else [{"path": "questionAssessments" if "question" in str(error).lower() else "updates.quote",
+                        "type": "source_or_question_contract_mismatch"}])
+                    content["formatCorrection"] = "schemaErrors의 각 오류를 수정하세요. updates는 최대 12개, quote는 180자 이하입니다. 이미 knownTopics에 있는 사실을 반복 출력하지 마세요. 사용자 원문에서 연속된 짧은 부분을 그대로 quote에 복사하고 해당 turn을 사용하세요. 어미·조사·띄어쓰기를 고치거나 인용 안에 생략표시를 넣지 마세요. 이름/호칭도 인용 안의 값이어야 합니다. 사실을 추가하지 마세요. questionAssessments의 MISSING에는 missingDetail과 scenarioImpact가 필요하고 ANSWERED에는 정확한 기존 사용자 인용 evidence가 필요합니다. 중복 topic을 넣지 마세요."
 
 
         decision = decide(payload)
@@ -264,6 +276,7 @@ def _run_discovery_turn(session_id, history, known_facts=None):
         _apply_updates(topics, decision, messages)
         ready, details = _ready(topics, decision)
         selected = None if ready else _select_question(topics, question_history, decision, history)
+        reviewed_question = False
         unchanged_pause = (known.get("intakePaused") is True and not decision.focusChanged
                            and json.dumps(topics, sort_keys=True, ensure_ascii=False) == previous_topics)
         # Reassess the existing facts once rather than walking through unused topics.
@@ -281,12 +294,29 @@ def _run_discovery_turn(session_id, history, known_facts=None):
             decision = reassessed
             ready, details = _ready(topics, decision)
             selected = None if ready else _select_question(topics, question_history, decision, history)
+        previous_required = known.get("intakeRequirements", {}).get("topics", [])
+        previous_resolved = bool(previous_required) and all(_is_resolved(topic, topics) for topic in previous_required)
+        reviewed_question = bool(selected and previous_resolved and selected[0] not in previous_required and not decision.focusChanged)
+        if reviewed_question:
+            # A newly introduced requirement must be checked against all existing facts,
+            # including facts stored under another topic. At most one independent review.
+            reviewed = decide({**payload, "mode": "REVIEW_QUESTION_NEED", "knownTopics": topics,
+                "proposedDecision": decision.model_dump(), "proposedQuestion": selected[1],
+                "questionTargets": _available_topics(topics, question_history)}, review=True)
+            if reviewed.focusChanged:
+                raise ValueError("Question review cannot reset the user's focus")
+            _apply_updates(topics, reviewed, messages)
+            decision = reviewed
+            ready, details = _ready(topics, decision)
+            selected = None if ready else _select_question(topics, question_history, decision, history)
         state = {"pipelineVersion": 2, "intakeTurn": turn, "discoveryEvidence": messages,
                  "knownTopics": topics, "questionHistory": question_history,
                  "discoveryReady": ready, "extractedFacts": [],
                  "scenarioMode": "PERSONALIZED", "basicScenarioSelection": None,
                  "basicScenarioOffered": False, "basicConsentPending": False, "intakePaused": False, "readinessEvidence": None,
-                 "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)}}
+                 "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)},
+                 "questionAssessments": [item.model_dump() for item in decision.questionAssessments],
+                 "questionNeedReview": {"performed": reviewed_question}}
         if ready:
             detail = max(details, key=lambda item: item["turn"])
             state["readinessEvidence"] = {"turn": detail["turn"], "quote": mask_input(detail["quote"])}

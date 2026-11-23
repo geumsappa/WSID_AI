@@ -17,8 +17,12 @@ def respond(task, payload):
         return {"alternativesDistinct": True, "distinctionReason": "mock 구조 확인",
                 "assessments": [{"candidateId": plan["id"], "review": respond("semantic_review", {"plan": plan}),
                                  "grounding": 2, "plausibility": 2, "originality": 1, "reason": "mock 구조 확인"} for plan in payload["candidates"]]}
+    if task == "discovery_question_review":
+        return deepcopy(payload["proposedDecision"])
     if task == "discovery_brief":
-        return {"updates": [], "nextTopic": "ACTIVITY", "requiredTopics": ["ACTIVITY"]}
+        return {"updates": [], "nextTopic": "ACTIVITY", "requiredTopics": ["ACTIVITY"],
+                "questionAssessments": [{"topic": "ACTIVITY", "status": "MISSING", "missingDetail": "mock activity",
+                    "scenarioImpact": "mock context selection", "reason": "mock contract only", "evidence": []}]}
     if task == "intake_plan":
         extraction = respond("context_extract", payload)
         proposal = respond("scenario_plan", {"context": extraction["context"]})

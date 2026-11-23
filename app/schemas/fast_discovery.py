@@ -34,6 +34,24 @@ class FactUpdate(DetailEvidence):
         return self
 
 
+class QuestionAssessment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    topic: Topic
+    status: Literal["MISSING", "ANSWERED", "UNNECESSARY"]
+    missingDetail: str | None = Field(default="", max_length=120)
+    scenarioImpact: str | None = Field(default="", max_length=160)
+    reason: str = Field(min_length=1, max_length=180)
+    evidence: list[DetailEvidence] = Field(default_factory=list, max_length=2)
+
+    @model_validator(mode="after")
+    def justified_question(self):
+        if self.status == "MISSING" and (not (self.missingDetail or "").strip() or not (self.scenarioImpact or "").strip()):
+            raise ValueError("A question needs a concrete missing detail and scenario impact")
+        if self.status == "ANSWERED" and not self.evidence:
+            raise ValueError("An answered need requires an exact user quotation")
+        return self
+
+
 class ConversationDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
     updates: list[FactUpdate] = Field(default_factory=list, max_length=12)
@@ -43,6 +61,7 @@ class ConversationDecision(BaseModel):
     requiredTopics: list[Topic] = Field(default_factory=list, max_length=5)
     personalizationTarget: Literal["PERSON", "SERVICE", "OTHER", "UNDECIDED"] = "UNDECIDED"
     nextQuestion: str = Field(default="", max_length=180)
+    questionAssessments: list[QuestionAssessment] = Field(default_factory=list, max_length=7)
 
 
 class IntakeRequirements(BaseModel):

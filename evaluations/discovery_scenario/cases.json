@@ -406,5 +406,99 @@
       ]
     },
     "generate_scenario": true
+  },
+  {
+    "id": "friend-nickname-flow",
+    "description": "친구 접점에서 별명 확인 후 표시 이름과 첫 대사에 재사용",
+    "inputs": [
+      "어제 별빛포차에서 친구랑 둘이 닭발과 술을 먹었어요. 제가 계산했고 친구가 자기 몫을 나중에 보내기로 했어요.",
+      "친구 별명은 도토리예요."
+    ],
+    "turn_expectations": [
+      {
+        "ready": false,
+        "next_topic": "PERSON_NAME"
+      },
+      {
+        "ready": true,
+        "name": "도토리",
+        "mode": "PERSONALIZED"
+      }
+    ],
+    "expected": {
+      "ready": true,
+      "mode": "PERSONALIZED",
+      "persona_name": "도토리",
+      "scenario_contains": [
+        "별빛포차"
+      ],
+      "min_scenes": 3
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "explicit-basic-choice",
+    "description": "더 설명하지 않겠다는 답변 뒤 명시적 동의로만 사례 기반 기본 훈련 생성",
+    "inputs": [
+      "지금은 더 이야기하고 싶지 않아요.",
+      "기본 훈련 시작"
+    ],
+    "turn_expectations": [
+      {
+        "ready": false,
+        "basic_offered": true
+      },
+      {
+        "ready": true,
+        "mode": "BASIC"
+      }
+    ],
+    "expected": {
+      "ready": true,
+      "mode": "BASIC",
+      "min_scenes": 3
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "decline-basic-choice",
+    "description": "기본 훈련 제안을 거절하면 생성 준비로 처리하지 않음",
+    "inputs": [
+      "지금은 더 이야기하고 싶지 않아요.",
+      "아니요"
+    ],
+    "turn_expectations": [
+      {
+        "ready": false,
+        "basic_offered": true
+      },
+      {
+        "ready": false,
+        "mode": "PERSONALIZED"
+      }
+    ],
+    "expected": {
+      "ready": false
+    },
+    "generate_scenario": false
+  },
+  {
+    "id": "solo-coding-purpose",
+    "description": "구체적인 단독 작업은 지인 이름 없이 활동 맥락으로 준비 가능",
+    "inputs": [
+      "어제 혼자 카페에서 코덱스를 이용해 제주 러닝 여행 웹 서비스를 만들었어요. 러닝 코스를 기록하고 추천하는 기능의 백엔드와 AI 검색을 담당했어요."
+    ],
+    "turn_expectations": [
+      {
+        "ready": true,
+        "mode": "PERSONALIZED"
+      }
+    ],
+    "expected": {
+      "ready": true,
+      "mode": "PERSONALIZED",
+      "min_scenes": 3
+    },
+    "generate_scenario": true
   }
 ]

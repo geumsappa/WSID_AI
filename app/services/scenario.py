@@ -104,7 +104,9 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
                 prompt += SCOPE_INSTRUCTION
             prompt += "\n출력 JSON 스키마:\n" + json.dumps(GeneratedScenario.model_json_schema(), ensure_ascii=False)
             payload = {"context": graph.model_dump(), "plan": selected.model_dump(),
-                       "allowedOrganizations": allowed, "confirmedPersonName": confirmed_name, "confirmedServiceNames": service_names, "retryIssues": failures,
+                       "allowedOrganizations": allowed, "confirmedPersonName": confirmed_name, "confirmedServiceNames": service_names,
+                       "speakerIdentity": {"actorId": selected.impersonatedActorId, "displayName": confirmed_name, "role": selected.impersonatedRole},
+                       "recipientIdentity": {"actorId": graph.userActorId, "displayName": None}, "retryIssues": failures,
                        "retrievedPatterns": prompt_patterns(selected._retrieval_trace) if selected._retrieval_trace else []}
             generated = GeneratedScenario.model_validate(generate_json(prompt, json.dumps(payload, ensure_ascii=False),
                 timeout=settings.scenario_timeout_seconds, max_tokens=4000, attempts=1,

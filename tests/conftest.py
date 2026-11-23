@@ -46,6 +46,29 @@ def generation_data(plan_data):
     return result
 
 
+def discovery_fixture_contract(value, payload=None):
+    """Add question reasons to legacy scripted fixtures; new policy tests provide explicit assessments."""
+    value = deepcopy(value)
+    if "questionAssessments" not in value:
+        topics = [*value.get("requiredTopics", [])]
+        if value.get("nextTopic"):
+            topics.append(value["nextTopic"])
+        if value.get("personalizationTarget") == "PERSON":
+            topics.extend(["PERSON_NAME", "PEOPLE"])
+        if value.get("personalizationTarget") == "SERVICE":
+            topics.append("SERVICE")
+        name = (payload or {}).get("knownTopics", {}).get("PERSON_NAME", {})
+        if value.get("personalizationTarget") != "SERVICE" and (name.get("status") == "PARTIAL" or any(
+                update.get("topic") == "PERSON_NAME" and update.get("status") == "PARTIAL" for update in value.get("updates", []))):
+            topics.append("PERSON_NAME")
+        from typing import get_args
+        from app.schemas.fast_discovery import Topic
+        value["questionAssessments"] = [{"topic": topic, "status": "MISSING",
+            "missingDetail": "scripted missing " + topic, "scenarioImpact": "scripted scenario dependency " + topic,
+            "reason": "legacy fixture declares this requirement", "evidence": []} for topic in dict.fromkeys(topics) if topic in get_args(Topic)]
+    return value
+
+
 @pytest.fixture
 def grounded_model(monkeypatch, graph_data, plan_data, review_data, generation_data):
     from app.services import scenario, scenario_planner, fast_discovery
@@ -57,7 +80,10 @@ def grounded_model(monkeypatch, graph_data, plan_data, review_data, generation_d
         calls.append((task, payload))
         if task in overrides:
             value = overrides[task]
-            return deepcopy(value(payload) if callable(value) else value)
+            value = deepcopy(value(payload) if callable(value) else value)
+            return discovery_fixture_contract(value, payload) if task in {"discovery_brief", "discovery_question_review"} else value
+        if task == "discovery_question_review":
+            return deepcopy(payload["proposedDecision"])
         from app.schemas.context_graph import Approach
         first = {key: value for key, value in plan_data.items() if key in Approach.model_fields}
         first.update(desiredOutcome="정산을 구실로 정보를 요구", escalation="알던 관계를 내세운 뒤 정산 확인을 재촉")

@@ -40,7 +40,8 @@ def test_device_and_service_are_remembered_but_do_not_complete_context(grounded_
     assert not third.canGenerateScenario
     assert third.facts.get("readinessEvidence") is None
     assert len(third.facts["questionHistory"]) == 3
-    assert len(grounded_model[0]) == 3
+    assert sum(task == "discovery_brief" for task, _ in grounded_model[0]) == 3
+    assert sum(task == "discovery_question_review" for task, _ in grounded_model[0]) == 1
 
 
 def test_an_already_named_service_is_not_requested_again(grounded_model):

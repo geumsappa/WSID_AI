@@ -19,7 +19,7 @@ WSID_AI 터미널에서 실행합니다.
 # 행동 주체만 바꾼 대조 사례 비교
 .\.venv\Scripts\python.exe -m evaluations.discovery_scenario.runner --live --case actor-peer-payment --case actor-self-payment
 
-# 전체 22개 사례 × 3회 (비용 발생)
+# 전체 28개 사례 × 3회 (비용 발생)
 .\.venv\Scripts\python.exe -m evaluations.discovery_scenario.runner --live --repeats 3
 ```
 
@@ -58,7 +58,7 @@ FE/Spring 전체 대기 시간이나 순수 토큰 생성 속도는 아닙니다
 표본이 없으면 null/미측정입니다. 재시도는 서비스 전체 시간에 포함됩니다.
 
 보통 대화 1턴에 모델 1회, 시나리오 만들기에 후보 작성·후보 비교·생성·본문 검증·사후 분류 5회를 호출합니다. 재생성 시 늘어나므로 먼저 한 사례만 실행하세요.
-기본 시나리오 대체는 제거했습니다. provider 오류나 의미 검증 거절로 끝나면 실패·미준비로 기록합니다.
+오류 시 자동으로 기본 시나리오로 바꾸지 않습니다. 사용자가 명시적으로 선택한 사례 기반 기본 훈련(BASIC)은 정상 흐름이며, 맞춤 생성(PERSONALIZED)과 별도로 집계합니다. provider 오류나 의미 검증 거절로 끝나면 실패·미준비로 기록합니다.
 
 ## 사람이 채점할 부분
 
@@ -83,3 +83,29 @@ FE/Spring 전체 대기 시간이나 순수 토큰 생성 속도는 아닙니다
 활동 종류별 정답 템플릿이 아닌 공통 상태 전이의 회귀 테스트는 tests/test_discovery_state.py에서 확인한다.
 
 results.json의 `intake_decisions`에 두 후보와 공통 근거를, `candidate_comparisons`에 후보별 검토·점수·차이 판정을 기록합니다. 이는 내부 모델 판단이며 독립적인 품질 정답이나 다양성 성공률로 집계하지 않습니다. 본문 검토는 맥락이 전개에 실제 쓰였는지와 일반 패턴 여부도 검사합니다. 과거 훈련 전체와 비교하는 중복 검사는 아닙니다.
+
+
+## 이름 확인·기본 훈련 평가 (candidate-selection-v2-explicit-basic)
+
+28개 사례 중 다음 네 사례를 추가했습니다. 모두 서비스 호출용 합성 입력이며 실제 개인정보가 아닙니다.
+
+- `friend-nickname-flow`: 별명 질문 전 준비 미완료, 별명 확인 후 준비 완료, 표시 이름과 첫 대사에 같은 별명 사용.
+- `explicit-basic-choice`: 정보 제공을 중단한 뒤 기본 훈련을 직접 선택하면 BASIC 생성. 가상 설정을 사용자 sourceFacts에 넣지 않고, 선택한 사례의 출처를 유지.
+- `decline-basic-choice`: 제안을 거절하면 준비 완료로 처리하지 않음.
+- `solo-coding-purpose`: 충분히 구체적인 단독 작업은 친구 이름 없이 준비 가능.
+
+```powershell
+.\.venv\Scripts\python.exe -m evaluations.discovery_scenario.runner --live --case friend-nickname-flow --case explicit-basic-choice --case decline-basic-choice
+```
+
+`generation_modes`에서 맞춤/기본 각각의 요청 수, 생성 성공 수·성공률, 전체 기능 기준 통과 수·비율, 생성 대기시간을 확인합니다. 준비 미완료·생성 예외도 요청 수에서 빠지지 않으며, 기본 훈련 성공을 맞춤 생성 성공으로 집계하지 않습니다. 오류가 있거나 검사 결과가 하나도 없는 행도 기능 통과로 집계하지 않습니다.
+
+이름이 제목에만 들어간 경우는 이름 개인화 통과가 아닙니다. persona.name 정확한 일치와 openingMessage의 이름 포함을 각각 검사합니다. 현재 질문 주제는 이번 intakeTurn에 실제 생성된 질문만 검사해 이전 턴의 이름 질문을 재사용한 상태가 통과하지 않도록 했습니다.
+
+기본 훈련의 출처 지표는 선택 ID·생성 전 참고 ID·실제 사용 ID와 출처 표시의 기계적 일관성입니다. 실제로 수법을 적절하게 활용했는지, 도입 문장의 자연스러움, 인과관계의 개연성을 자동으로 보증하는 지표가 아닙니다. 해당 항목은 `manual-review.csv`에서 사람이 채점합니다.
+
+보고서에는 프롬프트·사례 목록 외에 실행 코드·스키마·참고 사례 JSON의 해시도 기록합니다. 결과는 기존 Git 제외 `evaluation-results/`에 저장합니다. 기존 v1 결과와 v2의 종합 통과율을 동일 기준으로 비교하지 마세요.
+
+`requested`는 생성까지 기대한 평가 사례 수, `attempted`는 실제 생성 함수를 호출한 사례 수, `blocked_before_generation`은 준비 미완료 등으로 호출 전 멈춘 수입니다. `generation_success_rate`는 생성 완료/기대 사례, `attempt_success_rate`는 생성 완료/실제 생성 호출이며 호출이 없으면 null입니다. 추가 질문으로 준비되지 않은 사례를 AI API 오류로 해석하지 마세요. 코드·스키마·사례·프롬프트 해시는 긴 외부 호출 전에 수집합니다.
+
+질문 필요성 검토 결과는 각 턴의 facts.questionAssessments와 question_need_reviews에 저장됩니다. semantic_review_attempts와 scenario_draft_attempts에는 거절된 시도도 포함되므로 최종 반환 성공만으로 생성 품질을 판정하지 마세요. 단계별 시간에서 discovery_question_review를 별도로 확인할 수 있습니다. 이름 확인·준비도 성공과 이후 본문 생성 검증 성공은 서로 다른 항목입니다. 대기 안내 문구 반복은 실제 questionHistory에 있는 질문 반복과 구분합니다.

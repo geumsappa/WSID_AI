@@ -136,6 +136,11 @@ def test_received_name_reaches_persona_and_opening(grounded_model, graph_data, p
     payload = next(payload for task, payload in grounded_model[0] if task == "candidate_plan")
     assert payload["personalizationTarget"] == "PERSON"
     assert payload["confirmedTopics"]["PERSON_NAME"]["name"] == "도토리"
+    writer_payload = next(payload for task, payload in grounded_model[0] if task == "scenario_generate")
+    assert writer_payload["speakerIdentity"]["displayName"] == "도토리"
+    assert writer_payload["speakerIdentity"]["actorId"] == plan_data["impersonatedActorId"]
+    assert writer_payload["recipientIdentity"]["actorId"] == graph_data["userActorId"]
+    assert writer_payload["recipientIdentity"]["displayName"] is None
 
 
 def test_generic_persona_cannot_pass_even_if_semantic_reviewer_approves(grounded_model, graph_data, plan_data, review_data):

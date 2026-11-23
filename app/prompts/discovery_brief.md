@@ -3,7 +3,7 @@ TASK: discovery_brief
 
 시나리오 본문·사기 유형은 만들지 않는다. 사용자 사실, 개인화에 필요한 누락 정보, 다음 질문 하나만 판단한다.
 반환 JSON:
-{"updates":[{"topic":"ACTIVITY","status":"KNOWN","turn":1,"quote":"사용자의 실제 답변"}],"personalizationTarget":"UNDECIDED","requiredTopics":[],"contextSufficient":false,"nextTopic":"PEOPLE","nextQuestion":"짧고 자연스러운 질문 하나","focusChanged":false}
+{"updates":[{"topic":"ACTIVITY","status":"KNOWN","turn":1,"quote":"사용자의 실제 답변"}],"personalizationTarget":"UNDECIDED","requiredTopics":[],"contextSufficient":false,"nextTopic":"PEOPLE","nextQuestion":"짧고 자연스러운 질문 하나","focusChanged":false,"questionAssessments":[]}
 
 updates는 새로 확인·정정한 핵심 항목 최대 12개다. turn과 정확한 짧은 quote(가능하면 50자 이내)를 넣는다.
 주제:
@@ -100,3 +100,14 @@ ACCESS에서 '멤버십 앱으로 주문했다'처럼 실제 이용 경로가 �
 
 
 진행 중인 인물 확인을 건너뛰지 않는다. PERSON_NAME이 PARTIAL인 상태에서 OTHER로 바꾸고 requiredTopics=[]로 준비 완료를 선언하지 않는다. 그 인물을 활용할 접점이면 이름/별명을 한 번 확인하고, 인물이 필요 없는 서비스 접점으로 명확히 바꾸려면 SERVICE로 판단한다. PEOPLE에 동행자가 있다는 이유만으로 모든 상황에서 지인 사칭이나 이름 수집을 강제하지 않는다. 사용자가 이름을 말하기 싫거나 모른다고 하면 DECLINED로 닫고 반복 질문하지 않는다.
+
+
+추가 질문 필요성 판정 (빈 주제 채우기가 아니라 시나리오에 필요한 차이를 확인):
+- 다음 질문 후보마다 questionAssessments를 작성한다. topic, status(MISSING/ANSWERED/UNNECESSARY), missingDetail, scenarioImpact, reason, evidence[{turn,quote}]를 쓴다. 실제로 묻는 주제에는 반드시 MISSING 판정이 있어야 한다.
+- 먼저 전체 messages와 knownTopics를 읽고 이미 답한 사실을 찾는다. 다른 주제에 기록돼 있어도 의미가 같으면 재사용한다. 새 항목 이름이 비어 있다는 이유로 질문하지 않는다.
+- MISSING은 아직 모르는 구체적 사실(missingDetail)과 그 답에 따라 연락 상대·접근 명분·판단 장면 중 무엇이 달라지는지(scenarioImpact)를 짧게 명시한다. '더 구체적으로 만들기 위해', '맥락 파악' 같은 추상적 이유만으로는 부족하다.
+- ANSWERED는 기존 사용자 발언을 정확히 인용하고 reason에 그 사실이 질문의 목적을 어떻게 충족하는지 적는다. 그 항목을 requiredTopics에서 빼고 필요한 다른 누락 정보만 남긴다.
+- UNNECESSARY는 답을 몰라도 현재 사실을 보존해 자연스러운 접근을 구성할 수 있을 때다. 추정해서 사실을 채우는 뜻이 아니다.
+- 지급/신청/업무 등 행동 주체와 서로 정한 약속은 여러 주제를 동시에 충족할 수 있다. 예를 들어 실제 약속은 상호작용의 근거이기도 하다. 주제별 칸을 각각 채우기 위해 별도의 일반적인 대화 내용을 추가로 요구하지 않는다.
+- 이전에 요청한 필수 정보가 모두 확인된 뒤 새 필수 주제를 붙이려면, 기존 사실로 해결되지 않는 이유와 구체적 시나리오 영향을 검토한다. 정말 새로 알아야 할 내용이 없으면 contextSufficient=true와 nextTopic=null로 진행한다.
+- 사실이 부족하면 질문을 유지한다. 사람 이름이 없는데 이름을 지어내거나, 정산 약속이 없는데 있었다고 가정하지 않는다. 특정 사기 방향을 위해 사용자에게 약속·결제 이력을 만들도록 유도하지 않는다.

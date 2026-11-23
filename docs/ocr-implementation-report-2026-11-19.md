@@ -23,12 +23,16 @@
     "recognizedText": "인식된 원문",
     "usable": true,
     "imageType": "MESSENGER_CHAT",
-    "summary": "대화 내용을 요약합니다."
+    "summary": "대화 내용을 요약합니다.",
+    "maskedText": "[전화번호] 으로 연락 주세요 ..."
   }
 }
 ```
 
-`imageType`은 `SMS`, `MESSENGER_CHAT`, `TRANSFER_RECEIPT`, `WEB_PAGE`, `OTHER` 중 하나다. `summary`는 문자열 또는 null이다. 글자를 못 읽으면 기존처럼 422 `OCR_FAILED`이므로 성공 시 `usable`은 true다. OCR 원문은 가려지지 않은 값이며 민감정보를 포함할 수 있다. **Spring 응답 DTO, 직렬화, 사실 추출 경로와 로그·저장 정책을 함께 확인해야 한다.** Spring 저장소 변경 및 연동 검증은 이 작업에서 수행하지 않았다.
+`imageType`은 `SMS`, `MESSENGER_CHAT`, `TRANSFER_RECEIPT`, `WEB_PAGE`, `OTHER` 중 하나다. `summary`는 문자열 또는 null이다.
+`maskedText`(2026-11-23 추가, 선택)는 요약 LLM에 보내는 것과 같은 가린 글자다(민감정보·인증번호 뒤 숫자·링크·전화번호).
+Spring은 원문 대신 이 값을 상담 사진 메시지에 저장해 이후 assist history의 사진 턴으로 보낸다.
+OCR 제한은 `OCR_TIMEOUT_SECONDS`(기본 15초)로 조정한다. 늘리면 Spring `AI_OCR_READ_TIMEOUT`도 함께 늘린다. 글자를 못 읽으면 기존처럼 422 `OCR_FAILED`이므로 성공 시 `usable`은 true다. OCR 원문은 가려지지 않은 값이며 민감정보를 포함할 수 있다. **Spring 응답 DTO, 직렬화, 사실 추출 경로와 로그·저장 정책을 함께 확인해야 한다.** Spring 저장소 변경 및 연동 검증은 이 작업에서 수행하지 않았다.
 
 ## 검증
 

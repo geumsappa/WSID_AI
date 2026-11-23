@@ -20,7 +20,7 @@ from pathlib import Path
 from app import fallback
 from app.config import settings
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
-from app.guard.sensitive import mask_requested_numbers, mask_sensitive
+from app.guard.sensitive import mask_name_address, mask_requested_numbers, mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
 from app.scenario_data import ALLOWED_REQUESTS, is_unavailable_info
 
@@ -73,6 +73,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     masked_last, provided = mask_sensitive(history[-1]["text"])
     masked_last, numeric = mask_requested_numbers(masked_last, asked_info)
     provided += [n for n in numeric if n not in provided]
+    # 이름·주소도 외부 AI로 보내기 전에 규칙으로 먼저 가려요 (AI는 규칙이 놓친 것만 보조로 찾아요)
+    masked_last, personal = mask_name_address(masked_last, asked_info)
+    provided += [p for p in personal if p not in provided]
     # Spring masks values before HTTP transmission/storage. Keep the disclosure event
     # even when this service receives only a type marker instead of the original number.
     marker_types = ("주민등록번호", "카드번호", "전화번호", "계좌번호", "이메일",

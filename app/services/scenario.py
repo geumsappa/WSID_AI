@@ -109,6 +109,10 @@ def _run_scenario(session_id, facts, *, context=None, plan=None, context_hash=No
             generated = GeneratedScenario.model_validate(generate_json(prompt, json.dumps(payload, ensure_ascii=False),
                 timeout=settings.scenario_timeout_seconds, max_tokens=4000, attempts=1,
                 reasoning_effort=settings.pipeline_reasoning_effort or None))
+            # The selected actor's verified display name is server-owned context,
+            # not creative text for the model to rename on a body-repair attempt.
+            if confirmed_name:
+                generated.scenario.persona.name = confirmed_name
             check_claims(generated.preservedClaims, graph)
             if {claim.eventId for claim in generated.preservedClaims} != {claim.eventId for claim in selected.anchorClaims}:
                 raise ContextIntegrityError("missing_preserved_claim")

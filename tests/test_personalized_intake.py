@@ -421,3 +421,13 @@ def test_generation_cannot_bypass_a_pending_person_identity(grounded_model, grap
         scenario_planner.choose_generation_plan(messages,
             confirmed_topics={"PERSON_NAME": {"status": "PARTIAL"}}, personalization_target="OTHER")
     assert [task for task, _ in grounded_model[0]] == ["candidate_plan", "candidate_plan"]
+
+
+def test_verified_display_name_is_preserved_when_model_uses_generic_persona(grounded_model, graph_data, plan_data, review_data, generation_data):
+    facts = named_generation(grounded_model, graph_data, plan_data, review_data)
+    generation_data["scenario"]["persona"]["name"] = "함께 있던 친구"
+    generation_data["scenario"]["openingMessage"] = "나 도토리야. 이용요금 정산 때문에 연락했어."
+    result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    assert result.scenario["persona"]["name"] == "도토리"
+    assert "도토리" in result.scenario["openingMessage"]
+    assert len([task for task, _ in grounded_model[0] if task == "scenario_generate"]) == 1

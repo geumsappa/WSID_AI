@@ -233,6 +233,9 @@ def run_case(case, repeat):
                 row.setdefault("semantic_review_attempts", []).append(scenario_planner.safe_tree(result))
             if task == "scenario_generate":
                 row.setdefault("scenario_draft_attempts", []).append(scenario_planner.safe_tree(result))
+                payload = json.loads(content)
+                row.setdefault("scenario_generation_attempts", []).append({"mode": payload.get("mode", "GENERATE"),
+                    "issues": payload.get("retryIssues", []), "response": scenario_planner.safe_tree(result)})
             if task == "discovery_question_review":
                 row.setdefault("question_need_reviews", []).append(scenario_planner.safe_tree(result))
             if task == "discovery_brief":
@@ -389,11 +392,11 @@ def main(argv=None):
         parser.error("--live requires LLM_PROVIDER=openai/anthropic, LLM_API_KEY and LLM_MODEL")
     artifact_sha256 = {name: hashlib.sha256((Path(__file__).resolve().parents[2] / name).read_bytes()).hexdigest()
                   for name in ("app/services/fast_discovery.py", "app/services/basic_training.py", "app/services/scenario.py",
-                               "app/services/scenario_planner.py", "app/services/scenario_retrieval.py",
-                               "app/schemas/context_graph.py", "app/schemas/fast_discovery.py", "app/schemas/sim.py",
+                               "app/services/scenario_planner.py", "app/services/scenario_retrieval.py", "app/services/scenario_revision.py", "app/guard/scenario_guard.py",
+                               "app/schemas/context_graph.py", "app/schemas/scenario_revision.py", "app/schemas/fast_discovery.py", "app/schemas/sim.py",
                                "app/data/scenario_patterns.json", "evaluations/discovery_scenario/runner.py")}
     prompt_sha256 = {name: hashlib.sha256((Path(__file__).resolve().parents[2] / "app" / "prompts" / name).read_bytes()).hexdigest()
-                                for name in ("discovery_brief.md", "discovery_question_review.md", "candidate_plan.md", "candidate_compare.md", "intake_plan.md", "generation_plan.md", "context_facts.md", "semantic_review.md", "scenario.md", "scenario_classify.md")}
+                                for name in ("discovery_brief.md", "discovery_question_review.md", "candidate_plan.md", "candidate_compare.md", "intake_plan.md", "generation_plan.md", "context_facts.md", "semantic_review.md", "scenario.md", "scenario_repair.md", "scenario_quality_criteria.md", "scenario_classify.md")}
     rows = []
     for case in cases:
         for repeat in range(1, args.repeats + 1):

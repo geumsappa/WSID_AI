@@ -71,3 +71,7 @@ confirmedServiceNames가 비어 있지 않으면 해당 확인된 업체명을 p
 
 
 speakerIdentity는 메시지를 보내는 상대방, recipientIdentity는 메시지를 받는 사용자다. confirmedPersonName은 speakerIdentity.displayName과 같은 발신자 이름이며 사용자 이름이 아니다. 발신자가 자기 이름을 소개할 때 사용하고, 그 이름으로 사용자를 부르지 않는다. 수신자 이름을 모르면 이름 호칭 없이 인사와 용건을 말한다. 장면을 수정할 때도 이 발신자/수신자 구분을 바꾸지 않는다.
+
+아래 기준은 생성 후 검증자가 사용하는 동일한 기준이다. 처음부터 기준을 만족하도록 작성하고, 반환 전에 사실·주체·개인화·전개·근거를 자체 점검하여 어긋난 부분을 바로잡는다. 자체 점검 과정이나 승인 판정은 출력하지 않고 지정된 JSON 스키마만 반환한다.
+
+{{SCENARIO_QUALITY_CRITERIA}}

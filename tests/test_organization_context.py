@@ -70,3 +70,22 @@ def test_followup_dialogue_keeps_allowed_organization(monkeypatch):
     result = training_turn.run_training_turn("context", scenario, 1, [{"role": "user", "text": "어디라고요?"}])
     assert "기업은행" in result["personaMessage"]
     assert not result["fallbackUsed"]
+
+
+def test_verified_full_organization_does_not_trigger_its_nested_blocked_name():
+    assert not find_unsafe_text("당근마켓 거래 안내", ["당근마켓"])
+    assert find_unsafe_text("당근 거래 안내", ["당근마켓"])  # Unprovided abbreviations remain unapproved.
+    assert find_unsafe_text("당근마켓과 국민은행", ["당근마켓"])
+    assert find_unsafe_text("당근마켓 https://example.org", ["당근마켓"])
+
+
+def test_verified_full_organization_survives_normalization_for_later_dialogue():
+    output = copy.deepcopy(FALLBACK_SCENARIOS["중고거래 사기"])
+    output["scenario"]["persona"]["organization"] = "당근마켓"
+    output["scenario"]["openingMessage"] = "당근마켓에서 전공 책 거래 문의드립니다."
+    normalized, errors = validate_and_normalize(output, ["당근마켓"])
+    assert normalized is not None and not errors
+    assert normalized["scenario"]["allowedOrganizations"] == ["당근마켓"]
+    assert not find_unsafe_text("당근마켓 안내를 확인해 주세요", normalized["scenario"]["allowedOrganizations"])
+    output["scenario"]["allowedOrganizations"] = ["당근마켓"]
+    assert validate_and_normalize(output)[0] is None  # Model output cannot grant itself permission.

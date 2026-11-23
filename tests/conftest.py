@@ -81,6 +81,8 @@ def grounded_model(monkeypatch, graph_data, plan_data, review_data, generation_d
         if task in overrides:
             value = overrides[task]
             value = deepcopy(value(payload) if callable(value) else value)
+            if task == "scenario_generate" and payload.get("mode") == "REPAIR" and "preservedClaims" in value:
+                value = {"scenario": value["scenario"], "analysis": value["analysis"]}
             return discovery_fixture_contract(value, payload) if task in {"discovery_brief", "discovery_question_review"} else value
         if task == "discovery_question_review":
             return deepcopy(payload["proposedDecision"])
@@ -95,13 +97,16 @@ def grounded_model(monkeypatch, graph_data, plan_data, review_data, generation_d
         comparison = {"alternativesDistinct": True, "distinctionReason": "접근 인물과 요구 행동이 다름",
                       "assessments": [{"candidateId": first["id"], "review": review_data, "grounding": 2, "plausibility": 2, "originality": 2, "reason": "기존 관계와 실제 지불 주체를 사용"},
                                       {"candidateId": second["id"], "review": review_data, "grounding": 1, "plausibility": 1, "originality": 1, "reason": "다른 접근 비교"}]}
-        return deepcopy({"candidate_plan": candidate_set, "candidate_compare": comparison, "intake_plan": {"context": graph_data, "realConcern": False, "selectedPlan": None if plan_data.get("missingInformation") else plan_data, "alternativeApproaches": [], "followupQuestion": ""},
+        result = deepcopy({"candidate_plan": candidate_set, "candidate_compare": comparison, "intake_plan": {"context": graph_data, "realConcern": False, "selectedPlan": None if plan_data.get("missingInformation") else plan_data, "alternativeApproaches": [], "followupQuestion": ""},
                          "semantic_review": review_data, "scenario_generate": generation_data,
                          "scenario_classify": {"fraudSubtype": "지인·가족 사칭", "fraudTypeCode": "MESSENGER_PHISHING", "classificationFit": "EXACT", "reason": "동료를 사칭해 정산을 요청함", "tags": ["지인 사칭", "개인정보 요구"], "references": []},
                          "discovery_brief": {"updates": [{"topic": topic, "status": "KNOWN", "turn": 1,
                             "quote": (graph_data["evidence"] or [{"quote": ""}])[0]["quote"]}
                             for topic in ("ACTIVITY", "TRANSACTION")], "nextTopic": None,
                             "contextSufficient": True, "personalizationTarget": "OTHER"}}[task])
+        if task == "scenario_generate" and payload.get("mode") == "REPAIR":
+            return {"scenario": result["scenario"], "analysis": result["analysis"]}
+        return result
     monkeypatch.setattr(scenario_planner, "generate_json", generate)
     monkeypatch.setattr(scenario, "generate_json", generate)
     monkeypatch.setattr(fast_discovery, "generate_json", generate)

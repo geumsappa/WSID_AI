@@ -73,6 +73,8 @@ def respond(task, payload):
         content["analysis"].pop("riskType", None)
         content["analysis"].pop("riskTypeReason", None)
         content["preservedClaims"] = plan["anchorClaims"]
+        if payload.get("mode") == "REPAIR":
+            return {"scenario": content["scenario"], "analysis": content["analysis"]}
         return content
     if task == "scenario_classify":
         from app.case_db import case_ids_for_subtype, get_case

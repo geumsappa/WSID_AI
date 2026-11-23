@@ -25,11 +25,21 @@ class Settings:
     llm_base_url: str = os.getenv("LLM_BASE_URL", "").strip()
     llm_timeout_seconds: float = float(os.getenv("LLM_TIMEOUT_SECONDS", "10"))
     max_context_turns: int = int(os.getenv("MAX_CONTEXT_TURNS", "5"))
+    planning_timeout_seconds: float = float(os.getenv("PLANNING_TIMEOUT_SECONDS", "25"))
+    verification_timeout_seconds: float = float(os.getenv("VERIFICATION_TIMEOUT_SECONDS", "20"))
+    pipeline_reasoning_effort: str = os.getenv("PIPELINE_REASONING_EFFORT", "").strip()
+    discovery_reasoning_effort: str = os.getenv("DISCOVERY_REASONING_EFFORT", "").strip()
+    # 상황 답변: 호출 60초, 재시도·교정 포함 110초. BE 120초·FE 130초와 함께 조정해요.
+    discovery_timeout_seconds: float = float(os.getenv("DISCOVERY_TIMEOUT_SECONDS", "60"))
+    discovery_total_timeout_seconds: float = float(os.getenv("DISCOVERY_TOTAL_TIMEOUT_SECONDS", "110"))
     # 시나리오는 길게 생성하므로 대기시간을 따로 둠 (훈련 시작 전 로딩 화면 1번)
+    scenario_total_timeout_seconds: float = float(os.getenv("SCENARIO_TOTAL_TIMEOUT_SECONDS", "110"))
     scenario_timeout_seconds: float = float(os.getenv("SCENARIO_TIMEOUT_SECONDS", "25"))
     evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "25"))
     # 가상 훈련 대화 전체 최대 턴 수 (요구사항 초안: 핵심 장면 12턴 / 전체 15턴)
     training_max_turns: int = int(os.getenv("TRAINING_MAX_TURNS", "15"))
+    # 이 답변 수 전에는 시나리오가 끝나도 종료하지 않고 대화를 이어가요 (사용자가 확실히 끊으면 예외)
+    training_min_turns: int = int(os.getenv("TRAINING_MIN_TURNS", "6"))
 
 
 settings = Settings()

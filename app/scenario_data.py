@@ -1,4 +1,4 @@
-"""시나리오에 쓰는 고정 목록과, LLM 이 실패했을 때 쓰는 기본 시나리오 7종.
+"""시나리오 분류 목록과 mock·테스트용 출력 표본. 실제 생성 실패의 대체 응답으로 사용하지 않는다.
 
 - SIM-003: 위험 유형은 명세의 6분류(대분류) + 세부 유형으로 관리
 - 팀 결정: 보이스피싱(전화) 유형은 제외 → 채널에 '전화'가 없음
@@ -11,14 +11,25 @@ RISK_TYPES = ["메신저피싱", "스미싱", "대출빙자", "기관사칭", "�
 
 # 세부 유형 → 대분류. 시나리오는 세부 유형 단위로 만들고, 대분류는 여기서 자동으로 정해짐
 SUBTYPE_TO_RISK_TYPE = {
+    "결제·환불 사칭": "스미싱",
     "지인·가족 사칭": "메신저피싱",
     "택배 사칭": "스미싱",
     "부고·청첩장 사칭": "스미싱",
+    "보상금·환급 안내 사칭": "스미싱",
+    "금융앱 업데이트·본인인증 사칭": "스미싱",
+    "카드 배송 사칭(기관 릴레이 사칭)": "기관사칭",
     "대출 사기": "대출빙자",
     "공공기관 사칭": "기관사칭",
     "투자 리딩방": "투자·가상자산",
     "중고거래 사기": "기타",
     "채용·아르바이트 사기": "기타",
+}
+# Public training codes are independent from the user's everyday activity categories.
+SUBTYPE_TO_FRAUD_CODE = {
+    "결제·환불 사칭": "SMISHING",
+    "지인·가족 사칭": "MESSENGER_PHISHING", "택배 사칭": "SMISHING", "부고·청첩장 사칭": "SMISHING",
+    "대출 사기": "LOAN_FRAUD", "공공기관 사칭": "INSTITUTION_IMPERSONATION",
+    "투자 리딩방": "INVESTMENT_FRAUD", "중고거래 사기": "SECONDHAND_TRADE", "채용·아르바이트 사기": "JOB_SCAM",
 }
 ALLOWED_SUBTYPES = list(SUBTYPE_TO_RISK_TYPE)
 
@@ -27,21 +38,17 @@ ALLOWED_CHANNELS = ["문자", "메신저", "중고거래 앱 채팅", "이메일
 # 사기범이 각 장면에서 사용자에게 시키려는 행동
 ALLOWED_REQUESTS = ["링크 클릭", "개인정보 제공", "송금", "앱 설치", "대화 지속"]
 
+# 훈련에서는 문자·앱 화면을 실제로 보내지 않아요. 사용자가 받을 수 없는 코드류는 요구하지 않게 걸러요.
+UNAVAILABLE_INFO_WORDS = ("인증번호", "인증 번호", "인증코드", "인증 코드", "OTP", "보안카드", "승인번호", "확인코드", "확인 코드")
+
+
+def is_unavailable_info(info: str) -> bool:
+    compact = str(info).replace(" ", "").upper()
+    return any(word.replace(" ", "").upper() in compact for word in UNAVAILABLE_INFO_WORDS)
+
+
 # 모의 페이지 템플릿 (SIM-014). 없으면 None
 ALLOWED_MOCK_PAGES = ["금융", "공공민원", "채용"]
-
-# ①단계 사실 카테고리 → 어울리는 세부 유형 (기본 시나리오 고를 때 사용)
-CATEGORY_TO_SUBTYPE = {
-    "거래(중고·쇼핑)": "중고거래 사기",
-    "택배·배송": "택배 사칭",
-    "구직·아르바이트": "채용·아르바이트 사기",
-    "투자": "투자 리딩방",
-    "가족·지인 연락": "지인·가족 사칭",
-    "공공기관·민원": "공공기관 사칭",
-    "금융·대출": "대출 사기",
-}
-DEFAULT_SUBTYPE = "택배 사칭"  # 정보가 없을 때 (누구나 택배는 받으니까)
-
 
 FALLBACK_SCENARIOS = {
     "중고거래 사기": {
@@ -183,12 +190,12 @@ FALLBACK_SCENARIOS = {
             "openingMessage": "나야, 폰 액정이 깨져서 수리 맡기고 임시폰으로 연락해. 지금 통화는 안 되는데 급하게 부탁할 게 있어.",
             "keyScenes": [
                 {"order": 1, "judgmentPointId": "J1", "goal": "가족이라고 믿게 하기", "tactic": "폰이 고장 나서 통화가 안 된다고 하며 확인을 피함", "request": "대화 지속", "requestedInfo": []},
-                {"order": 2, "judgmentPointId": "J2", "goal": "결제 정보 수집", "tactic": "온라인 결제를 대신 해달라며 정보 요구", "request": "개인정보 제공", "requestedInfo": ["신분증 사진", "카드번호", "인증번호"]},
+                {"order": 2, "judgmentPointId": "J2", "goal": "결제 정보 수집", "tactic": "온라인 결제를 대신 해달라며 정보 요구", "request": "개인정보 제공", "requestedInfo": ["신분증 사진", "카드번호"]},
                 {"order": 3, "judgmentPointId": "J2", "goal": "원격 앱 설치·송금 유도", "tactic": "보험금 신청을 도와달라며 앱 설치를 부탁하고 급한 송금 요청", "request": "송금", "requestedInfo": []},
             ],
             "expectedActions": [
                 {"id": "A1", "judgmentPointId": "J1", "description": "원래 알던 번호로 직접 전화해 본인인지 확인한다"},
-                {"id": "A2", "judgmentPointId": "J2", "description": "메시지로 신분증·카드번호·인증번호를 보내지 않는다"},
+                {"id": "A2", "judgmentPointId": "J2", "description": "메시지로 신분증·카드번호를 보내지 않는다"},
                 {"id": "A3", "judgmentPointId": "J2", "description": "확인 전에는 앱을 설치하거나 송금하지 않는다"},
             ],
             "mockPage": None,
@@ -255,16 +262,27 @@ FALLBACK_SCENARIOS = {
 }
 
 
-def pick_subtype(facts: list[dict]) -> str:
-    """모인 사실 중 가장 많이 나온 카테고리로 세부 유형을 고른다."""
-    counts: dict[str, int] = {}
-    for f in facts:
-        subtype = CATEGORY_TO_SUBTYPE.get(f.get("category", ""))
-        if subtype:
-            counts[subtype] = counts.get(subtype, 0) + 1
-    if not counts:
-        return DEFAULT_SUBTYPE
-    return max(counts, key=counts.get)
+FALLBACK_SCENARIOS["결제·환불 사칭"] = {
+    "analysis": {
+        "riskSignals": [{"signal": "결제·환불 안내 사칭", "reason": "이용한 가게의 결제 확인 안내처럼 꾸며 외부 확인을 유도"}],
+        "judgmentPoints": [{"id": "J1", "description": "결제 오류 안내의 발신자를 직접 확인하는지 판단"},
+                           {"id": "J2", "description": "환불을 빌미로 개인정보를 요구할 때 대응"}],
+    },
+    "scenario": {
+        "fraudSubtype": "결제·환불 사칭", "title": "결제 이후 도착한 확인 메시지", "channel": "문자",
+        "persona": {"name": "결제 안내 담당자", "role": "결제 안내 직원", "organization": "이용한 가게", "tone": "정중한 안내 말투"},
+        "background": "결제한 뒤 결제 오류 확인을 빙자한 메시지를 받는 가상 상황입니다.",
+        "openingMessage": "이용하신 가게 결제 내역 확인 안내입니다. 결제 오류 접수 여부를 확인해 주세요. [모의링크]",
+        "keyScenes": [
+            {"order": 1, "judgmentPointId": "J1", "goal": "식당 안내를 믿고 외부 확인 화면을 열게 함", "tactic": "결제 오류와 환불 가능성을 강조", "request": "링크 클릭", "requestedInfo": []},
+            {"order": 2, "judgmentPointId": "J2", "goal": "환불 확인을 명목으로 개인정보 제공을 유도", "tactic": "정상 환불 절차인 것처럼 안내", "request": "개인정보 제공", "requestedInfo": ["카드번호", "인증번호"]},
+        ],
+        "expectedActions": [
+            {"id": "A1", "judgmentPointId": "J1", "description": "메시지의 링크 대신 이용한 식당이나 기존 결제 내역으로 확인한다"},
+            {"id": "A2", "judgmentPointId": "J2", "description": "환불을 이유로 요구하는 카드정보나 인증번호를 제공하지 않는다"},
+        ], "mockPage": "금융",
+    },
+}
 
 
 def _add_risk_types():

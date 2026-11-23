@@ -43,8 +43,18 @@ class ContextTurnRequest(CamelModel):
 
 class Fact(CamelModel):
     """SIM-002 입력 정보 분석 결과: 사실 1개"""
-    category: str = Field(description="거래(중고·쇼핑) | 구직·아르바이트 | 택배·배송 | 금융·대출 | 투자 | 가족·지인 연락 | 공공기관·민원 | 여행·이동 | 기타")
+    category: str = Field(description="거래(중고·쇼핑) | 일상 소비·결제 | 구직·아르바이트 | 택배·배송 | 금융·대출 | 투자 | 가족·지인 연락 | 공공기관·민원 | 여행·이동 | 기타")
     detail: str = Field(description="사실 한 문장")
+    item_name: str | None = Field(default=None, max_length=100, description="사용자가 명시한 거래 물품명")
+    organization_name: str | None = Field(default=None, max_length=100, description="지원하거나 관심 있는 회사")
+    counterpart_name: str | None = Field(default=None, max_length=100, description="사용자가 지정한 상대방의 훈련 호칭")
+    context_only: bool = Field(default=False, description="추가 배경이며 훈련 유형을 선택하는 핵심 사실이 아님")
+    fact_id: str | None = None
+    source_turn: int | None = Field(default=None, ge=1)
+    actor_id: str | None = None
+    event_id: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list, max_length=5)
+    certainty: Literal["CONFIRMED", "UNCERTAIN", "NEGATED"] | None = None
     channel: str | None = Field(default=None, description="채널: 문자, 메신저, 중고거래 앱 채팅, 이메일 등")
     impersonated_identity: str | None = Field(default=None, description="사칭 신분: 상대가 자신을 누구라고 했는지")
     requested_action: str | None = Field(default=None, description="요구 행동: 링크 클릭 | 개인정보 제공 | 송금 | 앱 설치 | 대화 지속")
@@ -122,6 +132,9 @@ class KeyScene(CamelModel):
     tactic: str = Field(description="심리 압박·속임 수법")
     request: str = Field(description="링크 클릭 | 개인정보 제공 | 송금 | 앱 설치 | 대화 지속")
     requested_info: list[str] = Field(description="요구하는 개인정보 종류")
+    on_compliance: str = Field(default="", max_length=180)
+    on_suspicion: str = Field(default="", max_length=180)
+    on_refusal: str = Field(default="", max_length=180)
 
 
 class ExpectedAction(CamelModel):
@@ -142,13 +155,22 @@ class CaseRef(CamelModel):
 
 
 class Scenario(CamelModel):
+    generation_mode: Literal["PERSONALIZED", "BASIC"] = "PERSONALIZED"
+    basic_case_id: str | None = None
+    fictional_context: str | None = None
     risk_type: str = Field(description="위험 유형 대분류 (6종)")
-    fraud_subtype: str = Field(description="세부 유형: 지인·가족 사칭, 택배 사칭, 대출 사기, 공공기관 사칭, 투자 리딩방, 중고거래 사기, 채용·아르바이트 사기")
+    fraud_subtype: str = Field(description="생성된 이야기의 자유로운 세부 분류명")
+    tags: list[str] = Field(default_factory=list)
+    classification_fit: str | None = None
+    classification_reason: str | None = None
+    reference_status: str | None = None
+    generation_evidence: dict | None = Field(default=None, description="Generation-time retrieval and used factual patterns; separate from post-generation matches")
     title: str
     channel: str = Field(description="문자 | 메신저 | 중고거래 앱 채팅 | 이메일 | SNS 메시지 → 화면 스타일 결정")
     persona: Persona
     background: str = Field(description="훈련 시작 시 사용자에게 보여줄 상황 설명")
     opening_message: str = Field(description="가상 인물의 첫 메시지 (훈련 채팅 첫 말풍선)")
+    source_facts: list[Fact] = Field(default_factory=list, max_length=30, description="사용자가 제공한 사실. 가상 시나리오 설정과 구분")
     allowed_organizations: list[str] = Field(default_factory=list, max_length=50,
                                            description="입력 사실에서 확인해 이 훈련에 허용한 기관명")
     key_scenes: list[KeyScene]

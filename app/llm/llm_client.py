@@ -5,6 +5,10 @@ LLM 공급자를 바꾸고 싶으면 .env 의 LLM_PROVIDER 만 바꾸면 되고,
 """
 import json
 import logging
+import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from functools import lru_cache
 
 from app.config import settings
 from app.llm import mock_llm
@@ -12,12 +16,27 @@ from app.llm import mock_llm
 logger = logging.getLogger(__name__)
 
 
+_generation_deadline = ContextVar("generation_deadline", default=None)
+
+
+@contextmanager
+def generation_budget(seconds):
+    """One wall-clock budget shared by all model stages and retries in a request."""
+    previous = _generation_deadline.get()
+    deadline = time.monotonic() + seconds
+    token = _generation_deadline.set(min(deadline, previous) if previous is not None else deadline)
+    try:
+        yield
+    finally:
+        _generation_deadline.reset(token)
+
+
 class LLMError(Exception):
     """LLM 호출 또는 응답 해석에 실패했을 때 쓰는 에러."""
 
 
 def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 800,
-                  timeout: float | None = None, attempts: int = 2) -> dict:
+                  timeout: float | None = None, attempts: int = 2, reasoning_effort: str | None = None, reuse_connection: bool = False) -> dict:
     """LLM 에게 묻고, 응답을 JSON(dict)으로 바꿔서 돌려준다.
 
     attempts 번까지 시도하고, 그래도 안 되면 LLMError 를 던진다.
@@ -27,8 +46,15 @@ def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 80
     last_error: Exception | None = None
     for attempt in range(attempts):
         try:
+            call_timeout = timeout or settings.llm_timeout_seconds
+            deadline = _generation_deadline.get()
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise LLMError("generation_deadline_exceeded")
+                call_timeout = min(call_timeout, remaining)
             raw_text = _call_provider(system_prompt, user_content, max_tokens,
-                                      timeout or settings.llm_timeout_seconds)
+                                      call_timeout, reasoning_effort=reasoning_effort, reuse_connection=reuse_connection)
             return parse_json(raw_text)
         except Exception as e:  # 네트워크 오류, 타임아웃, JSON 깨짐 등 전부
             last_error = e
@@ -36,7 +62,16 @@ def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 80
     raise LLMError(str(last_error))
 
 
-def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeout: float) -> str:
+@lru_cache(maxsize=4)
+def _reusable_openai_client(api_key, base_url):
+    import httpx
+    from openai import OpenAI
+    return OpenAI(api_key=api_key, base_url=base_url or None, max_retries=0,
+                  http_client=httpx.Client(limits=httpx.Limits(max_connections=30,
+                      max_keepalive_connections=10, keepalive_expiry=60)))
+
+
+def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeout: float, *, reasoning_effort: str | None = None, reuse_connection: bool = False) -> str:
     provider = settings.llm_provider
 
     if provider == "mock":
@@ -48,7 +83,7 @@ def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeo
     if provider == "openai":
         from openai import OpenAI  # 필요할 때만 불러옴
 
-        client = OpenAI(
+        client = _reusable_openai_client(settings.llm_api_key, settings.llm_base_url) if reuse_connection else OpenAI(
             api_key=settings.llm_api_key,
             base_url=settings.llm_base_url or None,
             timeout=timeout,
@@ -60,8 +95,9 @@ def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeo
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ],
+            timeout=timeout,
             response_format={"type": "json_object"},  # JSON 으로만 답하게 강제
-            temperature=0.7,
+            **({"reasoning_effort": reasoning_effort, "max_completion_tokens": max_tokens} if reasoning_effort else {}),
         )
         try:
             response = client.chat.completions.create(**request)

@@ -38,7 +38,7 @@ def test_spring_scenario_reply_evaluation_contract():
         assert report["overallFeedback"]
         assert report["turnFeedback"] == []
         assert report["mockPageEvaluation"] == {
-            "openedPage": True, "attemptedMockLogin": False, "checkedOfficialChannel": True,
+            "openedPage": True, "attemptedMockLogin": False, "checkedOfficialChannel": True, "clickedAppLink": False,
         }
         assert "officialContacts" not in report
 
@@ -60,7 +60,7 @@ def test_evaluation_model_failure_returns_safe_error(monkeypatch):
 
     with TestClient(app, headers=INTERNAL_HEADERS) as client:
         scenario = client.post("/internal/ai/scenarios/generate", json={
-            "facts": {}, "fraudTypeCode": "SECONDHAND_TRADE",
+            "facts": {"activity": "중고거래"}, "fraudTypeCode": "SECONDHAND_TRADE",
         }).json()["data"]["scenario"]
 
         def unavailable(*args, **kwargs):
@@ -83,7 +83,7 @@ def test_masked_card_submission_reaches_simulation_and_records_disclosure(monkey
     })
     with TestClient(app, headers=INTERNAL_HEADERS) as client:
         scenario = client.post("/internal/ai/scenarios/generate", json={
-            "facts": {}, "fraudTypeCode": "SECONDHAND_TRADE",
+            "facts": {"activity": "중고거래"}, "fraudTypeCode": "SECONDHAND_TRADE",
         }).json()["data"]["scenario"]
         response = client.post("/internal/ai/simulation/reply", json={
             "scenario": scenario,

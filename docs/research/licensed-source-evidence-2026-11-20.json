@@ -1,0 +1,457 @@
+{
+  "checkedAt": "2026-11-21",
+  "sources": [
+    {
+      "id": "OL01",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+      "resolvedUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148910622",
+      "http": 200,
+      "title": "설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보 - 정책뉴스 | 뉴스 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "5fa8e7e2b2b3eb424b1ea4526917db0a692ceb898af23aab14f71d77a89bb92f",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "설 명절 택배·교통 과태료 등 사칭한 피싱 문자 주의보",
+      "publisher": "방송통신위원회 등 관계부처 합동",
+      "publishedDate": "2023-01-16",
+      "author": null
+    },
+    {
+      "id": "OL02",
+      "url": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+      "resolvedUrl": "https://www.kmcc.go.kr/user.do?boardId=1113&boardSeq=60540&dc=K00000200&mode=view&page=A05030000",
+      "http": 200,
+      "title": "방송미디어통신위원회 누리집 > 알림마당 > 보도자료 \n\t\t\n\t\t\n\t\t\t\n\t\t\t\n\t\t\t 상세보기(“유명인·가족 등 사칭, 절대 돈 보내지 마세요”)",
+      "notices": [
+        "방송미디어통신위원회의 해당 저작물은 \"공공누리\n\t\t\t\t\t                \n\t\t\t\t\t                    \n\t\t\t\t\t                    \n\t\t\t\t\t                    \n\t\t\t\t\t                    \n\t\t\t\t\t                    1유형\n\t\t\t\t\t                \n\t\t\t\t\t                (출처표시)\" 조건에 따라 누구나 이용할 수 있습니다."
+      ],
+      "bodyHash": "aa221436856000a66c47db02fff35df811aec2a20de813a8820449c536631a59",
+      "links": [
+        {
+          "text": "240408 (보도자료) “유명인·가족 등 사칭, 절대 돈 보내지 마세요”.hwpx",
+          "href": "https://www.kmcc.go.kr/download.do?fileSeq=58248"
+        },
+        {
+          "text": "240408 (보도자료) “유명인·가족 등 사칭, 절대 돈 보내지 마세요”.pdf",
+          "href": "https://www.kmcc.go.kr/download.do?fileSeq=58249"
+        },
+        {
+          "text": "240408 (보도자료) “유명인·가족 등 사칭, 절대 돈 보내지 마세요”.hwp",
+          "href": "https://www.kmcc.go.kr/download.do?fileSeq=58250"
+        }
+      ],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "유명인·가족 등 사칭, 절대 돈 보내지 마세요",
+      "publisher": "방송통신위원회",
+      "publishedDate": "2024-04-08",
+      "author": null
+    },
+    {
+      "id": "OL03",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148945781",
+      "resolvedUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148945781",
+      "http": 200,
+      "title": "'소비쿠폰' 문자에 URL 링크있다면 100% 사기…\"118번 신고를\" - 정책뉴스 | 뉴스 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "568252cad1fd0bfdcc7773f3f1c29770d841246507de6f01363c2cb50b4da853",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "소비쿠폰 문자에 URL 링크있다면 100% 사기",
+      "publisher": "관계부처 합동·대한민국 정책브리핑",
+      "publishedDate": "2025-07-10",
+      "author": null
+    },
+    {
+      "id": "OL04",
+      "url": "https://www.korea.kr/news/reporterView.do?newsId=148932094",
+      "resolvedUrl": "https://www.korea.kr/news/reporterView.do?newsId=148932094",
+      "http": 200,
+      "title": "온라인서비스 피해 상담·지원이 필요하다면? 온라인피해365센터! - 국민이 말하는 정책 | 뉴스 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "7af61e1861886addadf74c165b47e676285ba6ce2409394769424794661b0f79",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "온라인서비스 피해 상담·지원이 필요하다면? 온라인피해365센터!",
+      "publisher": "대한민국 정책브리핑",
+      "publishedDate": "2024-08-14",
+      "author": "양은빈"
+    },
+    {
+      "id": "OL05",
+      "url": "https://www.korea.kr/news/reporterView.do?newsId=148927935",
+      "resolvedUrl": "https://www.korea.kr/news/reporterView.do?newsId=148927935",
+      "http": 200,
+      "title": "중고거래 안전하게 이용하려면~ - 국민이 말하는 정책 | 뉴스 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "1e57b1ce20a10ec949895f827219a68143237741cc041c04a80985a7b69ae031",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "중고거래 안전하게 이용하려면",
+      "publisher": "대한민국 정책브리핑",
+      "publishedDate": "2024-04-18",
+      "author": "조민서"
+    },
+    {
+      "id": "OL06",
+      "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148833094",
+      "resolvedUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148833094",
+      "http": 200,
+      "title": "꼼꼼하다 자부했던 필자, 중고거래 피해봤다~ - 부처 브리핑 | 브리핑룸 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "3239bf15660e9d71e720a6eb26b1606b92b6aca1115328231f01a54806a41ac7",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "꼼꼼하다 자부했던 필자, 중고거래 피해봤다",
+      "publisher": "대한민국 정책브리핑",
+      "publishedDate": "2017-05-29",
+      "author": null
+    },
+    {
+      "id": "OL07",
+      "url": "https://www.kca.go.kr/home/sub.do?menukey=4003&mode=view&no=1004452737",
+      "resolvedUrl": "https://www.kca.go.kr/home/sub.do?menukey=4003&mode=view&no=1004452737",
+      "http": 200,
+      "title": "한국소비자원 > 소비자뉴스 > 공지사항 > 상세보기",
+      "notices": [
+        "이 게시물은 \"공공누리 제1유형(출처표시)\" 조건에 따라 자유롭게 이용이 가능합니다."
+      ],
+      "bodyHash": "3fc7ff69dddf1364740bd321a7c8053cb501451659b627e4da2590eb74ce64ca",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "한국소비자원 직원 사칭 피해 주의 안내",
+      "publisher": "한국소비자원",
+      "publishedDate": "2026-04-09",
+      "author": null
+    },
+    {
+      "id": "OL08",
+      "url": "https://www.kca.go.kr/home/sub.do?menukey=4003&mode=view&no=1003984172&page=1",
+      "resolvedUrl": "https://www.kca.go.kr/home/sub.do?menukey=4003&mode=view&no=1003984172&page=1",
+      "http": 200,
+      "title": "한국소비자원 > 소비자뉴스 > 공지사항 > 상세보기",
+      "notices": [
+        "이 게시물은 \"공공누리 제1유형(출처표시)\" 조건에 따라 자유롭게 이용이 가능합니다."
+      ],
+      "bodyHash": "4441061d120f735772d7793a289e4642259da96a23f88d56c0d0f15e8fcdc9e6",
+      "links": [],
+      "usedInActiveCorpus": false
+    },
+    {
+      "id": "OL09",
+      "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=1B000001120299000",
+      "resolvedUrl": "https://www.police.go.kr/waitingroom/main.html",
+      "http": 200,
+      "title": "Waitingroom",
+      "notices": [],
+      "bodyHash": "872cf2e5c5891bbed6a5f2f1a506c43867e8d1e4f01b6a0d3f7cab059e4b154e",
+      "links": [],
+      "usedInActiveCorpus": false
+    },
+    {
+      "id": "OL10",
+      "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+      "resolvedUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20220720071158504",
+      "http": 200,
+      "title": "보도자료 : HOME > 알림/소식 > 알림 > 보도자료",
+      "notices": [
+        "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+        "공공누리 제 1유형"
+      ],
+      "bodyHash": "e0034a64ba699a5d9e9076cc6503cb6c56d512c5e7be2aeb206ef0a4b9d0f28c",
+      "links": [
+        {
+          "text": "220720(조간용) 사이버사기 사이버금융범죄 집중단속 중간결과(사이버범죄수사).hwpx",
+          "href": "https://www.police.go.kr/component/file/ND_fileDownload.do?q_fileSn=154665&q_fileId=830900ea-6f7b-4730-af7f-0e2016fc7c37"
+        },
+        {
+          "text": "220720(조간용) 사이버사기 사이버금융범죄 집중단속 중간결과(사이버범죄수사).pdf",
+          "href": "https://www.police.go.kr/component/file/ND_fileDownload.do?q_fileSn=154665&q_fileId=f8200945-2820-4059-b12e-55763e4bdb4e"
+        }
+      ],
+      "attachment": {
+        "url": "https://www.police.go.kr/component/file/ND_fileDownload.do?q_fileSn=154665&q_fileId=f8200945-2820-4059-b12e-55763e4bdb4e",
+        "sha256": "46e2ccd3b19cde0164ca7877f90bd0b5e1b7f1ed5ea1101ed3ee3c7b147a6253",
+        "bytes": 669194,
+        "format": "pdf",
+        "localPath": "research-originals/2026-11-20/licensed-text/OL10.pdf"
+      },
+      "usedInActiveCorpus": true,
+      "sourceTitle": "사이버사기·사이버금융범죄 집중단속 중간 결과",
+      "publisher": "경찰청",
+      "publishedDate": "2022-07-20",
+      "author": null
+    },
+    {
+      "id": "OL11",
+      "url": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213",
+      "resolvedUrl": "https://www.police.go.kr/user/bbs/BD_selectBbs.do?q_bbsCode=1002&q_bbscttSn=20230705152234213",
+      "http": 200,
+      "title": "보도자료 : HOME > 알림/소식 > 알림 > 보도자료",
+      "notices": [
+        "경찰청 보도자료 저작물은 “ 공공누리 1유형(출처표시) ” 조건에 따라 누구나 이용할 수 있습니다.",
+        "공공누리 제 1유형"
+      ],
+      "bodyHash": "3b0c9840ddbfcdb590245884c20b8ea4650d64bc9ea383f95c5dd57d84b0f1e7",
+      "links": [
+        {
+          "text": "230706(조간용) 기관사칭형 전화금융사기 피해 주의(수사).hwpx",
+          "href": "https://www.police.go.kr/component/file/ND_fileDownload.do?q_fileSn=156082&q_fileId=d7e1bbbf-57e1-43bf-b634-66dbe7550988"
+        },
+        {
+          "text": "230706(조간용) 기관사칭형 전화금융사기 피해 주의(수사).pdf",
+          "href": "https://www.police.go.kr/component/file/ND_fileDownload.do?q_fileSn=156082&q_fileId=e22fa09a-8981-4e30-91ea-e2f51eff6cd6"
+        }
+      ],
+      "attachment": {
+        "url": "https://www.police.go.kr/component/file/ND_fileDownload.do?q_fileSn=156082&q_fileId=e22fa09a-8981-4e30-91ea-e2f51eff6cd6",
+        "sha256": "fca3c45b90f242c32a82e879bb9ad0badc6fb618718117a1cb562ee573aa0487",
+        "bytes": 916623,
+        "format": "pdf",
+        "localPath": "research-originals/2026-11-20/licensed-text/OL11.pdf"
+      },
+      "usedInActiveCorpus": true,
+      "sourceTitle": "대출까지 받게 하는 전화금융사기, 회복 불가능한 피해로 이어질 수 있어 예방법을 반드시 숙지해야",
+      "publisher": "경찰청",
+      "publishedDate": "2023-07-05",
+      "author": null
+    },
+    {
+      "id": "OL12",
+      "url": "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371",
+      "resolvedUrl": "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156656371",
+      "http": 200,
+      "title": "정부, 큐싱(정보무늬 사기<QR코드 피싱>) 피해로부터 우리 청소년들을 지키기 위해 적극 나선다 - 보도자료 | 브리핑룸 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "1dfa46f547e5638f3a31bc7e97da7f8b54d8f4a401fc5645301b7e31786363ff",
+      "links": [
+        {
+          "text": "241023 즉시 (보도) 정부, 큐싱(QR코드+피싱) 피해로부터 우리 청소년들을 지키기 위해 적극 나선다(수정).hwpx",
+          "href": "https://www.korea.kr/common/download.do?fileId=197920035&tblKey=GMN"
+        },
+        {
+          "text": "241023 즉시 (보도) 정부, 큐싱(QR코드+피싱) 피해로부터 우리 청소년들을 지키기 위해 적극 나선다(수정).odt",
+          "href": "https://www.korea.kr/common/download.do?fileId=197920036&tblKey=GMN"
+        }
+      ],
+      "attachment": {
+        "url": "https://www.korea.kr/common/download.do?fileId=197920036&tblKey=GMN",
+        "sha256": "c02955b07bd2698e5e655a2b697a2306320f3189b0cdd81a347002402bf80124",
+        "bytes": 541003,
+        "format": "odt",
+        "localPath": "research-originals/2026-11-20/licensed-text/OL12.odt"
+      },
+      "usedInActiveCorpus": true,
+      "sourceTitle": "정부, 큐싱 피해로부터 우리 청소년들을 지키기 위해 적극 나선다",
+      "publisher": "과학기술정보통신부 등 관계부처",
+      "publishedDate": "2024-10-23",
+      "author": null
+    },
+    {
+      "id": "OL13",
+      "url": "https://www.gangdong.go.kr/web/newportal/bbs/b_068/156319",
+      "resolvedUrl": "https://www.gangdong.go.kr/web/newportal/bbs/b_068/156319",
+      "http": 200,
+      "title": "강동구 공무원 사칭 사기 주의 안내 | 강동소식 | 구정소식 | 강동소개 | 강동구청",
+      "notices": [
+        "강동구청 에서 창작한 본 저작물은 \"공공누리\" 제1유형:출처표시 조건에 따라 이용할 수 있습니다."
+      ],
+      "bodyHash": "cc017255b0ef2fd9ae740c1c2ba7e00c815878df9d9423ab225c7db25bff7dfa",
+      "links": [],
+      "usedInActiveCorpus": false
+    },
+    {
+      "id": "OL14",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148912523",
+      "resolvedUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148912523",
+      "http": 200,
+      "title": "보이스피싱 의심될 땐 ‘찐센터’ - 정책뉴스 | 뉴스 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "b53cbadfbcc36ffd5078e71a7033dd6c2316f7ab1402437983dd294f1ca8a114",
+      "links": [],
+      "usedInActiveCorpus": false
+    },
+    {
+      "id": "OL15",
+      "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453",
+      "resolvedUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148770453",
+      "http": 200,
+      "title": "금융사기 의심되면? 일단 신고하세요! - 부처 브리핑 | 브리핑룸 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "08d365d1d31be0f954973e6ae6bb143d9d8f3be5de5f1964fdb6061322bad0d1",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "금융사기 의심되면? 일단 신고하세요!",
+      "publisher": "대한민국 정책브리핑",
+      "publishedDate": "2013-11-29",
+      "author": "위클리공감"
+    },
+    {
+      "id": "OL16",
+      "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148898376",
+      "resolvedUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148898376",
+      "http": 200,
+      "title": "수상한 문자, 전화 함부로 누르면 큰일! - 부처 브리핑 | 브리핑룸 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "6461ae517bcea8062ead45d9ad20a6efed6fb4f1fb89367ec03300f2c34235f5",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "수상한 문자, 전화 함부로 누르면 큰일!",
+      "publisher": "대한민국 정책브리핑",
+      "publishedDate": "2022-01-25",
+      "author": "김윤경"
+    },
+    {
+      "id": "OL17",
+      "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148761996",
+      "resolvedUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148761996",
+      "http": 200,
+      "title": "‘입금은 했는데 배송은 깜깜’…중고장터 피해 예방 3원칙 - 부처 브리핑 | 브리핑룸 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다. 단, 텍스트를 제외한 사진·이미지·일러스트·동영상 등 자료의 대부분은 정책브리핑이 저작권을 보유하고 있지 않으므로, 이용 전 해당 저작권자의 허락을 반드시 받으셔야 합니다. 저작권정책 담당자안내",
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다.",
+        "공공누리 공공저작물 자유이용허락 1유형 출처표시"
+      ],
+      "bodyHash": "cc8fbc6ee2f0c48518123a431a106b4ac0a8daa1ba923993b95657b1a88b4dde",
+      "links": [],
+      "usedInActiveCorpus": false
+    },
+    {
+      "id": "OL18",
+      "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+      "resolvedUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000",
+      "http": 200,
+      "title": "“점점 교묘해지는 신종 온라인 사기”…  민원 폭증으로 ‘민원예보’ 발령 | 보도자료 | 보도자료 | 뉴스·소식 : 국민권익위원회",
+      "notices": [
+        "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다. 본 공공저작물은 “AI유형: 인공지능 학습” 목적으로 이용할 수 있습니다. 이 경우 공공누리 정책 상의 조건을 준수하여야 합니다. 콘텐츠 정보책임자 콘텐츠 관리부서 전화번호 콘텐츠 만족도 조사 현재 페이지에서 제공되는 서비스에 대하여 만족하십니까? 매우만족 만족 보통 불만족 매우불만족 의견을 남겨주세요 0 /100",
+        "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다. 본 공공저작물은 “AI유형: 인공지능 학습” 목적으로 이용할 수 있습니다. 이 경우 공공누리 정책 상의 조건을 준수하여야 합니다.",
+        "본 공공저작물은 공공누리 “1유형 : 출처명시” 조건에 따라 이용할 수 있습니다."
+      ],
+      "bodyHash": "33037d8888aced385fea8d04a00d9229bd14e3e41e210485cf97cefadb1b2221",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "점점 교묘해지는 신종 온라인 사기… 민원 폭증으로 민원예보 발령",
+      "publisher": "국민권익위원회",
+      "publishedDate": "2025-05-22",
+      "author": null
+    },
+    {
+      "id": "OL19",
+      "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148861032",
+      "resolvedUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=148861032",
+      "http": 200,
+      "title": "보이스피싱 직접 당해보니, 남 얘기 아니었네 - 부처 브리핑 | 브리핑룸 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다."
+      ],
+      "bodyHash": "8cb7077f69ebc79a383de96860d23cf560bc35c0188d28d5938282d690ef1d38",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "보이스피싱 직접 당해보니, 남 얘기 아니었네",
+      "publisher": "대한민국 정책브리핑",
+      "publishedDate": "2019-05-23",
+      "author": "전형",
+      "checkedAt": "2026-11-21",
+      "archivedFileHash": "d2fd1cd07654b227ffd2756f31915e463c991f73db714699def86904435154dc",
+      "hashMeaning": "bodyHash: UTF-8 text with LF line endings; archivedFileHash: stored file bytes"
+    },
+    {
+      "id": "OL20",
+      "url": "https://www.jeonnam.go.kr/M7116/boardView.do?displayHeader=&infoReturn=&menuId=jeonnam0202000000&pageIndex=1&searchText=&searchType=&seq=1959989",
+      "resolvedUrl": "https://www.jeonnam.go.kr/M7116/boardView.do?displayHeader=&infoReturn=&menuId=jeonnam0202000000&pageIndex=1&searchText=&searchType=&seq=1959989",
+      "http": 200,
+      "title": "전남광주통합특별시(구)전라남도청 | 시정소식 | 보도자료",
+      "notices": [
+        "본 저작물은 \"공공누리\" 제1유형:출처표시 조건에 따라 이용 할 수 있습니다."
+      ],
+      "bodyHash": "695082799a1fa32f1282be915eebd81066444be801d031c2af6f169bec10de34",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "전남자치경찰위, 취업사기 등 캄보디아 해외여행 주의 당부",
+      "publisher": "전라남도 자치경찰위원회",
+      "publishedDate": "2025-10-15",
+      "author": null,
+      "checkedAt": "2026-11-21",
+      "archivedFileHash": "df4cdac70e130d55926b805c19991345012928c270d8e38efc2aeab738b74e1d",
+      "hashMeaning": "bodyHash: UTF-8 text with LF line endings; archivedFileHash: stored file bytes"
+    },
+    {
+      "id": "OL21",
+      "url": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=156574158",
+      "resolvedUrl": "https://www.korea.kr/briefing/policyBriefingView.do?newsId=156574158",
+      "http": 200,
+      "title": "전세사기 기획조사 결과 및 특별단속 중간결과 발표 - 부처 브리핑 | 브리핑룸 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다."
+      ],
+      "bodyHash": "dae1e9d87d606c76e0ea90d41fd51d708fedeb6d65c3d20f34fac5a0a25f2918",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "전세사기 기획조사 결과 및 특별단속 중간결과 발표",
+      "publisher": "국토교통부·경찰청·대검찰청",
+      "publishedDate": "2023-06-08",
+      "author": null,
+      "checkedAt": "2026-11-21",
+      "archivedFileHash": "acbd0859cafb1474ba2e69c928d45d1ed8df8a204f314942fa98b3a2ba88531d",
+      "hashMeaning": "bodyHash: UTF-8 text with LF line endings; archivedFileHash: stored file bytes"
+    },
+    {
+      "id": "OL22",
+      "url": "https://www.korea.kr/news/policyNewsView.do?newsId=148938770",
+      "resolvedUrl": "https://www.korea.kr/news/policyNewsView.do?newsId=148938770",
+      "http": 200,
+      "title": "\"세뱃돈 송금\" \"설선물 받으세요\" 문자 무심코 눌렀다간 낭패 - 정책뉴스 | 뉴스 | 대한민국 정책브리핑",
+      "notices": [
+        "이 자료는 텍스트에 한하여 공공누리 제1유형(출처표시)의 조건 에 따라 이용할 수 있습니다."
+      ],
+      "bodyHash": "732ec9df912fbe87ae740777f96df369e82488a814f9b012e88a6f25cabcd197",
+      "links": [],
+      "usedInActiveCorpus": true,
+      "sourceTitle": "“세뱃돈 송금” “설선물 받으세요” 문자 무심코 눌렀다간 낭패",
+      "publisher": "과학기술정보통신부·방송통신위원회·금융위원회",
+      "publishedDate": "2025-01-20",
+      "author": null,
+      "checkedAt": "2026-11-21",
+      "archivedFileHash": "410c1d66906ab1026a24bec798cf3ed4b656f340ef91e4261317814317dc52f0",
+      "hashMeaning": "bodyHash: UTF-8 text with LF line endings; archivedFileHash: stored file bytes"
+    }
+  ],
+  "activeSources": 17,
+  "activePatterns": 36,
+  "policyUrl": "https://www.kogl.or.kr/info/license.do"
+}

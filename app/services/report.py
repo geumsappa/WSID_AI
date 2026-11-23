@@ -167,7 +167,7 @@ def _actions(turns: list[dict], actions: dict) -> tuple[list[dict], list[dict]]:
 
 def _plain(text: str) -> str:
     """리포트는 실제 생활 조언이므로 훈련용 표현 '모의링크'를 그냥 '링크'로 바꾼다."""
-    return str(text).replace("[모의링크]", "링크").replace("모의 링크", "링크").replace("모의링크", "링크")
+    return str(text).replace("[모의앱]", "앱 설치 링크").replace("[모의링크]", "링크").replace("모의 링크", "링크").replace("모의링크", "링크")
 
 def _mock_page(events: list[dict]) -> dict | None:
     if not events:

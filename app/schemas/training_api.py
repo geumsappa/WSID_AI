@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.schemas.discovery import DiscoveryMessage
 
 FraudType = Literal["SECONDHAND_TRADE", "SMISHING", "MESSENGER_PHISHING",
-                    "LOAN_FRAUD", "INSTITUTION_IMPERSONATION", "INVESTMENT_FRAUD"]
+                    "LOAN_FRAUD", "INSTITUTION_IMPERSONATION", "INVESTMENT_FRAUD", "JOB_SCAM"]
 
 
 class ScenarioRequest(BaseModel):
@@ -41,6 +41,9 @@ class SimulationResult(BaseModel):
     shouldFinish: bool
     mockPage: MockPage | None
     nextScene: int | None = Field(default=None, ge=1, le=15)
+    # 사용자 답변에서 이름·주소처럼 패턴이 없는 개인정보를 AI가 찾아 가린 문장 (예: "[이름, 주소 입력함]").
+    # 가릴 게 없으면 None. Spring은 원문 대신 이 값을 저장하고 화면에도 이 값을 보여 줘요.
+    maskedInput: str | None = Field(default=None, max_length=300)
 
 
 class EvaluationAction(BaseModel):
@@ -57,12 +60,21 @@ class MockPageEvaluation(BaseModel):
     openedPage: bool
     attemptedMockLogin: bool
     checkedOfficialChannel: bool
+    clickedAppLink: bool = False
+
+
+class TurnFeedback(BaseModel):
+    """리포트 타임라인 한 칸: 훈련자의 몇 번째 답변에서 무슨 일이 있었는지."""
+    turn: int = Field(ge=1, le=30)
+    outcome: Literal["safe", "risky"]
+    userAction: str = Field(min_length=1, max_length=150)
+    feedback: str = Field(min_length=1, max_length=300)
 
 
 class EvaluationResult(BaseModel):
     overallFeedback: str = Field(min_length=1, max_length=1000)
     strengths: list[str] = Field(max_length=10)
     improvements: list[str] = Field(max_length=10)
-    turnFeedback: list = Field(default_factory=list, max_length=0)
+    turnFeedback: list[TurnFeedback] = Field(default_factory=list, max_length=8)
     mockPageEvaluation: MockPageEvaluation
     recommendations: list[str] = Field(max_length=10)

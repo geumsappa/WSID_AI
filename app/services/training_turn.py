@@ -14,14 +14,15 @@
 """
 import json
 import logging
+import re
 from pathlib import Path
 
 from app import fallback
 from app.config import settings
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
-from app.guard.sensitive import mask_requested_numbers, mask_sensitive
+from app.guard.sensitive import mask_name_address, mask_requested_numbers, mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
-from app.scenario_data import ALLOWED_REQUESTS
+from app.scenario_data import ALLOWED_REQUESTS, is_unavailable_info
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,20 @@ PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "training_tur
 OUTCOMES = {"safe", "risky", "neutral"}
 INFO_REQUEST = "개인정보 제공"
 TYPE_IT_MARK = "여기에 적어 주세요"  # '직접 입력하라'는 재요구를 이미 했는지 알아보는 표시
+# 실제 사기범은 처음 몇 마디는 신뢰를 쌓는 데 써요. 이 답변 수까지는 요구 문장을 억지로 덧붙이지 않아요.
+WARMUP_TURNS = 2
+APP_CLICK_EVENT = "[훈련 행동: 가상 앱 설치 링크 누름]"
+# 훈련은 실제 문자·앱 화면을 보내지 않아요. 사용자가 알 수 없는 코드를 꺼내는 대사는 바꿔요.
+# ("인증번호는 앱 설치 후 표시돼요"처럼 요구가 아닌 말도 다음 턴에 그 번호를 묻게 만들어서 함께 바꿔요)
+UNAVAILABLE_THING = re.compile(r"인증\s*(번호|코드)|OTP|보안\s*카드|승인\s*번호|확인\s*코드|앱\s*(화면)?에\s*(표시|뜬|나온|나타난)", re.I)
+# 사기범이 역할을 깨고 예방 조언을 하는 대사 (예: "실제 정보는 보내지 마시고 공식 경로에서 확인하세요")
+ROLE_BREAK = re.compile(r"보내지\s*마(세요|시고|십시오)|입력하지\s*마(세요|시고)|적지\s*마(세요|시고)"
+                        r"|공식\s*(경로|채널|앱|홈페이지|사이트|대표\s*번호|고객센터)(에서|로|으로)\s*(직접\s*|따로\s*|별도로\s*)?확인(해\s*(주세요|보세요)|하세요|하시기\s*바랍니다)"
+                        r"|사기(일|인|에\s*주의|를\s*조심)|주의하세요|훈련(입니다|이에요|이라서|이니)")
+# 대화 속 인물 대사에서 "가상" 같은 설명 말을 빼요 (몰입을 깨는 표현)
+VIRTUAL_WORD = re.compile(r"\(가상\)|가상의\s*|가상\s+(?=[가-힣])")
+# 사용자가 앱 링크를 누르지 않았는데 설치가 끝났다고 말하는 대사
+INSTALL_DONE = re.compile(r"설치(가|는|를)?\s*(확인|완료)\s*(됐|되었|했|하셨|되셨)|설치(하셨|해\s*주셨)(군요|네요|으니|으면)")
 
 
 def run_training_turn(session_id: str, scenario: dict, current_scene: int, history: list[dict]) -> dict:
@@ -64,6 +79,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     masked_last, provided = mask_sensitive(history[-1]["text"])
     masked_last, numeric = mask_requested_numbers(masked_last, asked_info)
     provided += [n for n in numeric if n not in provided]
+    # 이름·주소도 외부 AI로 보내기 전에 규칙으로 먼저 가려요 (AI는 규칙이 놓친 것만 보조로 찾아요)
+    masked_last, personal = mask_name_address(masked_last, asked_info)
+    provided += [p for p in personal if p not in provided]
     # Spring masks values before HTTP transmission/storage. Keep the disclosure event
     # even when this service receives only a type marker instead of the original number.
     marker_types = ("주민등록번호", "카드번호", "전화번호", "계좌번호", "이메일",
@@ -156,9 +174,28 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         persona_message = _fallback_line(scene_next, request_type)
         used_fallback = True
 
+    # 5-a) 사기범이 역할을 깨고 예방 조언을 하면 장면에 맞는 사기범 대사로 바꿔요 (조언은 결과 리포트에서 해요)
+    if ROLE_BREAK.search(persona_message):
+        logger.info("session=%s 역할을 깬 대사 교체", session_id)
+        persona_message = _fallback_line(scene_next, request_type)
+        used_fallback = True
+    persona_message = VIRTUAL_WORD.sub("", persona_message).strip()
+
+    # 5-b) 훈련에서 일어나지 않은 일을 전제로 한 대사 바로잡기
+    #  - 인증번호·OTP·앱 화면 속 번호처럼 사용자가 받을 수 없는 값을 요구하면
+    #  - 앱 설치 링크를 누르지도 않았는데 설치가 확인됐다고 하면
+    app_clicked = any(m["role"] == "event" and m["text"] == APP_CLICK_EVENT for m in history)
+    false_install = not app_clicked and bool(INSTALL_DONE.search(persona_message))
+    if false_install or _asks_unavailable(persona_message):
+        logger.info("session=%s 훈련과 맞지 않는 대사 교체 (app_clicked=%s)", session_id, app_clicked)
+        persona_message, request_type = _consistent_line(
+            scene_next, "앱 설치" if false_install else request_type, app_clicked)
+        choices = [c for c in choices if not UNAVAILABLE_THING.search(c)]
+
     # 4-b) 개인정보 요구 장면에 들어왔는데 아직 한 번도 요구하지 않았다면 → 요구 문장을 덧붙임
+    #      (처음 몇 마디는 신뢰를 쌓는 단계라 덧붙이지 않아요. 사기범이 스스로 요구하는 건 그대로 둬요)
     next_info = _requested(scene_next)
-    if scene_next.get("request") == INFO_REQUEST and next_info and not type_it:
+    if scene_next.get("request") == INFO_REQUEST and next_info and not type_it and user_turns > WARMUP_TURNS:
         asked_before = any(m["role"] == "persona" and _mentions(m["text"], next_info) for m in history)
         if not asked_before and not _mentions(persona_message, next_info):
             persona_message = f"{persona_message.rstrip()} {_request_info_line(next_info)}"
@@ -168,10 +205,19 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         choices = list(fallback.TRAINING_CHOICES.get(request_type, fallback.TRAINING_CHOICES["대화 지속"]))
 
     # 6) 종료 판단
+    #  - 최대 답변 수에 닿으면 끝
+    #  - 사용자가 확실하게 끊으면(차단·신고·공식 채널 확인·대화 중단) 끝: 잘 막은 경우라 더 끌지 않아요
+    #  - 시나리오 마지막 장면이 끝나도 최소 답변 수 전에는 끝내지 않고 사기범이 추가 요구로 이어가요
+    min_turns = min(int(scenario.get("minTurns") or settings.training_min_turns), max_turns)
+    last_user_text = history[-1]["text"] if history and history[-1].get("role") == "user" else ""
+    decisive_exit = judgment["outcome"] == "safe" and user_turns >= 2 and bool(DECISIVE_EXIT.search(last_user_text))
     end_reason = None
     if user_turns >= max_turns:
         end_reason = "max_turns"
-    elif bool(data.get("scenarioComplete")) and current_scene >= total_scenes and not type_it:
+    elif decisive_exit:
+        end_reason = "user_exit"
+    elif (bool(data.get("scenarioComplete")) and current_scene >= total_scenes and not type_it
+          and user_turns >= min_turns):
         end_reason = "scenario_complete"
     done = end_reason is not None
     if done:
@@ -208,7 +254,23 @@ def _scene(scenes: list[dict], order: int) -> dict:
 
 
 def _requested(scene: dict) -> list[str]:
-    return [str(x) for x in (scene.get("requestedInfo") or []) if str(x).strip()]
+    # 예전에 저장된 시나리오에 인증번호 같은 값이 남아 있어도 요구하지 않아요
+    return [str(x) for x in (scene.get("requestedInfo") or []) if str(x).strip() and not is_unavailable_info(str(x))]
+
+
+def _asks_unavailable(text: str) -> bool:
+    return bool(UNAVAILABLE_THING.search(text))
+
+
+def _consistent_line(scene: dict, request_type: str, app_clicked: bool) -> tuple[str, str]:
+    """훈련에서 실제로 할 수 있는 요구로 바꾼 대사와 요구 종류."""
+    if request_type == "앱 설치" and not app_clicked:
+        return "아직 설치가 확인되지 않네요. 아까 보내드린 앱부터 설치해 주셔야 다음 처리가 됩니다.", "앱 설치"
+    if request_type in ("송금", "링크 클릭"):
+        return _fallback_line(scene, request_type), request_type
+    info = [item for item in _requested(scene) if not _is_photo_info(item)] or ["성함", "계좌번호"]
+    lead = "설치는 확인됐습니다. " if app_clicked else "확인을 마무리하려면 "
+    return f"{lead}{', '.join(info)} {TYPE_IT_MARK}.", INFO_REQUEST
 
 
 def _mentions(text: str, info: list[str]) -> bool:
@@ -218,6 +280,12 @@ def _mentions(text: str, info: list[str]) -> bool:
 
 def _str_list(value) -> list[str]:
     return [str(x).strip() for x in value if str(x).strip()] if isinstance(value, list) else []
+
+
+# 사용자가 대화를 확실하게 끊는 말 (차단·신고·공식 채널로 직접 확인·대화 중단)
+DECISIVE_EXIT = re.compile(
+    r"차단|신고|112|1332|대화(를)?\s*(그만|중단|끝)|더\s*(이상|는)\s*(연락|대화|답)"
+    r"|공식\s*(앱|홈페이지|사이트|번호|고객센터|채널)|고객센터에\s*(직접|전화|확인)|직접\s*(전화|확인)해\s*볼")
 
 
 def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns) -> str:
@@ -231,6 +299,7 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns) 
         .replace("{{TOTAL_SCENES}}", str(total_scenes))
         .replace("{{USER_TURNS}}", str(user_turns))
         .replace("{{MAX_TURNS}}", str(max_turns))
+        .replace("{{MIN_TURNS}}", str(min(int(scenario.get("minTurns") or settings.training_min_turns), max_turns)))
         .replace("{{REQUESTS}}", ", ".join(ALLOWED_REQUESTS))
     )
 
@@ -270,7 +339,7 @@ def _clean_choices(raw) -> list[str]:
     for c in raw[:3]:
         text = str(c).strip()[:40]
         _, found = mask_sensitive(text)
-        if text and not found and not find_unsafe_text(text):
+        if text and not found and not find_unsafe_text(text) and not UNAVAILABLE_THING.search(text):
             out.append(text)
     return out
 

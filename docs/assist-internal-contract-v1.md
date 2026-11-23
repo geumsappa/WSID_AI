@@ -81,7 +81,7 @@ Spring은 원문을 저장하지 않는다. Python도 복원·추측하거나 �
 
 `remainingClarifications=0`이면 NEED_USER_INPUT을 반환하지 않는다.
 실제 개인정보 값이나 파일 제출을 요구하지 않고 사실의 발생 여부만 확인한다.
-Python은 모델의 질문 문구 대신 factKey별 고정 문구를 반환한다. Spring은 허용된 질문·민감정보 요청·반복 질문 여부를 최종 검증하고 자체 고정 문구를 사용한다.
+Python은 질문 문구를 고정하지 않는다. 검색된 근거 문단과 사용자 질문으로 모델이 문장을 만들고, `assist/clarify.py`의 검증기가 다음을 모두 통과할 때만 반환한다: 검색된 문단만 인용, 인용 문단과 질문 모두 대상 사실을 다룸, 근거·질문에 없는 구체 항목(기관명·정보 종류 등) 없음, 유도·단정·재촉·부정 의문·실제 값 요구 없음, 연락처·링크·숫자 없음, 물음표로 끝나는 존댓말 한 문장(8~120자). 통과하지 못하면 묻지 않고 조건부 답변 경로(EVIDENCE_READY 또는 NO_EVIDENCE)로 진행한다. Spring은 허용된 질문·민감정보 요청·반복 질문 여부를 최종 검증한다.
 사용자가 모름으로 답한 경우에도 askedFactKeys에 포함되므로 다시 묻지 않는다.
 
 ### candidateReferences
@@ -98,7 +98,7 @@ Spring은 승인된 코드·버전인지 확인하고 승인된 원본 내용을
 후보로 반환했다는 사실 자체가 콘텐츠 승인을 의미하지 않는다.
 
 ```json
-{"success":true,"data":{"status":"NEED_USER_INPUT","questionIntent":"DEVICE_SAFETY","clarification":{"factKey":"installedApp","content":"상대방이 알려준 앱을 설치한 적이 있나요?","options":["YES","NO","UNKNOWN"]},"candidateReferences":[],"reasonCode":null}}
+{"success":true,"data":{"status":"NEED_USER_INPUT","questionIntent":"DEVICE_SAFETY","clarification":{"factKey":"installedApp","content":"상대가 알려 준 앱을 설치하셨나요?","options":["YES","NO","UNKNOWN"]},"candidateReferences":[],"reasonCode":null}}
 ```
 
 ```json
@@ -197,6 +197,41 @@ sequenceDiagram
   `/answer`(가안)와 `/assist` 중 SOL-03이 쓸 경로는 팀 합의 항목이다.
 - 실패 본문은 서버 공통 형식(`code`+`message`)을 따른다. Spring은 HTTP 상태와 `error.code`만 사용한다.
 
+## 7-1. v1.2 선택 확장: 네 사실 밖의 조건 질문
+
+네 사실(돈·앱·정보·연락)만으로는 답이 갈리는 지점을 물을 수 없다. 예를 들어 송금이 물건·서비스 거래 대금이면
+통신사기피해환급법이 적용되지 않는다. v1.2는 검색된 근거 문단에서 이런 조건을 찾아 묻는다. 모든 필드는 선택이며,
+Spring이 `confirmedConditions`를 보내지 않으면(생략·null) v1과 똑같이 네 사실만 묻고 응답 모양도 같다.
+
+**요청 (PLAN·ANSWER 공통)**
+
+| 필드 | 규칙 |
+|---|---|
+| confirmedConditions | 생략·null이면 조건 질문 비활성(v1 동작). `[]`부터는 활성. 최대 10개, conditionId 중복 불가 |
+| └ conditionId, referenceCode, quote | 응답으로 받은 condition을 **글자 그대로** 돌려준다. conditionId는 `referenceCode#sha256(referenceCode + "\n" + quote)` 앞 12자라 하나라도 바뀌면 422 |
+| └ answer | 사용자 답 `YES`/`NO`/`UNKNOWN` |
+
+**응답 clarification (조건 질문일 때만 키 추가)**
+
+```json
+{"kind":"CONDITION","factKey":null,
+ "condition":{"conditionId":"REF_LAW_REFUND_PROCEDURE_V1_P2#…",
+              "referenceCode":"REF_LAW_REFUND_PROCEDURE_V1_P2","quote":"제외: 물건·서비스를 주겠다며 속인 사기(…)"},
+ "content":"물건이나 서비스를 받기로 하고 보내신 돈인가요?","options":["YES","NO","UNKNOWN"]}
+```
+
+- 네 사실 질문은 지금처럼 `{"factKey","content","options"}`만 온다(`kind`·`condition` 키 없음).
+- Spring은 질문을 보여 주고 답을 `confirmedConditions`에 추가해 같은 질문으로 PLAN을 다시 호출한다.
+  `remainingClarifications`는 사실 질문과 조건 질문이 함께 쓴다. `askedFactKeys`에는 넣지 않는다.
+- condition에는 AI가 만든 질문 문장이 없다. 질문 문장은 `content`로 온다. Spring은 처음과 재조회에 같은 문장을 보이려고
+  답할 때까지만 대기 상태에 보관하고, 답하면 지운다(메시지 기록에는 남기지 않는다).
+  Spring은 공식 근거 문단 코드(referenceCode), 그 문단 원문 인용(quote), 사용자 답(answer)만 저장한다.
+- 질문은 항상 quote의 상황에 해당하면 `YES`가 되도록 긍정형으로 만든다(부정 의문은 Python이 거부). 그래서 질문 문장 없이도 answer의 뜻이 정해진다.
+
+**Python 보장 (`assist/clarify.py`)**: quote가 검색된 그 문단에 글자 그대로 있어야 하고(틀리면 이유를 알려 한 번만 재제안), 질문이
+인용 내용을 다루며, 근거에 없는 구체 항목·유도·값 요구·연락처가 없어야 한다. 통과하지 못하면 묻지 않고
+조건부 답변 경로로 간다. ANSWER는 확인된 조건에 따라 적용·제외되는 제도를 구분해 안내한다.
+
 ## 8. 기존 근거의 버전 매핑과 합의 항목
 
 기존 코드 `REF_..._V1_P1`은 유지하고 명시적 `version:"1"` 메타데이터를 추가했다.
@@ -249,3 +284,31 @@ OpenAPI는 FastAPI DTO에서 생성한 [assist-openapi.json](assist-openapi.json
 | 실제 Gemini·Spring | 호출/통합 미검증. 의미 품질·응답 시간·승인 목록 매핑 확인 필요 |
 
 2026-11-18: 단계별 시간 제한과 고정 질문 변경 후 pytest 101개 통과(모델 대역). 실제 Gemini 및 Spring 연동은 검증하지 않았다.
+
+## v1.1 제안: 선택 필드 `history`·`fraudType` (2026-11-19, 합의 전)
+
+PLAN·ANSWER 요청에 아래 두 필드를 **선택**으로 추가한다. 보내지 않거나 null이면 v1과 똑같이 동작하므로
+Spring이 v1 그대로 호출해도 깨지지 않는다.
+
+| 필드 | 타입·규칙 | 쓰임 |
+| --- | --- | --- |
+| history | null 또는 `[{"role":"USER"\|"AI","content":"1~2000자"}]` 최대 10개 | 이번 질문 **앞**의 대화(가린 글 safe_content). 확인 질문 뒤 후속 PLAN·ANSWER에서는 원래 질문·확인 질문·대답까지 포함 |
+| fraudType | null 또는 AI-06 `/extract`의 `fraudType` 값 (`MESSENGER_PHISHING`, `SMISHING`, `LOAN_FRAUD`, `INSTITUTION_IMPERSONATION`, `INVESTMENT_FRAUD`, `SECONDHAND_TRADE`) | 유형에 맞는 근거 고르기 |
+
+Python 동작 (`assist/context.py`):
+
+- 질문이 없거나 짧으면(40자 미만, 예: "둘 다 알려줘") history의 최근 사용자 질문을 검색어에 붙인다.
+  확인 질문에 대한 짧은 대답("네", "아니요, 안 보냈어요")은 건너뛴다.
+- 후속 PLAN(question=null)에서 추가 질문 허용 여부(질문에 언급된 행동)를 history의 원래 질문으로 판단한다.
+- 질문 주제(추가 송금 요구, 고소·신고 접수, 민사소송·소액·지급명령, 배상·피해 회복, 신고 이후)별로
+  꼭 넣을 근거 code를 검색 결과 앞에 둔다. 후보는 여전히 최대 10개이고 Spring 승인 원칙은 같다.
+- `SECONDHAND_TRADE`면 환급법 전용 문단은 후보에서 빼고, 환급을 묻지 않았으면 '환급 대상 아님' 안내 문단도 뺀다.
+  유형이 맞는 문단은 검색 점수를 조금(+0.04) 올린다.
+- 모델에는 history 최근 6턴·턴당 600자만 넘기고, 사실의 근거로 쓰지 않도록 프롬프트에 명시한다.
+  history는 로그에 남기지 않는다(기존 로그 정책과 동일).
+- ANSWER 프롬프트에 답변 규칙(첫 문장이 답, 근거의 절차·기간·제출처를 구체적으로, 신고 이후 다음 단계,
+  추가 송금 요구 시 '더 보내지 말 것' 우선, 이전 대화 반복 금지)을 추가했다. 이 규칙은 v1 요청에도 적용된다.
+
+Spring에 필요한 변경: SOL-03 QUESTION·CLARIFICATION_ANSWER에서 상담의 최근 메시지(safe_content)와
+상담 시작 때 AI-06이 준 `fraudType`을 함께 보낸다. 테스트: `tests/test_assist_context.py`,
+체험: `python scripts/try_assist.py` (`--v1`이면 두 필드 없이 호출).

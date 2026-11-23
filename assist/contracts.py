@@ -1,10 +1,11 @@
 """상담 assist v1 DTO와 상태·요청 간 교차 검증. 모든 nullable 키도 필수입니다."""
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Annotated, Literal, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 from rag.guard import has_forbidden
 
@@ -14,6 +15,9 @@ QuestionIntent = Literal[
     "TRANSFER_RESPONSE", "DEVICE_SAFETY", "INFO_LEAK_RESPONSE", "CONTACT_RESPONSE", "GENERAL"
 ]
 ReasonCode = Literal["OUT_OF_SCOPE", "NO_EVIDENCE", "LIMIT_REACHED"]
+# AI-06(/extract)이 돌려주는 fraudType과 같은 값 (계약 v1.1 선택 필드)
+FraudType = Literal["MESSENGER_PHISHING", "SMISHING", "LOAN_FRAUD", "INSTITUTION_IMPERSONATION",
+                    "INVESTMENT_FRAUD", "SECONDHAND_TRADE"]
 
 
 def nonblank(value: str) -> str:
@@ -55,6 +59,43 @@ class ContractModel(BaseModel):
     model_config = ConfigDict(extra="ignore", strict=True, hide_input_in_errors=True)
 
 
+ConditionQuote = Annotated[str, Field(min_length=8, max_length=300), AfterValidator(nonblank)]
+
+
+def condition_id(reference_code: str, quote: str) -> str:
+    digest = hashlib.sha256(f"{reference_code}\n{quote}".encode()).hexdigest()[:12]
+    return f"{reference_code}#{digest}"
+
+
+class Condition(ContractModel):
+    """네 사실 밖에서 근거 문단이 답을 가르는 조건. 문단 원문 인용(quote)에 묶인다.
+    AI가 만든 질문 문장은 담지 않는다(Spring은 공식 문단 코드·원문 인용·답만 저장한다).
+    conditionId는 문단 코드·인용의 해시라, Spring이 돌려줄 때 내용이 바뀌면 거부된다."""
+    conditionId: Annotated[str, Field(min_length=14, max_length=113)]
+    referenceCode: ReferenceCode
+    quote: ConditionQuote
+
+    @model_validator(mode="after")
+    def check_id(self) -> Self:
+        if self.conditionId != condition_id(self.referenceCode, self.quote):
+            raise ValueError("condition id mismatch")
+        return self
+
+
+class ConfirmedCondition(Condition):
+    answer: Literal["YES", "NO", "UNKNOWN"]
+
+
+ConfirmedConditions = Annotated[list[ConfirmedCondition], Field(max_length=10)] | None
+
+
+def unique_conditions(conditions: list[ConfirmedCondition] | None) -> None:
+    if conditions:
+        ids = [c.conditionId for c in conditions]
+        if len(set(ids)) != len(ids):
+            raise ValueError("duplicate confirmed condition")
+
+
 class Facts(ContractModel):
     transferredMoney: FactValue
     sharedInformation: FactValue
@@ -73,6 +114,16 @@ class VerifiedReference(ContractModel):
     excerpt: Annotated[str, Field(min_length=1, max_length=2000), AfterValidator(nonblank)]
 
 
+class ChatTurn(ContractModel):
+    """이전 대화 한 턴. Spring이 저장한 가린 글(safe_content)을 그대로 보낸다."""
+    role: Literal["USER", "AI"]
+    content: Annotated[str, Field(min_length=1, max_length=2000), AfterValidator(nonblank)]
+
+
+# v1.1 선택 필드: 보내지 않으면(null) v1과 똑같이 동작한다.
+History = Annotated[list[ChatTurn] | None, Field(default=None, max_length=10)]
+
+
 def unique_codes(refs: list) -> None:
     codes = [r.code for r in refs]
     if len(set(codes)) != len(codes):
@@ -86,6 +137,14 @@ class PlanRequest(ContractModel):
     facts: Facts
     askedFactKeys: Annotated[list[FactKey], Field(max_length=4)]
     remainingClarifications: Annotated[int, Field(ge=0, le=3)]
+    history: History = None
+    fraudType: FraudType | None = None
+    # v1.2 선택 필드. null(생략)이면 네 사실만 묻는 v1 동작, 배열([] 포함)이면 조건 질문을 지원한다는 뜻.
+    confirmedConditions: ConfirmedConditions = None
+
+    @property
+    def conditionsEnabled(self) -> bool:
+        return self.confirmedConditions is not None
 
     @model_validator(mode="after")
     def check_state(self) -> Self:
@@ -93,6 +152,7 @@ class PlanRequest(ContractModel):
             raise ValueError("question or questionIntent required")
         if len(set(self.askedFactKeys)) != len(self.askedFactKeys):
             raise ValueError("duplicate asked fact key")
+        unique_conditions(self.confirmedConditions)
         return self
 
 
@@ -102,10 +162,14 @@ class AnswerRequest(ContractModel):
     questionIntent: QuestionIntent
     facts: Facts
     verifiedReferences: Annotated[list[VerifiedReference], Field(min_length=1, max_length=10)]
+    history: History = None
+    fraudType: FraudType | None = None
+    confirmedConditions: ConfirmedConditions = None
 
     @model_validator(mode="after")
     def check_references(self) -> Self:
         unique_codes(self.verifiedReferences)
+        unique_conditions(self.confirmedConditions)
         return self
 
 
@@ -113,15 +177,30 @@ AssistRequest = Annotated[PlanRequest | AnswerRequest, Field(discriminator="phas
 
 
 class Clarification(ContractModel):
-    factKey: FactKey
+    factKey: FactKey | None
     content: ClarificationText
     options: list[FactValue]
+    kind: Literal["FACT", "CONDITION"] = "FACT"
+    condition: Condition | None = None
 
     @model_validator(mode="after")
     def check_options(self) -> Self:
         if self.options != ["YES", "NO", "UNKNOWN"]:
             raise ValueError("invalid options or order")
+        if self.kind == "FACT" and (self.factKey is None or self.condition is not None):
+            raise ValueError("fact clarification needs factKey only")
+        if self.kind == "CONDITION" and (self.factKey is not None or self.condition is None):
+            raise ValueError("condition clarification needs condition only")
         return self
+
+    @model_serializer(mode="wrap")
+    def _omit_v12_keys_for_fact(self, handler):
+        # v1 Spring이 받던 모양을 바꾸지 않도록 FACT 질문에는 v1.2 키를 내보내지 않는다.
+        data = handler(self)
+        if self.kind == "FACT":
+            data.pop("kind", None)
+            data.pop("condition", None)
+        return data
 
 
 class PlanResponse(ContractModel):
@@ -152,10 +231,16 @@ class PlanResponse(ContractModel):
             if not (self.status == "UNABLE_TO_ANSWER" and self.questionIntent is None):
                 raise ValueError("questionIntent changed")
         if self.clarification is not None:
-            key = self.clarification.factKey
-            if (request.remainingClarifications == 0 or key in request.askedFactKeys
-                    or getattr(request.facts, key) != "UNKNOWN"):
+            if request.remainingClarifications == 0:
                 raise ValueError("clarification not allowed")
+            if self.clarification.kind == "CONDITION":
+                confirmed = {c.conditionId for c in request.confirmedConditions or []}
+                if not request.conditionsEnabled or self.clarification.condition.conditionId in confirmed:
+                    raise ValueError("clarification not allowed")
+            else:
+                key = self.clarification.factKey
+                if key in request.askedFactKeys or getattr(request.facts, key) != "UNKNOWN":
+                    raise ValueError("clarification not allowed")
 
 
 class AnswerResponse(ContractModel):
@@ -201,10 +286,8 @@ class Assessment(ContractModel):
     factKey: FactKey | None
     @model_validator(mode="after")
     def check_decision(self) -> Self:
-        if self.decision == "NEED_USER_INPUT":
-            if self.factKey is None:
-                raise ValueError("missing clarification")
-        elif self.factKey is not None:
+        # NEED_USER_INPUT에서 factKey=null은 네 사실 밖의 조건이 필요하다는 뜻(근거 검색 후 정한다).
+        if self.decision != "NEED_USER_INPUT" and self.factKey is not None:
             raise ValueError("unexpected clarification")
         if self.decision != "OUT_OF_SCOPE" and self.questionIntent is None:
             raise ValueError("missing intent")
@@ -212,8 +295,30 @@ class Assessment(ContractModel):
 
 
 class ModelClarification(ContractModel):
-    """모델은 질문 문구 없이 필요한 사실 키만 선택한다."""
-    factKey: FactKey
+    """근거 평가 모델이 고른 확인 대상: 네 사실 키 하나, 또는 근거 문단 원문을 인용한 조건.
+    질문 문장은 여기서 받지 않고 근거 기반 작성 단계에서 만든다."""
+    factKey: FactKey | None = None
+    referenceCode: ReferenceCode | None = None
+    quote: Annotated[str, Field(max_length=300)] | None = None
+    statement: Annotated[str, Field(max_length=200)] | None = None
+    # 조건 질문일 때 평가 단계가 함께 쓴 질문 문장(선택). 검증을 통과하면 별도 작성 호출을 생략한다.
+    content: Annotated[str, Field(max_length=500)] | None = None
+
+    @model_validator(mode="after")
+    def check_target(self) -> Self:
+        condition = (self.referenceCode, self.quote, self.statement)
+        if self.factKey is not None:
+            if any(v is not None for v in condition):
+                raise ValueError("fact and condition mixed")
+        elif self.referenceCode is None or self.quote is None:
+            raise ValueError("condition needs referenceCode and quote")
+        return self
+
+
+class ClarificationDraft(ContractModel):
+    """근거 문단으로 만든 추가 질문 초안. 검증기를 통과해야만 Spring에 나간다."""
+    content: Annotated[str, Field(max_length=500)] | None
+    referenceCodes: Annotated[list[ReferenceCode], Field(max_length=5)]
 
 
 class EvidenceAssessment(ContractModel):

@@ -27,8 +27,8 @@ CATEGORIES = {
 LINK = "[모의링크]"
 APP_LINK = "[모의앱]"
 MAX_LINKS = 2  # 같은 링크를 계속 붙이면 대화가 기계적으로 보여서 대화 전체에서 2번까지만 보내요
-BANK_PAGE = MockPage(templateCode="BANK_NOTICE", title="가상 금융 안내",
-                     institutionName="가상금융센터", screenCode="LOGIN_CHECK")
+BANK_PAGE = MockPage(templateCode="BANK_NOTICE", title="금융 안내",
+                     institutionName="금융안내센터", screenCode="LOGIN_CHECK")
 
 
 def _safe(text: str) -> str:

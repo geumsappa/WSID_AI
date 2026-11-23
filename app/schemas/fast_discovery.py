@@ -65,6 +65,7 @@ class ConversationDecision(BaseModel):
     updates: list[FactUpdate] = Field(default_factory=list, max_length=12)
     nextTopic: str | None = None
     focusChanged: StrictBool = False
+    stopRequested: StrictBool = False
     contextSufficient: StrictBool = False
     readinessBasis: ReadinessBasis | None = None
     requiredTopics: list[Topic] = Field(default_factory=list, max_length=5)

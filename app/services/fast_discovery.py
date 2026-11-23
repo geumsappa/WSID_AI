@@ -171,9 +171,27 @@ def _ready(topics, decision):
 
 
 def _select_question(topics, question_history, decision, history):
-    """Only a model-selected, necessary gap may cause a question."""
+    """Allow a factual opening question; check necessity for later detail questions."""
+    if decision.stopRequested:
+        return None
     target = decision.nextTopic
     available = _available_topics(topics, question_history)
+    if topics.get("ACTIVITY", {}).get("status") != "KNOWN" and "ACTIVITY" in available:
+        # A topic preference is not an experience. Elicit the first fact without
+        # requiring a scenario-specific rationale or another model call.
+        previous = {item.get("question") for item in question_history}
+        previous.update(message["text"] for message in history if message["role"] == "ai")
+        proposed = scenario_question(decision.nextQuestion) if target == "ACTIVITY" and decision.nextQuestion.strip() else ""
+        default = (CLARIFICATIONS["ACTIVITY"] if topics.get("ACTIVITY") else
+                   QUESTIONS["ACTIVITY"] if topics else "그 주제와 관련해 최근에 어떤 일이 있었나요?")
+        question = proposed or default
+        if question in previous:
+            return None
+        decision.requiredTopics = ["ACTIVITY"]
+        decision.personalizationTarget = "UNDECIDED"
+        decision.contextSufficient = False
+        decision.readinessBasis = None
+        return "ACTIVITY", question
     # A readiness claim must not skip an explicitly required, still answerable gap.
     if decision.contextSufficient and target is None:
         target = next((topic for topic in _requirements(decision, topics) if topic in available and not _is_resolved(topic, topics)), target)
@@ -260,6 +278,14 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                                     json.dumps(content, ensure_ascii=False, separators=(",", ":")), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
                                     reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True)
                 try:
+                    updates = raw.get("updates", [])
+                    has_activity = topics.get("ACTIVITY", {}).get("status") == "KNOWN" or any(
+                        isinstance(item, dict) and item.get("topic") == "ACTIVITY" and item.get("status", "KNOWN") == "KNOWN"
+                        for item in (updates if isinstance(updates, list) else []))
+                    if not has_activity:
+                        # Initial factual exploration has no plan-specific question
+                        # justification yet. Do not require or persist that metadata.
+                        raw = {**raw, "questionAssessments": []}
                     result = ConversationDecision.model_validate(raw)
                     if any(not _supported(update, messages) for update in result.updates):
                         raise ValueError("Unstated contextual detail")
@@ -290,7 +316,7 @@ def _run_discovery_turn(session_id, history, known_facts=None):
         unchanged_pause = (known.get("intakePaused") is True and not decision.focusChanged
                            and json.dumps(topics, sort_keys=True, ensure_ascii=False) == previous_topics)
         # Reassess the existing facts once rather than walking through unused topics.
-        if not ready and selected is None and (details or topics.get("ACTIVITY", {}).get("status") == "KNOWN") and not unchanged_pause:
+        if not ready and selected is None and not decision.stopRequested and (details or topics.get("ACTIVITY", {}).get("status") == "KNOWN") and not unchanged_pause:
             reassess_payload = {**payload, "mode": "REASSESS", "knownTopics": topics,
                                 "exploration": _exploration(topics, question_history),
                                 "questionHistory": question_history,
@@ -321,7 +347,7 @@ def _run_discovery_turn(session_id, history, known_facts=None):
             selected = None if ready else _select_question(topics, question_history, decision, history)
         state = {"pipelineVersion": 2, "intakeTurn": turn, "discoveryEvidence": messages,
                  "knownTopics": topics, "questionHistory": question_history,
-                 "discoveryReady": ready, "extractedFacts": [],
+                 "discoveryReady": ready, "extractedFacts": [], "stopRequested": decision.stopRequested,
                  "scenarioMode": "PERSONALIZED", "basicScenarioSelection": None,
                  "basicScenarioOffered": False, "basicConsentPending": False, "intakePaused": False, "readinessEvidence": None,
                  "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)},

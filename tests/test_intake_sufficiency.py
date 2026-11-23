@@ -76,3 +76,58 @@ def test_explicit_name_gap_is_kept_in_person_target(grounded_model):
     assert not result.canGenerateScenario
     assert result.facts["intakeRequirements"]["target"] == "PERSON"
     assert result.facts["questionHistory"][-1]["topic"] == "PERSON_NAME"
+
+
+@pytest.mark.parametrize("text", ["택배나 배송 이야기를 하고 싶어요.", "중고거래 이야기를 하고 싶어요.", "보험에 대해 이야기하고 싶어요."])
+def test_topic_selection_gets_an_opening_question_without_plan_justification(grounded_model, text):
+    grounded_model[1]["discovery_brief"] = {"updates": [], "contextSufficient": False, "nextTopic": None,
+        "requiredTopics": [], "personalizationTarget": "UNDECIDED"}
+    result = discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput=text))
+    assert not result.canGenerateScenario
+    assert not result.facts["basicScenarioOffered"] and not result.facts["intakePaused"]
+    assert result.nextQuestion == "그 주제와 관련해 최근에 어떤 일이 있었나요?"
+    assert result.facts["questionHistory"][-1]["topic"] == "ACTIVITY"
+    assert result.facts["intakeRequirements"]["topics"] == ["ACTIVITY"]
+    assert "ACTIVITY" not in result.facts["knownTopics"]
+    assert len(grounded_model[0]) == 1
+
+
+def test_opening_can_use_a_model_question_without_detailed_assessment(grounded_model):
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": "ACTIVITY", "nextQuestion": "어떤 일이 있으셨나요?",
+        "questionAssessments": [{"topic": "ACTIVITY", "status": "MISSING", "reason": "주제 선택"}]}
+    result = discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput="배송 이야기를 하고 싶어요"))
+    assert result.nextQuestion == "어떤 일이 있으셨나요?"
+    assert not result.facts["basicScenarioOffered"]
+    assert len(grounded_model[0]) == 1
+
+
+def test_explicit_stop_is_respected_without_a_forced_opening(grounded_model):
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": "ACTIVITY", "stopRequested": True}
+    result = discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput="지금은 더 설명하고 싶지 않아요"))
+    assert result.facts["basicScenarioOffered"]
+    assert result.facts["questionHistory"] == []
+    assert not result.canGenerateScenario
+    assert len(grounded_model[0]) == 1
+
+
+def test_topic_entry_can_continue_into_real_experience(grounded_model):
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": None}
+    first = discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput="배송 이야기를 하고 싶어요"))
+    grounded_model[1]["discovery_brief"] = {"updates": [
+        {"topic": "ACTIVITY", "turn": 2, "quote": "물건을 주문했어요"},
+        {"topic": "ACCESS", "turn": 2, "quote": "온라인 상점에서"}],
+        "personalizationTarget": "OTHER", "contextSufficient": True}
+    second = discover(DiscoveryRequest(conversation=[], knownFacts=first.facts, currentInput="온라인 상점에서 물건을 주문했어요"))
+    assert second.canGenerateScenario
+    assert second.facts["knownTopics"]["ACTIVITY"]["turn"] == 2
+    assert not second.facts["basicScenarioOffered"]
+
+
+def test_opening_is_not_repeated_when_no_experience_can_be_supplied(grounded_model):
+    grounded_model[1]["discovery_brief"] = {"updates": [], "nextTopic": None}
+    first = discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput="여행 이야기를 하고 싶어요"))
+    second = discover(DiscoveryRequest(conversation=[], knownFacts=first.facts, currentInput="더 생각나는 건 없어요"))
+    assert first.facts["questionHistory"][-1]["topic"] == "ACTIVITY"
+    assert second.nextQuestion != first.nextQuestion
+    assert second.facts["basicScenarioOffered"]
+    assert len(second.facts["questionHistory"]) == 1

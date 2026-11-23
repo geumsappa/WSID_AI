@@ -78,6 +78,13 @@ def grounded_model(monkeypatch, graph_data, plan_data, review_data, generation_d
         task = system.splitlines()[0].removeprefix("TASK: ")
         payload = json.loads(content)
         calls.append((task, payload))
+        if task == "generation_plan" and task not in overrides:
+            plan = deepcopy(plan_data)
+            plan.update(desiredOutcome="정산을 구실로 정보 요구", escalation="안내 뒤 정보 요청으로 진행",
+                contactSetup={"contactBasis": "FICTIONAL_FIRST_CONTACT", "senderRole": plan["impersonatedRole"],
+                    "contactPremise": "훈련에서 가정한 첫 사칭 연락", "knowledgePremise": "사용자가 말한 이용 경험을 아는 척함",
+                    "evidenceIds": [graph_data["evidence"][0]["id"]], "fictionalAssumptions": ["새 사칭 연락"]})
+            return {"context": deepcopy(graph_data), "realConcern": False, "selectedPlan": plan}
         if task in overrides:
             value = overrides[task]
             value = deepcopy(value(payload) if callable(value) else value)

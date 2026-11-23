@@ -1,7 +1,7 @@
 """Attach reporting metadata after an immutable story has passed semantic review."""
 from copy import deepcopy
 
-from app.case_db import load_cases, public_ref
+from app.services.scenario_retrieval import retrieve_patterns, public_pattern_ref
 from app.guard.scenario_guard import find_unsafe_text
 from app.schemas.context_graph import ScenarioClassification
 from app.services.context_graph import ContextIntegrityError
@@ -25,27 +25,43 @@ CODE_DEFINITIONS = {
 }
 
 
+def _story_query(story):
+    """Search approved narrative; input metadata is not evidence of similarity."""
+    parts = [story.get(key, "") for key in ("title", "background", "openingMessage")]
+    parts.append(story.get("persona", {}).get("role", ""))
+    for scene in story.get("keyScenes", []):
+        parts.extend(scene.get(key, "") for key in ("goal", "tactic", "request"))
+        parts.extend(scene.get("requestedInfo", []))
+    return " ".join(part for part in parts if isinstance(part, str) and part.strip())
+
+
 def classify_story(story):
-    cases = load_cases()
+    trace = retrieve_patterns(_story_query(story), limit=3)
+    candidates = {row["id"]: row for row in trace["patterns"][:3]}
     def validate(result):
         text = " ".join([result.fraudSubtype, result.reason, *result.tags])
         if find_unsafe_text(text, story.get("allowedOrganizations", [])):
             raise ContextIntegrityError("unsafe_classification_metadata")
         seen = set()
         for reference in result.references:
-            case = cases.get(reference.caseId)
-            if case is None or reference.caseId in seen:
+            case = candidates.get(reference.caseId)
+            if case is None:
+                raise ContextIntegrityError("unretrieved_classification_reference")
+            if reference.caseId in seen:
                 raise ContextIntegrityError("invalid_classification_reference")
-            mechanics = [*case.get("tactics", []), *case.get("requestedActions", [])]
+            mechanics = [*case["mechanisms"], *case["requestedActions"]]
             if reference.technique not in mechanics:
                 raise ContextIntegrityError("unsupported_reference_technique")
             seen.add(reference.caseId)
-    references = [{key: case.get(key) for key in ("id", "summary", "tactics", "requestedActions", "requestedInfo")} for case in cases.values()]
+    references = [{"id": row["id"], "recordKind": row["recordKind"], "summary": row["description"],
+                   "tactics": row["mechanisms"], "requestedActions": row["requestedActions"]}
+                  for row in candidates.values()]
     result = ask("scenario_classify", {"story": deepcopy(story), "compatibilityCodes": RISK_BY_CODE, "codeDefinitions": CODE_DEFINITIONS,
-                 "referenceTechniques": references}, ScenarioClassification, max_tokens=1200, validate=validate)
+                 "referenceTechniques": references,
+                 "referenceRetrieval": {key: trace[key] for key in ("status", "corpusHash", "retrieverVersion")}}, ScenarioClassification, max_tokens=1200, validate=validate)
     metadata = {"fraudSubtype": result.fraudSubtype, "fraudTypeCode": result.fraudTypeCode,
                 "riskType": RISK_BY_CODE[result.fraudTypeCode], "classificationFit": result.classificationFit,
                 "classificationReason": result.reason, "tags": result.tags,
-                "basedOnCases": [public_ref(cases[reference.caseId]) for reference in result.references],
+                "basedOnCases": [public_pattern_ref(candidates[reference.caseId]) for reference in result.references],
                 "referenceStatus": "MATCHED" if result.references else "NOT_MATCHED"}
     return metadata

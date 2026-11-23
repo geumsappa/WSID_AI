@@ -3,6 +3,14 @@ from copy import deepcopy
 
 
 def respond(task, payload):
+    if task == "generation_plan":
+        result = respond("intake_plan", payload)
+        plan = result["selectedPlan"]
+        plan.update(desiredOutcome="mock 정보 제공", escalation="mock 진행",
+            contactSetup={"contactBasis": "FICTIONAL_FIRST_CONTACT", "senderRole": plan["impersonatedRole"],
+                "contactPremise": "mock 첫 연락", "knowledgePremise": "mock 주장",
+                "evidenceIds": [result["context"]["evidence"][0]["id"]], "fictionalAssumptions": ["mock 연락"]})
+        return {"context": result["context"], "realConcern": False, "selectedPlan": plan}
     if task == "candidate_plan":
         from app.schemas.context_graph import Approach
         original = respond("intake_plan", payload)
@@ -77,9 +85,9 @@ def respond(task, payload):
             return {"scenario": content["scenario"], "analysis": content["analysis"]}
         return content
     if task == "scenario_classify":
-        from app.case_db import case_ids_for_subtype, get_case
-        case_id = case_ids_for_subtype("중고거래 사기")[0]
-        case = get_case(case_id)
+        candidates = payload.get("referenceTechniques", [])
+        references = ([{"caseId": candidates[0]["id"], "technique": candidates[0]["requestedActions"][0]}]
+                      if candidates else [])
         return {"fraudSubtype": "중고거래 사기", "fraudTypeCode": "SECONDHAND_TRADE", "classificationFit": "EXACT",
-                "reason": "mock 분류 인터페이스 점검", "tags": ["mock"], "references": [{"caseId": case_id, "technique": case["requestedActions"][0]}]}
+                "reason": "mock 분류 인터페이스 점검", "tags": ["mock"], "references": references}
     raise ValueError("Unknown pipeline task")

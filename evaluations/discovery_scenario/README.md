@@ -109,3 +109,19 @@ results.json의 `intake_decisions`에 두 후보와 공통 근거를, `candidate
 `requested`는 생성까지 기대한 평가 사례 수, `attempted`는 실제 생성 함수를 호출한 사례 수, `blocked_before_generation`은 준비 미완료 등으로 호출 전 멈춘 수입니다. `generation_success_rate`는 생성 완료/기대 사례, `attempt_success_rate`는 생성 완료/실제 생성 호출이며 호출이 없으면 null입니다. 추가 질문으로 준비되지 않은 사례를 AI API 오류로 해석하지 마세요. 코드·스키마·사례·프롬프트 해시는 긴 외부 호출 전에 수집합니다.
 
 질문 필요성 검토 결과는 각 턴의 facts.questionAssessments와 question_need_reviews에 저장됩니다. semantic_review_attempts와 scenario_draft_attempts에는 거절된 시도도 포함되므로 최종 반환 성공만으로 생성 품질을 판정하지 마세요. 단계별 시간에서 discovery_question_review를 별도로 확인할 수 있습니다. 이름 확인·준비도 성공과 이후 본문 생성 검증 성공은 서로 다른 항목입니다. 대기 안내 문구 반복은 실제 questionHistory에 있는 질문 반복과 구분합니다.
+
+## 2026-11-23: 접점 기반 준비 완료와 단일 계획 생성
+
+새 맞춤 생성 경로는 `generation_plan → scenario_generate → semantic_review → scenario_classify`의 정상 호출 4회다. 장문 후보 2개 작성·비교를 대신해 계획 하나를 작성하고, 독립 검증은 `CONTEXT_PLAN_AND_DRAFT` 범위에서 원래 사용자 발언·계획·본문을 모두 검사한다. 인용·주체·참조 ID·확인된 이름과 사례 수법 검사는 여전히 코드로 먼저 수행한다. 기존 저장 계획/호환 경로와 BASIC은 기존 후보 비교 경로를 유지한다. 재시도는 호출 수를 늘릴 수 있다.
+
+상황 파악의 `readinessBasis`는 실제 인용과 접점의 연결을 보존하며, 질문의 `necessity=OPTIONAL`은 필수에서 제외한다. PERSON의 이름·관계, SERVICE의 정체성 조건은 이 표시로 건너뛸 수 없다. 접점 근거의 미확인 인용도 거절한다.
+
+프로토콜은 `single-plan-joint-review-v3`이며 새로운 프롬프트와 로더 해시도 보존한다. 이전 v2 결과와 같은 조건의 평가인 것처럼 합치지 않는다. 호출 수 감소는 로컬 회귀 검사로 확인했으며 실제 생성 지연시간의 감소는 아직 측정하지 않았다.
+
+생성·수정·검증의 `userMessages`에는 보존된 원래 사용자 발언을 함께 전달한다. 선택한 context의 인용만으로 대화를 대체하지 않는다. 개인정보 마스킹은 유지하며, 원문이 없는 이전 형식은 `sourceScope=LEGACY_FACTS` 또는 `RETAINED_QUOTES`, 사례 기반 기본 훈련은 `FICTIONAL_CONTEXT`로 구분한다. 원문과 계획·본문 사이의 제공자/수혜자·지불자·부탁 방향을 공통 품질 기준에서 대조한다. 이 보완은 입력 보존과 검사 기준의 강화이며 실제 AI의 의미 판단이 항상 정확함을 보장하지 않는다.
+
+LLM에 전달하는 JSON 스키마는 `response_schema()`로 문서용 title/description/examples/$comment만 제거한다. 실제 필드명(title/description 포함), 타입·필수 여부·enum·길이/개수·참조·기본값과 Pydantic 검증은 유지한다. 원래 API 스키마와 사실 데이터는 변경하지 않는다. 필드 사이 JSON 공백도 줄이되 문자열 내부 공백은 보존한다. 이 감소량은 입력 글자 수 기준이며 실제 토큰/비용 감소율은 별도 측정해야 한다.
+
+상황 파악 지침도 중복을 줄였다. 기본 지침은 약 11,500자에서 약 3,100자로 축약하고 새로 확인한 사실과 현재 질문에 필요한 판단만 작성하도록 했다. 원문·이름/주체 보존·필수/선택 정보 구분·질문 종료·질문 재검토와 출력 검사는 유지한다. 대화 기록을 잘라 줄이거나 재시도 제한을 변경한 것이 아니며, 실제 응답시간 개선은 별도 실측 대상이다.
+
+사후 분류의 유사 사례도 완성된 제목·도입·대사·장면으로 `scenario_patterns.json`을 검색해 최대 3개만 전달한다. 기존 분류용 20개 전체 목록은 새 분류 경로에서 보내지 않는다. 검색 밖 ID·없는 수법·중복 출처 선택을 거절하며 무관한 자료를 강제하지 않는다. 유형/태그는 검색 결과가 없어도 생성하고 출처는 비워 둔다. `classification_attempts`에 후보 ID와 코퍼스/검색기 정보를 보존한다. `basedOnCases`는 사후 유사 사례, `generationEvidence`는 생성 전 실제 사용 근거로 계속 구분한다.

@@ -123,3 +123,11 @@ def basic_pattern_selection(text, case_id=None):
         trace["status"] = "DEFAULT_CATALOG_SELECTION"
     trace["selectionMode"] = "BASIC"
     return trace
+
+
+def public_pattern_ref(row):
+    """Public citation with server-owned source fields, not model-created URLs."""
+    source = row["source"]
+    return {"caseId": row["id"], "title": source["title"], "issuer": source["publisher"],
+            "alertNo": None, "sourceHost": source["publisher"],
+            "sourceDate": source.get("publishedDate"), "sourceUrl": source["url"]}

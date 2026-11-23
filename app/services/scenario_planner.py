@@ -8,11 +8,11 @@ from pydantic import ValidationError
 from app.config import settings
 from app.guard.sensitive import mask_name_address, mask_sensitive
 from app.llm.llm_client import generate_json
-from app.schemas.context_graph import ContextGraph, ScenarioPlan, IntakePlan, GenerationIntakePlan, SemanticReview, CandidateProposal, CandidateComparison
+from app.schemas.context_graph import ContextGraph, ScenarioPlan, IntakePlan, GenerationIntakePlan, SemanticReview, CandidateProposal, CandidateComparison, SinglePlanProposal
 from app.services.context_graph import ContextIntegrityError, check_graph, check_plan
 from app.services.scenario_retrieval import retrieve_patterns, prompt_patterns, validate_uses
 
-from app.services.prompt_templates import load_prompt
+from app.services.prompt_templates import load_prompt, response_schema
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +37,15 @@ def safe_tree(value, key=""):
 
 
 def ask(task, payload, model, *, timeout=None, max_tokens=2500, validate=None):
-    prompt_name = "generation_plan" if task == "intake_plan" and payload.get("generationRequested") else task
+    prompt_name = ("single_generation_plan" if task == "generation_plan" else "generation_plan" if task == "intake_plan" and payload.get("generationRequested") else task)
     prompt = load_prompt(PROMPTS / f"{prompt_name}.md")
     from app.services.basic_training import BASIC_INPUT_SCOPE, SCOPE_INSTRUCTION
     if BASIC_INPUT_SCOPE.get():
         prompt += SCOPE_INSTRUCTION
-    prompt += "\n출력 JSON 스키마:\n" + json.dumps(model.model_json_schema(), ensure_ascii=False)
+    prompt += "\n출력 JSON 스키마:\n" + response_schema(model)
     content = dict(payload)
     for attempt in range(2):
-        raw = generate_json(prompt, json.dumps(content, ensure_ascii=False), timeout=timeout or settings.planning_timeout_seconds,
+        raw = generate_json(prompt, json.dumps(content, ensure_ascii=False, separators=(",", ":")), timeout=timeout or settings.planning_timeout_seconds,
                             max_tokens=max_tokens, attempts=1, reasoning_effort=settings.pipeline_reasoning_effort or None)
         try:
             result = model.model_validate(safe_tree(raw))
@@ -83,11 +83,13 @@ def intake(messages, previous=None, previous_plan=None, question_budget=5, asked
     return result, selected
 
 
-def review(graph, plan, *, messages=None, previous=None, generated=None):
+def review(graph, plan, *, messages=None, previous=None, generated=None, source_scope=None):
+    source_messages = messages if messages is not None else (plan._review_messages if plan else [])
     payload = {"reviewStage": "GENERATED" if generated is not None else "PLAN",
-               "reviewScope": "DRAFT_AGAINST_ACCEPTED_PLAN" if generated is not None else "CONTEXT_AND_PLAN",
+               "sourceScope": source_scope or ("USER_STATEMENTS" if source_messages else "RETAINED_QUOTES"),
+               "reviewScope": ("CONTEXT_PLAN_AND_DRAFT" if plan and plan._joint_review_required else "DRAFT_AGAINST_ACCEPTED_PLAN") if generated is not None else "CONTEXT_AND_PLAN",
                "context": graph.model_dump(), "plan": plan.model_dump() if plan else None,
-               "userMessages": messages or [], "previousContext": previous.model_dump() if previous else None,
+               "userMessages": source_messages, "previousContext": previous.model_dump() if previous else None,
                "generated": generated, "retrievedPatterns": prompt_patterns(plan._retrieval_trace) if plan and plan._retrieval_trace else []}
     return ask("semantic_review", payload, SemanticReview, timeout=settings.verification_timeout_seconds, max_tokens=1500)
 
@@ -114,39 +116,65 @@ def _approach_plan(proposal, candidate):
         "personalizationBasis": [basis.model_dump() for basis in proposal.personalizationBasis]})
 
 
-def _check_candidates(proposal, messages, confirmed_topics=None, personalization_target=None):
-    check_graph(proposal.context, messages)
+def _check_selected_plan(graph, plan, confirmed_topics=None, personalization_target=None):
+    check_plan(plan, graph)
     name_fact = (confirmed_topics or {}).get("PERSON_NAME", {})
     name = name_fact.get("name") if name_fact.get("status") == "KNOWN" else None
-    named_actors = {entity.id for entity in proposal.context.entities if entity.kind == "PERSON" and entity.label == name}
+    named_actors = {entity.id for entity in graph.entities if entity.kind == "PERSON" and entity.label == name}
     if name and not named_actors:
         raise ContextIntegrityError("confirmed_person_name_missing")
+    if (personalization_target == "PERSON" and name_fact.get("status") not in {"KNOWN", "DECLINED"}
+            or personalization_target == "OTHER" and name_fact.get("status") == "PARTIAL"):
+        raise ContextIntegrityError("person_identity_still_pending")
+    people = {entity.id for entity in graph.entities if entity.kind == "PERSON"}
+    if plan.impersonatedActorId in people:
+        if name_fact.get("status") == "PARTIAL":
+            raise ContextIntegrityError("person_identity_still_pending")
+        if personalization_target == "SERVICE":
+            raise ContextIntegrityError("contact_target_changed_from_service_to_person")
+        if name and plan.impersonatedActorId not in named_actors:
+            raise ContextIntegrityError("confirmed_person_identity_changed")
+    if personalization_target == "PERSON" and name and plan.impersonatedActorId not in named_actors:
+        raise ContextIntegrityError("confirmed_person_identity_changed")
+    if plan.contactSetup is not None:
+        evidence_ids = {item.id for item in graph.evidence}
+        if not set(plan.contactSetup.evidenceIds).issubset(evidence_ids):
+            raise ContextIntegrityError("unknown_contact_evidence")
+        if plan.contactSetup.contactBasis == "FICTIONAL_FIRST_CONTACT" and not plan.contactSetup.fictionalAssumptions:
+            raise ContextIntegrityError("missing_fictional_contact_assumption")
+
+
+def _check_candidates(proposal, messages, confirmed_topics=None, personalization_target=None):
+    check_graph(proposal.context, messages)
     ids = [candidate.id for candidate in proposal.candidates]
     if len(set(ids)) != len(ids):
         raise ContextIntegrityError("duplicate_candidate_id")
     signatures = []
-    people = {entity.id for entity in proposal.context.entities if entity.kind == "PERSON"}
     for candidate in proposal.candidates:
-        if candidate.impersonatedActorId in people:
-            if name_fact.get("status") == "PARTIAL":
-                raise ContextIntegrityError("person_identity_still_pending")
-            if personalization_target == "SERVICE":
-                raise ContextIntegrityError("contact_target_changed_from_service_to_person")
-            if name and candidate.impersonatedActorId not in named_actors:
-                raise ContextIntegrityError("confirmed_person_identity_changed")
-        if personalization_target == "PERSON" and name and candidate.impersonatedActorId not in named_actors:
-            raise ContextIntegrityError("confirmed_person_identity_changed")
-        check_plan(_approach_plan(proposal, candidate), proposal.context)
-        if candidate.contactSetup is not None:
-            evidence_ids = {item.id for item in proposal.context.evidence}
-            if not set(candidate.contactSetup.evidenceIds).issubset(evidence_ids):
-                raise ContextIntegrityError("unknown_contact_evidence")
-            if candidate.contactSetup.contactBasis == "FICTIONAL_FIRST_CONTACT" and not candidate.contactSetup.fictionalAssumptions:
-                raise ContextIntegrityError("missing_fictional_contact_assumption")
+        _check_selected_plan(proposal.context, _approach_plan(proposal, candidate), confirmed_topics, personalization_target)
         signatures.append((candidate.impersonatedActorId, candidate.impersonatedRole.strip(), candidate.channel,
                            tuple(sorted(candidate.requestedActions)), candidate.pretext.strip(), candidate.escalation.strip()))
     if signatures[0] == signatures[1]:
         raise ContextIntegrityError("duplicate_candidate_approach")
+
+
+def prepare_generation_plan(messages, *, readiness_evidence=None, confirmed_topics=None, personalization_target=None):
+    """Build one grounded plan; independently review plan and draft together later."""
+    from app.scenario_data import ALLOWED_CHANNELS, ALLOWED_REQUESTS
+    trace = retrieve_patterns(" ".join(message["text"] for message in messages[-6:]))
+    def validate(result):
+        check_graph(result.context, messages)
+        _check_selected_plan(result.context, result.selectedPlan, confirmed_topics, personalization_target)
+        validate_uses(result.selectedPlan.referenceUses, trace)
+    result = ask("generation_plan", {"messages": messages, "readinessEvidence": readiness_evidence,
+        "confirmedTopics": confirmed_topics, "personalizationTarget": personalization_target,
+        "channels": ALLOWED_CHANNELS, "allowedActions": ALLOWED_REQUESTS,
+        "retrievedPatterns": prompt_patterns(trace)}, SinglePlanProposal, max_tokens=3000, validate=validate)
+    selected = result.selectedPlan
+    selected._retrieval_trace = trace
+    selected._joint_review_required = True
+    selected._review_messages = [dict(message) for message in messages]
+    return result.context, selected
 
 
 def choose_generation_plan(messages, *, readiness_evidence=None, confirmed_topics=None, personalization_target=None, reference_trace=None):
@@ -182,6 +210,7 @@ def choose_generation_plan(messages, *, readiness_evidence=None, confirmed_topic
             logger.info("Candidate selected: attempt=%d id=%s", attempt + 1, winner.candidateId)
             selected = candidates[winner.candidateId]
             selected._retrieval_trace = trace
+            selected._review_messages = [{"turn": message["turn"], "text": mask_input(message["text"])} for message in messages]
             return proposal.context, selected
         previous_proposal = proposal.model_dump()
         feedback = (["REPETITIVE_PATTERN: " + mask_input(comparison.distinctionReason)] if not comparison.alternativesDistinct else [])

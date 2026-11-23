@@ -87,12 +87,7 @@ def test_semantic_near_duplicates_trigger_one_candidate_revision(grounded_model,
 
 
 def test_money_only_goal_reaches_the_public_scenario_contract(grounded_model, graph_data, plan_data, review_data, generation_data):
-    bundle = proposal(graph_data, plan_data)
-    bundle["candidates"][0].update(requestedActions=["송금"], desiredOutcome="정산금 요구")
-    judgments = comparison(bundle, review_data)
-    judgments["assessments"][0].update(grounding=2, plausibility=2, originality=2)
-    judgments["assessments"][1]["grounding"] = 1
-    grounded_model[1].update(candidate_plan=bundle, candidate_compare=judgments)
+    plan_data.update(requestedActions=["송금"], desiredOutcome="정산금 요구")
     for scene in generation_data["scenario"]["keyScenes"]:
         scene["request"] = "송금"
         scene["requestedInfo"] = []

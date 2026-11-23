@@ -69,6 +69,10 @@ def test_pipeline_supplies_previous_draft_and_only_merges_requested_changes(grou
     assert [p["mode"] for p in payloads] == ["GENERATE", "REPAIR"]
     assert payloads[0]["context"] == payloads[1]["context"]
     assert payloads[0]["plan"] == payloads[1]["plan"]
+    assert payloads[0]["userMessages"] == payloads[1]["userMessages"]
+    assert payloads[0]["userMessages"] == [{"turn": 1, "text": graph_data["evidence"][0]["quote"]}]
+    assert all(review["userMessages"] == payloads[0]["userMessages"] for review in reviews)
+    assert payloads[0]["sourceScope"] == payloads[1]["sourceScope"] == "LEGACY_FACTS"
 
 
 def test_repaired_unsafe_output_never_reaches_classification(grounded_model, graph_data, review_data, generation_data):

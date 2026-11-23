@@ -115,7 +115,7 @@ class VerifiedReference(ContractModel):
 
 
 class ChatTurn(ContractModel):
-    """이전 대화 한 턴. Spring이 저장한 가린 글(safe_content)을 그대로 보낸다."""
+    """이전 대화 한 턴. Spring이 저장한 대화(설명·질문·AI 답변)와 사진 턴("[사진"으로 시작, 요약 + 가린 글자)."""
     role: Literal["USER", "AI"]
     content: Annotated[str, Field(min_length=1, max_length=2000), AfterValidator(nonblank)]
 

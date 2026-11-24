@@ -105,7 +105,8 @@ def korean_digits_to_arabic(text: str) -> str:
 
 def mask_user_message(text: str, expecting: list[str] | tuple[str, ...] = ()) -> MaskResult:
     types: list[str] = []
-    s = unicodedata.normalize("NFKC", text)  # 전각 숫자·문자 정규화
+    # 전각 숫자·문자는 정규화하되 ㅋㅋ/ㅎㅎ 같은 한글 호환 자모는 보존한다.
+    s = re.sub(r"[^\u3130-\u318f]+", lambda m: unicodedata.normalize("NFKC", m.group()), text)
     s = korean_digits_to_arabic(s)
 
     s, n_forged = _FORGED_MARKERS.subn("", s)

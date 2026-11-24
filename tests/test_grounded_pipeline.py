@@ -111,7 +111,7 @@ def test_generation_cannot_swap_preserved_claim_actor(pipeline_model, graph_data
     with pytest.raises(AiApiError) as error:
         training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="MESSENGER_PHISHING"))
     assert error.value.status == 503
-    assert sum(task == "scenario_generate" for task, _ in pipeline_model[0]) == 2
+    assert sum(task == "scenario_generate" for task, _ in pipeline_model[0]) == 4
 
 
 def test_matching_ids_do_not_bypass_semantic_review_of_visible_body(pipeline_model, graph_data, generation_data, review_data):
@@ -128,8 +128,8 @@ def test_matching_ids_do_not_bypass_semantic_review_of_visible_body(pipeline_mod
     with pytest.raises(AiApiError) as error:
         training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="MESSENGER_PHISHING"))
     assert error.value.status == 503
-    assert sum(task == "scenario_generate" for task, _ in pipeline_model[0]) == 2
-    assert sum(task == "semantic_review" for task, _ in pipeline_model[0]) == 3
+    assert sum(task == "scenario_generate" for task, _ in pipeline_model[0]) == 4
+    assert sum(task == "semantic_review" for task, _ in pipeline_model[0]) == 5
 
 
 def test_rejected_generation_can_be_repaired_once(pipeline_model, graph_data, review_data):

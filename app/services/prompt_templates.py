@@ -11,9 +11,14 @@ def load_prompt(path: Path) -> str:
         ("{{CONTEXT_FACTS}}", "context_facts.md"),
         ("{{INTAKE_SUFFICIENCY}}", "intake_sufficiency.md"),
         ("{{SCENARIO_QUALITY_CRITERIA}}", "scenario_quality_criteria.md"),
+        ("{{CONTEXT_SUFFICIENCY}}", "context_sufficiency.md"),
     ):
         if token in prompt:
             prompt = prompt.replace(token, (PROMPTS / filename).read_text(encoding="utf-8"))
+    if "{{DRAFT_QUALITY_CRITERIA}}" in prompt:
+        criteria = (PROMPTS / "scenario_quality_criteria.md").read_text(encoding="utf-8")
+        prompt = prompt.replace("{{DRAFT_QUALITY_CRITERIA}}", "\n".join(
+            line for line in criteria.splitlines() if not line.startswith("- sufficientContext:")) + "\n")
     return prompt
 
 

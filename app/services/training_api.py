@@ -58,13 +58,17 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
         from app.services.basic_training import generate_basic
         result = generate_basic(request)
     else:
+        if request.facts.get("pipelineVersion") == 3 and not request.facts.get("preparedScenario"):
+            raise AiApiError(422, "INVALID_REQUEST", "상황 파악의 계획 검증을 먼저 마쳐 주세요.")
         result = run_scenario("scenario", facts, context=request.facts.get("contextGraph"),
                           plan=request.facts.get("scenarioPlan"), context_hash=request.facts.get("planContextHash"),
                           discovery_evidence=request.facts.get("discoveryEvidence"),
                           discovery_ready=request.facts.get("discoveryReady", False),
                           readiness_evidence=request.facts.get("readinessEvidence"),
                           discovery_topics=request.facts.get("knownTopics"),
-                          discovery_requirements=request.facts.get("intakeRequirements"))
+                          discovery_requirements=request.facts.get("intakeRequirements"),
+                          readiness_basis=request.facts.get("readinessBasis"),
+                          prepared_plan=request.facts.get("preparedScenario"))
     # 실제 회사·서비스 이름은 가상 이름으로 (사기범 역할에 실제 브랜드가 나오지 않게)
     generated = fictionalize_tree(_scenario(result["scenario"]))
     # Spring은 제목·설명과 함께 전체 시나리오를 보관하고 다음 AI 요청에 재사용한다.

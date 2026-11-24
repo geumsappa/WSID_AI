@@ -13,20 +13,21 @@ def ask(text, facts=None, conversation=None):
     return discovery.discover(DiscoveryRequest(conversation=conversation or [], knownFacts=facts or {}, currentInput=text))
 
 
-def test_public_discovery_calls_only_the_small_decision(grounded_model, graph_data):
+def test_ready_is_advertised_only_after_plan_review(grounded_model, graph_data):
     result = ask(graph_data["evidence"][0]["quote"])
     assert result.canGenerateScenario
-    assert [task for task, _ in grounded_model[0]] == ["discovery_brief"]
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "generation_plan", "semantic_review"]
+    assert result.facts["preparedScenario"]
     assert result.facts["discoveryReady"] is True
     assert "scenarioPlan" not in result.facts and "contextGraph" not in result.facts
 
 
-def test_full_verification_moves_to_generation(grounded_model, graph_data):
+def test_generation_reuses_plan_verified_during_discovery(grounded_model, graph_data):
     result = ask(graph_data["evidence"][0]["quote"])
     generated = training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="SMISHING"))
     assert generated.scenario["fraudTypeCode"] == "MESSENGER_PHISHING"
     assert generated.scenario["sourceFacts"][0]["actorId"] == "actor_peer"
-    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "generation_plan", "scenario_generate", "semantic_review", "scenario_classify"]
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "generation_plan", "semantic_review", "scenario_generate", "draft_review", "scenario_classify"]
 
 
 def test_fast_ready_does_not_bypass_later_semantic_rejection(grounded_model, graph_data, review_data):
@@ -135,10 +136,10 @@ def test_generation_repairs_a_missing_plan_but_joint_review_can_still_veto(groun
     with pytest.raises(AiApiError) as error:
         training_api.scenario(ScenarioRequest(facts=result.facts, fraudTypeCode="SMISHING"))
     assert error.value.status == 503
-    assert len(count) == 2
+    assert len(count) == 2  # Plan schema repair happened before readiness; generation cannot replan.
     assert count[1]["schemaErrors"][0]["path"] == "selectedPlan"
     verdicts = [payload for task, payload in grounded_model[0] if task == "semantic_review"]
-    assert verdicts and all(payload["reviewScope"] == "CONTEXT_PLAN_AND_DRAFT" for payload in verdicts)
+    assert verdicts and all(payload["reviewScope"] == "CONTEXT_AND_PLAN" for payload in verdicts)
     assert not any(task == "scenario_classify" for task, _ in grounded_model[0])
 
 

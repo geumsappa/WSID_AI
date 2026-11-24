@@ -124,7 +124,7 @@ def test_generated_story_losing_its_reference_is_rejected(monkeypatch, grounded_
         training_api.scenario(ScenarioRequest(fraudTypeCode="MESSENGER_PHISHING", facts={"discoveryReady": True,
             "discoveryEvidence": [{"turn": 1, "text": graph_data["evidence"][0]["quote"]}]}))
     assert exc.value.status == 503
-    assert sum(task == "scenario_generate" for task, _ in grounded_model[0]) == 2
+    assert sum(task == "scenario_generate" for task, _ in grounded_model[0]) == 4
     assert not any(task == "scenario_classify" for task, _ in grounded_model[0])
 
 

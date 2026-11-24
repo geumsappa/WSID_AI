@@ -89,8 +89,9 @@ def test_마지막_장면_끝나면_종료():
     sc = _scenario()
     sc["minTurns"] = 1  # 최소 답변 수를 채운 경우
     r = training.run_training_turn("s1", sc, 3, _history("안 보낼게요, 공식 앱에서 확인할게요"))
-    assert r["done"] and r["endReason"] == "scenario_complete"
-    assert r["choices"] == []
+    # 공식 앱으로 확인하겠다는 말은 사용자가 끊은 것으로도 볼 수 있어요 (어느 쪽이든 끝나야 해요)
+    assert r["done"] and r["endReason"] in ("scenario_complete", "user_exit")
+    assert r["choices"] == [] and r["personaMessage"].endswith("[퇴장]")
 
 
 def test_최소_답변_수_전에는_시나리오가_끝나도_이어감(monkeypatch):
@@ -178,14 +179,14 @@ def test_요구받은_생년월일을_숫자로만_답해도_잡힘():
 
 
 
-def test_이름처럼_패턴이_없는_정보는_LLM_판단으로_기록하고_답변은_통째로_가림(monkeypatch):
+def test_이름은_가리지_않고_LLM_판단으로_입력만_기록(monkeypatch):
     sc = _scenario_of("택배 사칭")  # 장면2: 이름, 전화번호, 카드번호 요구
     monkeypatch.setattr(training, "generate_json", lambda *a, **k: {
         "judgment": {"outcome": "risky", "disclosedInfo": ["이름", "혈액형"]},
         "personaMessage": "확인됐습니다.", "nextScene": 3})
     r = training.run_training_turn("s1", sc, 2, _history("김아무개입니다"))
     assert r["infoDisclosure"]["provided"] == ["이름"]        # 요구받지 않은 '혈액형'은 버림
-    assert "김아무개" not in r["maskedText"]
+    assert "김아무개" in r["maskedText"]  # 11/24 팀 결정: 이름은 가리지 않음
 
 
 def test_사기범_대사가_범행_요령이면_기본_대사로_교체(monkeypatch):
@@ -368,11 +369,11 @@ def test_거절하는_말은_이름으로_가리지_않음(monkeypatch):
     assert r["infoDisclosure"]["provided"] == [] and r["judgment"]["outcome"] == "safe"
 
 
-def test_예금주_성함을_물은_직후_섞어_적은_이름도_가림():
+def test_예금주_성함을_물은_직후_섞어_적은_이름도_찾아서_기록():
     from app.services.training_turn import _mask_last
     asked = "예금주 성함이랑 계좌번호만 여기 바로 적어 주세요"
     masked, provided = _mask_last("박선홍 국민은행 [계좌번호]", ["계좌번호", "전화번호"], asked)
-    assert "박선홍" not in masked and set(provided) == {"계좌번호", "이름"}
+    assert "박선홍" in masked and set(provided) == {"계좌번호", "이름"}  # 이름은 가리지 않고 기록만
     assert _mask_last("지금 못 보내요", ["계좌번호"], asked) == ("지금 못 보내요", [])
 
 
@@ -383,3 +384,23 @@ def test_규칙_프롬프트는_매_턴_같아서_캐시됨(monkeypatch):
     training.run_training_turn("c", _scenario(), 2, _history("무슨 물건이요?", "아 그래요?", "네"),
                                state={"facts": ["가격: 3만 원"], "lastMove": "요구", "scene": 2})
     assert systems[0] == systems[1] and "{{" not in systems[0]
+
+
+def test_작별_인사를_하면_더_붙잡지_않고_끝냄(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda s, t, **kw: _move_reply(
+        move="압박", personaMessage="잠깐만요! 25,000원만 먼저 보내 주시면 바로 예약 잡아 드릴게요.",
+        judgment={"outcome": "safe"}))
+    r = training.run_training_turn("bye", _scenario(), 1, _history("아니 직접으로 안할게요", "넵 안녕히가세요"))
+    assert r["done"] and r["endReason"] == "user_exit"
+    assert "25,000" not in r["personaMessage"] and r["personaMessage"].endswith("[퇴장]")
+
+
+def test_마지막_장면에서_송금하면_사기범이_떠나며_끝남(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda s, t, **kw: _move_reply(
+        move="확전", personaMessage="입금 확인됐어요. 이제 보증금 5만 원만 더 보내 주세요.", nextScene=3,
+        judgment={"outcome": "risky"}))
+    history = [{"role": "persona", "text": "수수료 3만 원만 보내 주세요. [모의계좌]"},
+               {"role": "event", "text": training.TRANSFER_EVENT}, {"role": "user", "text": "보냈어요"}]
+    r = training.run_training_turn("paid", _scenario(), 3, history)
+    assert r["done"] and r["endReason"] == "scam_success"
+    assert "보증금" not in r["personaMessage"] and r["personaMessage"].endswith("[퇴장]")

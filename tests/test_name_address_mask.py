@@ -1,4 +1,4 @@
-"""이름·주소를 외부 AI로 보내기 전에 규칙으로 먼저 가리는지 확인해요."""
+"""주소는 외부 AI로 보내기 전에 가리고, 이름은 가리지 않고 찾기만 하는지 확인해요 (11/24 팀 결정)."""
 from app.guard.sensitive import mask_name_address
 
 
@@ -8,15 +8,17 @@ def test_주소는_요구받지_않아도_가림():
     assert mask_name_address("101동 1203호", ["배송지"]) == ("[배송지]", ["배송지"])
 
 
-def test_이름이라고_밝히면_가림():
-    assert mask_name_address("제 이름은 홍길동입니다")[0] == "제 이름은 [이름]입니다"
-    assert mask_name_address("성함은 박민수요")[0] == "성함은 [이름]요"
+def test_이름이라고_밝히면_가리진_않고_찾음():
+    assert mask_name_address("제 이름은 홍길동입니다") == ("제 이름은 홍길동입니다", ["이름"])
+    assert mask_name_address("성함은 박민수요") == ("성함은 박민수요", ["이름"])
+    # 다시 가리기로 하면 MASK_NAMES 하나만 바꾸면 돼요
+    assert mask_name_address("제 이름은 홍길동입니다", mask_names=True)[0] == "제 이름은 [이름]입니다"
 
 
 def test_이름을_요구받은_직후의_짧은_답은_이름으로_봄():
-    assert mask_name_address("김철수입니다", ["성함"]) == ("[성함]입니다", ["성함"])
+    assert mask_name_address("김철수입니다", ["성함"]) == ("김철수입니다", ["성함"])
     text, found = mask_name_address("홍길동이고 주소는 서울시 마포구 월드컵로 12", ["이름", "주소"])
-    assert text == "[이름]이고 주소는 [주소]" and set(found) == {"이름", "주소"}
+    assert text == "홍길동이고 주소는 [주소]" and set(found) == {"이름", "주소"}
 
 
 def test_평범한_답은_이름으로_오해하지_않음():
@@ -41,5 +43,5 @@ def test_name_question_connectors_are_not_names():
 
 
 def test_name_that_resembles_a_question_connector_still_gets_masked():
-    assert mask_name_address("이름은 이나예요")[0] == "이름은 [이름]예요"
-    assert mask_name_address("이나입니다", ["이름"])[0] == "[이름]입니다"
+    assert mask_name_address("이름은 이나예요") == ("이름은 이나예요", ["이름"])
+    assert mask_name_address("이나입니다", ["이름"]) == ("이나입니다", ["이름"])

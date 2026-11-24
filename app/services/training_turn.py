@@ -36,6 +36,7 @@ PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "training_tur
 OUTCOMES = {"safe", "risky", "neutral"}
 INFO_REQUEST = "개인정보 제공"
 TYPE_IT_MARK = "여기에 적어 주세요"  # '직접 입력하라'는 재요구를 이미 했는지 알아보는 표시
+TYPE_IT_SEEN = re.compile(r"여기에\s*적어\s*(?:주세요|줘)")  # 반말로 바뀐 표시("여기에 적어 줘")도 알아봐요
 # 실제 사기범은 처음 몇 마디는 신뢰를 쌓는 데 써요. 이 답변 수까지는 요구 문장을 억지로 덧붙이지 않아요.
 WARMUP_TURNS = 1
 APP_CLICK_EVENT = "[훈련 행동: 가상 앱 설치 링크 누름]"
@@ -55,6 +56,33 @@ DEMAND_WORDS = re.compile(r"\[모의링크\]|\[모의앱\]|\[모의계좌\]|링�
 FAKE_MARK = re.compile(r"\[\s*(?:가림|훈련\s*행동|가상)[^\]]*\]")
 # 대화 속 인물 대사에서 "가상" 같은 설명 말을 빼요 (몰입을 깨는 표현)
 VIRTUAL_WORD = re.compile(r"\(가상\)|가상의\s*|가상\s+(?=[가-힣])")
+# 화면에 나가는 모든 글에서 '가상·모의·훈련용' 같은 몰입을 깨는 말을 지워요.
+# 소품 표시([모의링크]·[모의계좌]·[모의앱])와 사진 소품([사진:...])은 프론트가 카드로 바꾸는 표시라 그대로 둬요.
+_PROP_TOKEN = re.compile(r"\[모의(?:링크|계좌|앱)\]|\[(?:사진|공문|대출승인):[^\]]*\]")
+_UNREAL_BRACKET = re.compile(r"\[\s*(?:가상|모의|훈련용|예시)\s*([^\[\]]{1,24}?)\s*\]")   # [가상 생년월일] → 생년월일
+_UNREAL_WORD = re.compile(r"\(\s*(?:가상|모의|예시)\s*\)|(?:(?:가상|모의)\s*)?훈련용\s*|(?:가상|모의)\s*훈련\s*|가상의\s*|가상(?!화폐|자산|통화|계좌)\s*(?=[가-힣])|모의\s*(?=[가-힣])")
+
+
+def _unreal_clean(text: str) -> str:
+    """'가상 생년월일', '[가상 계좌 끝자리]', '모의 훈련', '훈련용' 같은 말을 지워요 (소품 표시는 남겨요)"""
+    if not text:
+        return text
+    kept: list[str] = []
+
+    def hold(m: re.Match) -> str:
+        kept.append(m.group(0))
+        return f"\x00{len(kept) - 1}\x00"
+
+    out = _PROP_TOKEN.sub(hold, text)
+    out = _UNREAL_BRACKET.sub(lambda m: m.group(1).strip(), out)
+    out = _UNREAL_WORD.sub("", out)
+    out = re.sub(r"[ \t]{2,}", " ", out)
+    return re.sub(r"\x00(\d+)\x00", lambda m: kept[int(m.group(1))], out).strip()
+
+
+def _info_name(item: str) -> str:
+    """요구 정보 이름에서 표시를 떼요: '[가상 생년월일]' → '생년월일'"""
+    return _unreal_clean(str(item)).strip("[] ") or str(item)
 # 사용자가 앱 링크를 누르지 않았는데 설치가 끝났다고 말하는 대사
 INSTALL_DONE = re.compile(r"설치(가|는|를)?\s*(확인|완료)\s*(됐|되었|했|하셨|되셨)|설치(하셨|해\s*주셨)(군요|네요|으니|으면)")
 
@@ -223,7 +251,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         type_it = bool(
             scene_now.get("request") == INFO_REQUEST and text_info
             and judgment["outcome"] == "risky" and not provided
-            and TYPE_IT_MARK not in last_persona
+            and not TYPE_IT_SEEN.search(last_persona)
         )
         if type_it:
             next_scene = current_scene
@@ -420,8 +448,8 @@ def _consistent_line(scene: dict, request_type: str, app_clicked: bool) -> tuple
 
 
 def _mentions(text: str, info: list[str]) -> bool:
-    compact = text.replace(" ", "")
-    return any(i.replace(" ", "") in compact for i in info)
+    compact = _unreal_clean(text).replace(" ", "")
+    return any(_info_name(i).replace(" ", "") in compact for i in info)
 
 
 def _str_list(value) -> list[str]:
@@ -560,8 +588,8 @@ def _is_photo_info(info: str) -> bool:
 
 
 def _request_info_line(info: list[str]) -> str:
-    photos = [item for item in info if _is_photo_info(item)]
-    text = [item for item in info if not _is_photo_info(item)]
+    photos = [_info_name(item) for item in info if _is_photo_info(item)]
+    text = [_info_name(item) for item in info if not _is_photo_info(item)]
     parts = []
     if text:
         parts.append(f"{', '.join(text)} {TYPE_IT_MARK}.")
@@ -583,6 +611,10 @@ def _result(persona_message, current_scene, request_type, requested_info, choice
             real_concern=False, fallback_used=False, training_state=None, request_made=None,
             move=None) -> dict:
     disclosure = info_disclosure or {"requested": [], "provided": [], "disclosed": False}
+    if not real_concern:  # 실제 피해 안내(훈련 중단 문구)만 빼고 몰입을 깨는 말을 지워요
+        persona_message = _unreal_clean(persona_message)
+        choices = [_unreal_clean(c) for c in choices or []]
+        requested_info = [_info_name(i) for i in requested_info or []]
     return {
         "personaMessage": persona_message,
         "currentScene": current_scene,

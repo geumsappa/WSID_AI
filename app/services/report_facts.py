@@ -132,7 +132,7 @@ def _judge(f: ReportFacts) -> None:
     did, missed = f.did, f.missed
     text_info = [p for p in f.provided if p not in f.photos]
     for info in text_info:
-        missed.append(f"요구받은 {_josa(info, '을', '를')} 대화창에 적었어요{_turns_of(f, info=info)}. 실제였다면 그대로 사기에 쓰였을 수 있어요.")
+        missed.append(f"요구받은 {_josa(info, '을', '를')} 대화창에 적었어요{_turns_of(f, info=info)}. 사기에 그대로 쓰일 수 있는 정보예요.")
     kept = [r for r in f.requested if r not in f.provided]
     if kept and not text_info:
         did.append(f"상대가 요구한 {_josa(_list(kept[:4]), '을', '를')} 끝까지 알려 주지 않았어요.")
@@ -140,7 +140,7 @@ def _judge(f: ReportFacts) -> None:
         did.append(f"{_josa(_list(kept[:3]), '은', '는')} 알려 주지 않았어요.")
     if f.sent_link:
         if f.submitted_page:
-            missed.append("링크를 열어 가짜 확인 화면에 정보를 입력했어요. 문자·메신저로 받은 링크에는 정보를 넣지 마세요.")
+            missed.append("링크를 열어 확인 화면에 정보를 입력했어요. 문자·메신저로 받은 링크에는 정보를 넣지 마세요.")
         elif f.opened_page:
             missed.append("상대가 보낸 링크를 열었어요. 정보를 넣지는 않았지만, 링크를 여는 것만으로도 위험할 수 있어요.")
         else:
@@ -158,7 +158,7 @@ def _judge(f: ReportFacts) -> None:
             did.append("안내받은 계좌로 돈을 보내지 않았어요.")
     for photo in f.photos:
         # Spring(photoFeedback)이 붙이는 문장과 같게 써서 두 번 나오지 않게 해요
-        missed.append(f"{photo} 제공 요청에 응했어요. 실제 상황에서는 출처를 확인하기 전 자료를 보내지 마세요.")
+        missed.append(f"{photo} 제공 요청에 응했어요. 출처를 확인하기 전에는 자료를 보내지 마세요.")
     if f.asked_photo and not f.photos and re.search(r"신분증|통장|상품권", " ".join(f.requested) or ""):
         did.append("사진 자료를 보내 달라는 요구에 응하지 않았어요.")
     if f.verified:
@@ -166,7 +166,7 @@ def _judge(f: ReportFacts) -> None:
     if f.ended_contact:
         did.append("수상한 요구에 더 응하지 않고 먼저 대화를 끊었어요.")
     elif f.scam_finished:
-        missed.append("돈을 받은 상대가 바로 대화방을 나갔어요. 실제 사기에서도 송금 직후 연락이 끊겨요.")
+        missed.append("돈을 받은 상대가 바로 대화방을 나갔어요. 송금 직후 연락이 끊기는 건 전형적인 사기 수법이에요.")
     if not f.verified and not f.ended_contact and f.grade != "안전":
         missed.append("대화를 끊거나 공식 채널(공식 앱·대표번호)로 확인하는 단계까지 가지 않았어요.")
 
@@ -182,7 +182,7 @@ def grade_sentence(f: ReportFacts) -> str:
         if f.clicked_app:
             stems.append("앱 설치 링크를 눌렀")
         if f.submitted_page:
-            stems.append("가짜 확인 화면에 정보를 입력했")
+            stems.append("링크로 연 확인 화면에 정보를 입력했")
         body = ("고, ".join(stems) + "어요.") if stems else "요구에 응한 행동이 있었어요."
         return f"결과: 위험. {body}"
     if f.grade == "주의":

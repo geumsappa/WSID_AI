@@ -20,6 +20,7 @@ PHOTO_EVENTS = {"신분증사진_제공": "신분증 사진", "통장사진_제�
 _MARK = re.compile(r"\[(?:가림:)?(주민등록번호|카드번호|전화번호|휴대폰번호|계좌번호|이메일|비밀번호|인증번호|인증정보|이름|주소|생년월일|연락처)\]")
 _ENTERED = re.compile(r"\[([가-힣 ,·]{2,40}) 입력함\]")
 _LEFT = ("user_exit",)
+_GAVE_UP = ("scammer_left",)
 
 
 @dataclass
@@ -47,6 +48,7 @@ class ReportFacts:
     verified: bool                      # 공식 채널로 확인
     ended_contact: bool                 # 훈련자가 먼저 연락을 끊음
     scam_finished: bool                 # 사기범이 돈을 받고 나감
+    gave_up: bool = False               # 계속 거절해서 사기범이 먼저 나감
     grade: str = ""                     # 안전 | 주의 | 위험
     did: list[str] = field(default_factory=list)       # 잘한 점 (사실)
     missed: list[str] = field(default_factory=list)    # 개선할 점 (사실)
@@ -108,6 +110,7 @@ def collect(scenario: dict, conversation: list[dict], actions: set[str]) -> Repo
         transfers=transfers, photos=photos,
         verified="OFFICIAL_CHANNEL_CHECK" in actions or any("공식경로_확인" in t.events for t in turns),
         ended_contact=any(isinstance(i, dict) and i.get("x") in _LEFT for i in log),
+        gave_up=any(isinstance(i, dict) and i.get("x") in _GAVE_UP for i in log),
         scam_finished=any(isinstance(i, dict) and i.get("x") == "scam_success" for i in log),
     )
     _judge(facts)
@@ -124,7 +127,7 @@ def _judge(f: ReportFacts) -> None:
     risky_turns = [t for t in f.turns if t.outcome == "risky"]
     if f.provided or risky_action:
         f.grade = "위험"
-    elif risky_turns or not (f.verified or f.ended_contact):
+    elif risky_turns or not (f.verified or f.ended_contact or f.gave_up):
         f.grade = "주의"
     else:
         f.grade = "안전"
@@ -170,7 +173,9 @@ def _judge(f: ReportFacts) -> None:
         did.append("수상한 요구에 더 응하지 않고 먼저 대화를 끊었어요.")
     elif f.scam_finished:
         missed.append("돈을 받은 상대가 바로 대화방을 나갔어요. 송금 직후 연락이 끊기는 건 전형적인 사기 수법이에요.")
-    if not f.verified and not f.ended_contact and f.grade != "안전":
+    if f.gave_up and not f.ended_contact:
+        did.append("요구에 계속 응하지 않자 상대가 먼저 대화를 정리했어요.")
+    if not f.verified and not f.ended_contact and not f.gave_up and f.grade != "안전":
         missed.append("대화를 끊거나 공식 채널(공식 앱·대표번호)로 확인하는 단계까지 가지 않았어요.")
 
 

@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "description": "AI 시뮬레이션 판정(safe/risky/neutral) 정확도 평가 문항. 개인정보처럼 보이는 값은 모두 지어낸 테스트 값이에요.",
+  "cases": [
+    {
+      "id": "safe-doubt-link",
+      "scenario": "택배 사칭",
+      "scene": 1,
+      "persona": "[한빛택배] 고객님 소형 상자 1건이 주소 불명으로 보류 중이에요. 오늘 안에 주소를 다시 입력해 주셔야 출발합니다. [모의링크]",
+      "user": "사기 아니에요? 이런 링크는 안 눌러요",
+      "expected": "safe",
+      "why": "의심을 드러내고 거절"
+    },
+    {
+      "id": "safe-official-app",
+      "scenario": "택배 사칭",
+      "scene": 1,
+      "persona": "[한빛택배] 고객님 소형 상자 1건이 주소 불명으로 보류 중이에요. 오늘 안에 주소를 다시 입력해 주셔야 출발합니다. [모의링크]",
+      "user": "택배사 공식 앱에서 직접 조회해 볼게요",
+      "expected": "safe",
+      "why": "스스로 찾은 공식 경로로 확인"
+    },
+    {
+      "id": "safe-in-app-pay",
+      "scenario": "중고거래 사기",
+      "scene": 1,
+      "persona": "제가 지방이라 직거래는 어렵고요, 안전결제로 바로 살게요. 여기서 결제 확인해 주세요. [모의링크]",
+      "user": "링크 말고 앱 안의 결제 기능으로만 거래할게요",
+      "expected": "safe",
+      "why": "앱 밖 결제 거절"
+    },
+    {
+      "id": "safe-refuse-transfer",
+      "scenario": "중고거래 사기",
+      "scene": 3,
+      "persona": "결제가 수수료 때문에 보류됐대요. 수수료 3만 원만 이 계좌로 보내 주시면 바로 풀린대요. [모의계좌]",
+      "user": "수수료를 왜 제가 내요? 돈은 못 보내요. 거래 취소할게요",
+      "expected": "safe",
+      "why": "송금 거절"
+    },
+    {
+      "id": "safe-call-known",
+      "scenario": "지인·가족 사칭",
+      "scene": 2,
+      "persona": "엄마 나 폰 고장나서 문자로만 돼ㅠ 급하게 결제할 게 있어서 그러는데 카드 번호 좀 알려줘",
+      "user": "원래 알던 네 번호로 먼저 전화해서 확인할게",
+      "expected": "safe",
+      "why": "원래 알던 번호로 본인 확인"
+    },
+    {
+      "id": "safe-official-number",
+      "scenario": "대출 사기",
+      "scene": 3,
+      "persona": "기존 대출을 먼저 갚으셔야 저금리로 갈아탈 수 있어요. 상환금은 이 계좌로 보내 주세요. [모의계좌]",
+      "user": "은행 대표번호로 직접 전화해서 확인해 볼게요",
+      "expected": "safe",
+      "why": "대표번호로 직접 확인"
+    },
+    {
+      "id": "safe-refuse-id",
+      "scenario": "채용·아르바이트 사기",
+      "scene": 2,
+      "persona": "급여 지급하려면 신분증 사진이랑 급여 받을 계좌번호를 보내 주세요.",
+      "user": "면접도 없이 신분증부터 달라는 건 이상하네요. 안 보낼게요",
+      "expected": "safe",
+      "why": "의심하고 거절"
+    },
+    {
+      "id": "safe-refuse-app",
+      "scenario": "택배 사칭",
+      "scene": 3,
+      "persona": "재배송은 배송 조회 앱에서만 접수돼요. 설치하시면 바로 처리해 드릴게요. [모의앱]",
+      "user": "앱은 공식 앱 마켓에서만 깔아요. 이 링크는 안 눌러요",
+      "expected": "safe",
+      "why": "출처 모를 앱 설치 거절"
+    },
+    {
+      "id": "safe-stop",
+      "scenario": "투자 리딩방",
+      "scene": 1,
+      "persona": "저희 VIP방 회원님들은 이번 달에만 30% 수익 보셨어요. 원금 보장이라 걱정 없으세요.",
+      "user": "원금 보장 투자는 없다고 들었어요. 연락하지 마세요",
+      "expected": "safe",
+      "why": "대화 중단"
+    },
+    {
+      "id": "risky-agree-only",
+      "scenario": "택배 사칭",
+      "scene": 2,
+      "persona": "재배송 접수하려면 본인 확인이 필요해요. 성함이랑 연락처를 여기 채팅에 적어 주세요.",
+      "user": "네 알려드릴게요",
+      "expected": "risky",
+      "why": "값 없이 동의만 해도 위험"
+    },
+    {
+      "id": "risky-name-phone",
+      "scenario": "택배 사칭",
+      "scene": 2,
+      "persona": "재배송 접수하려면 본인 확인이 필요해요. 성함이랑 연락처를 여기 채팅에 적어 주세요.",
+      "user": "김민수 010-1234-5678이요",
+      "expected": "risky",
+      "why": "이름·전화번호 입력 (가림으로 판정)"
+    },
+    {
+      "id": "risky-open-link",
+      "scenario": "중고거래 사기",
+      "scene": 1,
+      "persona": "제가 지방이라 직거래는 어렵고요, 안전결제로 바로 살게요. 여기서 결제 확인해 주세요. [모의링크]",
+      "user": "네 링크 들어가 볼게요",
+      "expected": "risky",
+      "why": "링크를 열겠다고 함"
+    },
+    {
+      "id": "risky-will-send",
+      "scenario": "중고거래 사기",
+      "scene": 3,
+      "persona": "결제가 수수료 때문에 보류됐대요. 수수료 3만 원만 이 계좌로 보내 주시면 바로 풀린대요. [모의계좌]",
+      "user": "알겠어요 지금 바로 보낼게요",
+      "expected": "risky",
+      "why": "송금하겠다고 함"
+    },
+    {
+      "id": "risky-mixed",
+      "scenario": "택배 사칭",
+      "scene": 3,
+      "persona": "재배송은 배송 조회 앱에서만 접수돼요. 설치하시면 바로 처리해 드릴게요. [모의앱]",
+      "user": "좀 이상하긴 한데... 일단 깔아볼게요",
+      "expected": "risky",
+      "why": "의심+응함이면 행동 우선"
+    },
+    {
+      "id": "risky-account",
+      "scenario": "채용·아르바이트 사기",
+      "scene": 2,
+      "persona": "급여 지급하려면 신분증 사진이랑 급여 받을 계좌번호를 보내 주세요.",
+      "user": "계좌는 신한 110-123-456789예요",
+      "expected": "risky",
+      "why": "계좌번호 입력"
+    },
+    {
+      "id": "risky-card-agree",
+      "scenario": "지인·가족 사칭",
+      "scene": 2,
+      "persona": "엄마 나 폰 고장나서 문자로만 돼ㅠ 급하게 결제할 게 있어서 그러는데 카드 번호 좀 알려줘",
+      "user": "알았어 카드 번호 불러줄게",
+      "expected": "risky",
+      "why": "카드번호 주겠다고 함"
+    },
+    {
+      "id": "risky-korean-digits",
+      "scenario": "대출 사기",
+      "scene": 2,
+      "persona": "한도 조회하려면 주민등록번호랑 입금받으실 계좌번호가 필요해요.",
+      "user": "계좌는 일일공 이삼사 오육칠팔구공이에요",
+      "expected": "risky",
+      "why": "한글로 쓴 계좌번호 (가림으로 판정)"
+    },
+    {
+      "id": "risky-hurry",
+      "scenario": "공공기관 사칭",
+      "scene": 1,
+      "persona": "[지원금 안내] 오늘 마감 예정인 지원금 미신청 대상이세요. 지금 신청하지 않으면 소멸돼요. [모의링크]",
+      "user": "오늘 마감이면 빨리 해야겠네요. 바로 신청할게요",
+      "expected": "risky",
+      "why": "시간 압박에 응함"
+    },
+    {
+      "id": "risky-scammer-number",
+      "scenario": "택배 사칭",
+      "scene": 2,
+      "persona": "재배송 접수하려면 본인 확인이 필요해요. 성함이랑 연락처를 여기 채팅에 적어 주세요.",
+      "user": "이 채팅 말고 아까 문자에 있던 번호로 전화해서 알려 드릴게요",
+      "expected": "risky",
+      "why": "사기범 번호로 연락 + 정보 주겠다고 함"
+    },
+    {
+      "id": "neutral-what-parcel",
+      "scenario": "택배 사칭",
+      "scene": 1,
+      "persona": "[한빛택배] 고객님 소형 상자 1건이 주소 불명으로 보류 중이에요. 오늘 안에 주소를 다시 입력해 주셔야 출발합니다. [모의링크]",
+      "user": "무슨 택배요?",
+      "expected": "neutral",
+      "why": "단순 질문"
+    },
+    {
+      "id": "neutral-still-selling",
+      "scenario": "중고거래 사기",
+      "scene": 1,
+      "persona": "안녕하세요! 올리신 물건 아직 판매 중인가요?",
+      "user": "네 아직 있어요",
+      "expected": "neutral",
+      "why": "인사·사실 답변"
+    },
+    {
+      "id": "neutral-scammer-check",
+      "scenario": "택배 사칭",
+      "scene": 1,
+      "persona": "[한빛택배] 고객님 소형 상자 1건이 주소 불명으로 보류 중이에요. 오늘 안에 주소를 다시 입력해 주셔야 출발합니다. [모의링크]",
+      "user": "보내주신 문자에 있는 번호로 전화해서 확인해 볼게요",
+      "expected": "neutral",
+      "why": "사기범이 준 번호로 확인은 공식 확인이 아님"
+    },
+    {
+      "id": "neutral-return-rate",
+      "scenario": "투자 리딩방",
+      "scene": 1,
+      "persona": "저희 VIP방 회원님들은 이번 달에만 30% 수익 보셨어요. 원금 보장이라 걱정 없으세요.",
+      "user": "수익률이 보통 어느 정도예요?",
+      "expected": "neutral",
+      "why": "단순 질문"
+    },
+    {
+      "id": "neutral-rate-question",
+      "scenario": "대출 사기",
+      "scene": 1,
+      "persona": "정부 지원 특별 저금리 대출 대상자로 선정되셨어요. 이번 달까지만 신청 가능해요.",
+      "user": "금리가 몇 퍼센트인데요?",
+      "expected": "neutral",
+      "why": "단순 질문"
+    },
+    {
+      "id": "neutral-work-hours",
+      "scenario": "채용·아르바이트 사기",
+      "scene": 1,
+      "persona": "재택 부업 모집 중이에요. 하루 1~2시간에 일급 15만 원이고 면접 없이 바로 시작돼요.",
+      "user": "하루에 몇 시간 일하는 건가요?",
+      "expected": "neutral",
+      "why": "단순 질문"
+    },
+    {
+      "id": "neutral-offtopic",
+      "scenario": "택배 사칭",
+      "scene": 2,
+      "persona": "재배송 접수하려면 본인 확인이 필요해요. 성함이랑 연락처를 여기 채팅에 적어 주세요.",
+      "user": "ㅋㅋ 오늘 날씨 좋네요",
+      "expected": "neutral",
+      "why": "상관없는 말"
+    }
+  ]
+}

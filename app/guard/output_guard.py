@@ -51,6 +51,27 @@ class TurnState:
     speaker_changes: int = 0
     allowed_requests: tuple = ()
     media_counts: dict = field(default_factory=dict)  # 사진 소품 종류별 사용 횟수 (scam_media.count_used)
+    photo_kinds: tuple = ()          # 시나리오에 나오는 사진 자료 종류 (신분증·통장·상품권). 이 밖의 사진은 요구하지 않아요
+    photo_asked: tuple = ()          # 지금까지 사기범이 요구한 사진 종류
+
+
+# 사기범이 자료 사진을 보내 달라고 하는 말 ("신분증 앞면 사진 한 장만 보내 주세요", "통장 사본 찍어서 올려 주세요")
+PHOTO_KINDS = ("신분증", "통장", "상품권")
+_PHOTO_ASK = re.compile(r"(신분증|주민등록증|운전면허증|통장|상품권)[^.?!\n]{0,20}(?:사진|사본|앞면|뒷면|촬영|찍)"
+                        r"[^.?!\n]{0,20}(?:보내|올려|찍어|전송|첨부|부탁)")
+_PHOTO_ALIAS = {"주민등록증": "신분증", "운전면허증": "신분증"}
+
+
+def photo_requests(msg: str) -> list[str]:
+    """대사에서 요구한 사진 자료 종류 (신분증·통장·상품권)"""
+    return list(dict.fromkeys(_PHOTO_ALIAS.get(m.group(1), m.group(1)) for m in _PHOTO_ASK.finditer(msg or "")))
+
+
+def scenario_photo_kinds(scenario: dict) -> tuple:
+    """시나리오(설명·장면·요구 정보)에 나오는 사진 자료 종류. 여기 없는 자료는 갑자기 요구하지 않아요"""
+    text = json.dumps(scenario or {}, ensure_ascii=False)
+    text = text.replace("주민등록증", "신분증").replace("운전면허증", "신분증")
+    return tuple(k for k in PHOTO_KINDS if k in text)
 
 
 def _check_message(msg: str, data: dict, st: TurnState) -> list[str]:
@@ -79,6 +100,13 @@ def _check_message(msg: str, data: dict, st: TurnState) -> list[str]:
         errs.append("가리지 않은 전화번호가 있다 (X로 가려야 함)")
     if _LONG_NUM.search(_DATE.sub("", msg)):
         errs.append("계좌·카드번호처럼 보이는 숫자가 있다")
+
+    # 자료 사진 요구: 시나리오에 없는 자료를 갑자기 요구하거나, 같은 자료를 앞면·뒷면으로 나눠 또 요구하지 않아요
+    for kind in photo_requests(msg):
+        if kind not in st.photo_kinds:
+            errs.append(f"시나리오에 없는 {kind} 사진을 요구했다 (시나리오에 나온 정보·행동만 요구한다)")
+        elif kind in st.photo_asked:
+            errs.append(f"{kind} 사진은 이미 요구했다 (앞면·뒷면 등으로 나눠 다시 요구하지 않는다)")
 
     # 사진 소품([사진:상품|...] 등)은 서버(scam_media.clean)가 모양·한도를 고쳐요. 여기선 개수만 알려 줘요
     media = scam_media.find(msg)

@@ -112,7 +112,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         user_turns=user_turns, min_turns=min_turns, max_turns=max_turns,
         prop_counts={p: sum(line.count(p) for line in persona_lines) for p in output_guard.PROPS},
         speaker_changes=_speaker_changes(persona_lines), allowed_requests=tuple(ALLOWED_REQUESTS),
-        media_counts=scam_media.count_used(persona_lines))
+        media_counts=scam_media.count_used(persona_lines),
+        photo_kinds=output_guard.scenario_photo_kinds(scenario),
+        photo_asked=tuple(k for line in persona_lines for k in output_guard.photo_requests(line)))
     # prompt(규칙)는 매 턴 똑같아서 캐시되고, 매 턴 바뀌는 서버 정보는 대본 맨 앞에 붙여요 (비용 절약)
     reaction = _reaction(turn_log, provided, events_this_turn)
     prompt, server_info = _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,

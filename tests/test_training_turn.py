@@ -465,3 +465,27 @@ def test_짧은_대답에_기다리는_말이_이어지면_다음_요구로_끌�
     r = training.run_training_turn("n", _scenario(), 1, _passive_history("무슨 물건이요?", "넵"))
     assert not r["done"]
     assert training.DEMAND_WORDS.search(r["personaMessage"])
+
+
+# ---------------- 시나리오에 없는 자료 사진을 갑자기 요구하지 않기 ----------------
+
+def test_시나리오에_없는_신분증_사진_요구는_막음():
+    from app.guard import output_guard
+    msg = "네, 계좌 확인됐습니다. 신분증 앞면 사진 한 장만 보내 주세요."
+    assert output_guard.photo_requests(msg) == ["신분증"]
+    st = output_guard.TurnState(current_scene=2, total_scenes=3, scene_request_type="개인정보 제공",
+                                next_scene_request_type="개인정보 제공", user_turns=4, min_turns=4, max_turns=15,
+                                photo_kinds=())
+    errs = output_guard._check_message(msg, {"move": "확전", "nextScene": 2}, st)
+    assert any("신분증" in e for e in errs)
+    st.photo_kinds = ("신분증",)
+    assert not any("신분증" in e for e in output_guard._check_message(msg, {"move": "확전", "nextScene": 2}, st))
+    st.photo_asked = ("신분증",)
+    again = "네, 앞면 확인됐습니다. 마지막으로 신분증 뒷면 사진도 한 장 더 보내 주세요."
+    assert any("이미 요구" in e for e in output_guard._check_message(again, {"move": "확전", "nextScene": 2}, st))
+
+
+def test_시나리오에_나온_사진_종류만_허용():
+    from app.guard import output_guard
+    assert output_guard.scenario_photo_kinds({"title": "보상금 입금 안내", "scenes": [{"request": "개인정보 제공"}]}) == ()
+    assert output_guard.scenario_photo_kinds({"background": "주민등록증 사진을 받아 계좌를 연다"}) == ("신분증",)

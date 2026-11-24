@@ -52,7 +52,7 @@ class Settings:
     scenario_timeout_seconds: float = float(os.getenv("SCENARIO_TIMEOUT_SECONDS", "25"))
     solution_reply_timeout_seconds: float = float(os.getenv("SOLUTION_REPLY_TIMEOUT_SECONDS", "12"))
     # 리포트 생성. Spring 평가 대기(AI_EVALUATION_READ_TIMEOUT 40초)보다 짧게
-    evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "35"))
+    evaluation_timeout_seconds: float = float(os.getenv("EVALUATION_TIMEOUT_SECONDS", "70"))
     # 가상 훈련 대화 전체 최대 턴 수 (요구사항 초안: 핵심 장면 12턴 / 전체 15턴)
     training_max_turns: int = int(os.getenv("TRAINING_MAX_TURNS", "15"))
     # 이 답변 수 전에는 시나리오가 끝나도 종료하지 않고 대화를 이어가요 (사용자가 확실히 끊으면 예외)

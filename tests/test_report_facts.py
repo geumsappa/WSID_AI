@@ -41,10 +41,10 @@ def _request(log=LOG, actions=("MOCK_TRANSFER",), conv=CONV):
 def test_기록으로_위험_등급과_넘긴_정보를_정한다():
     f = report_facts.collect(_scenario(LOG), CONV, {"MOCK_TRANSFER"})
     assert f.grade == "위험"
-    assert f.provided == ["계좌번호"] and f.requested == ["계좌번호", "예금주 성함"]
+    assert f.provided == ["계좌번호"] and f.requested == ["계좌번호", "이름"]  # '예금주 성함'은 '이름'으로 맞춰요
     assert f.transfers == 1 and f.sent_account
     assert any("계좌번호를 대화창에 적었어요 (2번째 답변)" in m for m in f.missed)
-    assert any("예금주 성함은 알려 주지 않았어요" in d for d in f.did)
+    assert any("이름은 알려 주지 않았어요" in d for d in f.did)
     assert report_facts.grade_sentence(f) == "결과: 위험. 계좌번호를 넘겼고, 안내받은 계좌로 송금 버튼을 눌렀어요."
 
 
@@ -108,7 +108,7 @@ def test_넘긴_정보는_한_줄로_모은다():
     log = [{"t": 3, "o": "risky", "p": ["전화번호", "이름"], "r": ["전화번호", "이름", "모의 교육 준비비"], "e": []}]
     f = report_facts.collect(_scenario(log), CONV, set())
     assert [m for m in f.missed if m.startswith("요구받은")] == [
-        "요구받은 전화번호·이름을 대화창에 적었어요 (3번째 답변). 사기에 그대로 쓰일 수 있는 정보예요."]
+        "요구받은 휴대폰 번호·이름을 대화창에 적었어요 (3번째 답변). 사기에 그대로 쓰일 수 있는 정보예요."]
 
 
 def test_확인_화면에서_채운_칸만_리포트에_들어감():
@@ -134,3 +134,29 @@ def test_가상_모의_표현은_대사에서_지움():
     assert clean("모의 훈련용 링크예요 [모의링크]") == "링크예요 [모의링크]"
     assert clean("가상화폐 거래소 안내예요") == "가상화폐 거래소 안내예요"
     assert training._info_name("[가상 생년월일]") == "생년월일"
+
+
+def test_대화창과_확인_화면의_개인정보_이름을_하나로_맞춤():
+    assert report_facts.canon("[가상 성함]") == "이름"
+    assert report_facts.canon("예금주 성함") == "이름"
+    assert report_facts.canon("연락처") == "휴대폰 번호"
+    assert report_facts.canon("휴대폰번호") == "휴대폰 번호"
+    assert report_facts.canon("[가상 계좌 끝자리]") == "계좌번호"
+    assert report_facts.canon("배송 주소") == "주소"
+    conv = [{"sender": "AI", "phase": "SIMULATION", "content": "성함이랑 연락처 알려 주세요 [모의링크]"},
+            {"sender": "USER", "phase": "SIMULATION", "content": "[이름] [전화번호]"}]
+    # 대화창에는 연락처만 적고, 확인 화면에는 이름만 적은 경우
+    log = [{"t": 1, "o": "risky", "p": ["연락처"], "r": ["[가상 성함]", "연락처"], "e": []}]
+    facts = report_facts.collect(_scenario(log), conv, {"MOCK_PAGE_OPEN", "MOCK_LOGIN_ATTEMPT"}, page_fields=["이름"])
+    assert facts.requested == ["이름", "휴대폰 번호"]
+    assert set(facts.provided) == {"이름", "휴대폰 번호"}
+    assert not any("알려 주지 않았어요" in d for d in facts.did)   # 이름은 확인 화면에서 넘겼으니 '안 알려 줌'이 아니에요
+    assert any("휴대폰 번호를 대화창에 적었" in m for m in facts.missed)
+    assert any("확인 화면에 이름을 입력" in m for m in facts.missed)
+
+
+def test_물어본_성별과_나이에_답하면_알려_준_것으로_셈():
+    _, provided = training._mask_last("남자예요 28살이고요", ["성별"], "성별이랑 나이가 어떻게 되세요?")
+    assert "성별" in provided and "나이" in provided
+    _, provided = training._mask_last("여자친구랑 있어요", [], "지금 통화 되세요?")
+    assert "성별" not in provided

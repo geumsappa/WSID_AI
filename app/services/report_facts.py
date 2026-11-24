@@ -20,6 +20,34 @@ PHOTO_EVENTS = {"신분증사진_제공": "신분증 사진", "통장사진_제�
 _MARK = re.compile(r"\[(?:가림:)?(주민등록번호|카드번호|전화번호|휴대폰번호|계좌번호|이메일|비밀번호|인증번호|인증정보|이름|주소|생년월일|연락처)\]")
 _ENTERED = re.compile(r"\[([가-힣 ,·]{2,40}) 입력함\]")
 PAGE_FIELD = re.compile(r"^(이름|휴대폰 번호|주소|생년월일|성별)$")
+# 개인정보 종류 이름을 하나로 맞춰요. 대화창 기록은 시나리오 표기("[가상 성함]", "예금주 성함", "연락처")를,
+# 확인 화면은 화면 칸 이름("휴대폰 번호")을 써서, 같은 정보인데 따로 셈해지던 문제를 막아요. 위에서부터 먼저 맞는 것.
+_CANON = [
+    ("주민등록번호", re.compile(r"주민")),
+    ("계좌번호", re.compile(r"계좌|통장\s*번호")),
+    ("카드번호", re.compile(r"카드")),
+    ("비밀번호", re.compile(r"비밀번호|비번|PIN", re.I)),
+    ("인증번호", re.compile(r"인증|OTP", re.I)),
+    ("이메일", re.compile(r"이메일|메일")),
+    ("휴대폰 번호", re.compile(r"전화|휴대폰|핸드폰|연락처|폰\s*번호")),
+    ("이름", re.compile(r"이름|성함|예금주|실명")),
+    ("주소", re.compile(r"주소|거주지|배송지|사는\s*곳")),
+    ("생년월일", re.compile(r"생년월일|생일|출생")),
+    ("나이", re.compile(r"나이|연세|연령")),
+    ("성별", re.compile(r"성별")),
+]
+_UNREAL_LABEL = re.compile(r"[\[\]]|\(\s*(?:가상|모의)\s*\)|가상의?\s*|모의\s*|훈련용\s*")
+
+
+def canon(label: str) -> str:
+    """'[가상 성함]'·'예금주 성함' → '이름', '연락처'·'휴대폰번호' → '휴대폰 번호'. 모르는 종류는 표시만 떼고 그대로"""
+    text = _UNREAL_LABEL.sub("", str(label)).strip()
+    for name, pattern in _CANON:
+        if pattern.search(text):
+            return name
+    return text or str(label)
+
+
 _LEFT = ("user_exit",)
 _GAVE_UP = ("scammer_left",)
 
@@ -88,18 +116,20 @@ def collect(scenario: dict, conversation: list[dict], actions: set[str], page_fi
     turns: list[TurnFact] = []
     for item in log:
         if isinstance(item, dict) and isinstance(item.get("t"), int):
-            turns.append(TurnFact(item["t"], item.get("o") or "neutral", list(item.get("p") or []), list(item.get("e") or [])))
-    requested = _unique(r for item in log if isinstance(item, dict) for r in (item.get("r") or []))
+            turns.append(TurnFact(item["t"], item.get("o") or "neutral", _unique(canon(p) for p in item.get("p") or []),
+                                  list(item.get("e") or [])))
+    requested = _unique(canon(r) for item in log if isinstance(item, dict) for r in (item.get("r") or []))
     provided = _unique(p for t in turns for p in t.provided)
     if not log:  # 턴별 기록이 없는 예전 훈련: 답변에 남은 가림 표시로 짐작해요
         for i, text in enumerate(user_msgs, start=1):
             found = _MARK.findall(text) + [x.strip() for m in _ENTERED.findall(text) for x in re.split(r"[,·]", m)]
             if found:
-                turns.append(TurnFact(i, "risky", _unique(found)))
+                turns.append(TurnFact(i, "risky", _unique(canon(x) for x in found)))
         provided = _unique(p for t in turns for p in t.provided)
-        requested = _unique(r for scene in scenario.get("keyScenes") or [] if isinstance(scene, dict)
+        requested = _unique(canon(r) for scene in scenario.get("keyScenes") or [] if isinstance(scene, dict)
                             for r in (scene.get("requestedInfo") or []) if isinstance(r, str))
 
+    page_fields = _unique(canon(f) for f in page_fields) if page_fields is not None else None
     photos = _unique([PHOTO_ACTIONS[a] for a in actions if a in PHOTO_ACTIONS]
                      + [PHOTO_EVENTS[e] for t in turns for e in t.events if e in PHOTO_EVENTS])
     transfers = max(sum(1 for t in turns for e in t.events if e == "송금_누름"), 1 if "MOCK_TRANSFER" in actions else 0)

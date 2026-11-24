@@ -83,9 +83,31 @@ def _add(types: list[str], kind: str) -> None:
         types.append(kind)
 
 
+# (통합 시 추가) 한글로 읽어 쓴 숫자: "공일공 일이삼사 오육칠팔" → "010 1234 5678"
+_KO_DIGIT = {"공": "0", "영": "0", "빵": "0", "일": "1", "이": "2", "삼": "3", "사": "4", "오": "5",
+             "육": "6", "륙": "6", "칠": "7", "팔": "8", "구": "9"}
+# 숫자 글자가 7개 이상 이어질 때만 (띄어쓰기·하이픈 허용). 평범한 낱말에는 이런 연속이 거의 없어요
+_KO_RUN = re.compile(r"(?<![가-힣])[공영빵일이삼사오육륙칠팔구](?:[\s\-.]?[공영빵일이삼사오육륙칠팔구]){6,}")
+
+
+def korean_digits_to_arabic(text: str) -> str:
+    """한글 숫자 읽기를 아라비아 숫자로 바꿔서, 아래 번호 규칙이 그대로 잡게 해요."""
+    def repl(m: re.Match) -> str:
+        run, rest = m.group(0), text[m.end():m.end() + 1]
+        # "…팔이요", "…칠이에요"의 '이'는 숫자가 아니라 조사예요
+        if run.endswith("이") and rest and rest in "요에고랑야":
+            run = run[:-1]
+        if sum(ch in _KO_DIGIT for ch in run) < 7:
+            return m.group(0)
+        return "".join(_KO_DIGIT.get(ch, ch) for ch in run) + m.group(0)[len(run):]
+    return _KO_RUN.sub(repl, text)
+
+
 def mask_user_message(text: str, expecting: list[str] | tuple[str, ...] = ()) -> MaskResult:
     types: list[str] = []
-    s = unicodedata.normalize("NFKC", text)  # 전각 숫자·문자 정규화
+    # 전각 숫자·문자는 정규화하되 ㅋㅋ/ㅎㅎ 같은 한글 호환 자모는 보존한다.
+    s = re.sub(r"[^\u3130-\u318f]+", lambda m: unicodedata.normalize("NFKC", m.group()), text)
+    s = korean_digits_to_arabic(s)
 
     s, n_forged = _FORGED_MARKERS.subn("", s)
 
@@ -173,6 +195,8 @@ if __name__ == "__main__":
         ("주문번호 20261123987 맞나요", []),
         ("3000원이요?", []),
         ("５５５５１２３４", ["계좌번호"]),
+        ("공일공 일이삼사 오육칠팔이요", []),
+        ("이사 오일 쯤 갈게요", []),
     ]
     for text, exp in cases:
         r = mask_user_message(text, exp)

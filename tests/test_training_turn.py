@@ -429,3 +429,39 @@ def test_상대_반응이_프롬프트에_들어간다(monkeypatch):
     state = {"facts": [], "log": [{"t": 1, "o": "risky", "p": ["이름"], "r": ["이름"], "e": []}]}
     training.run_training_turn("s1", _scenario(), 1, _history("네", "010-1234-5678 이에요"), state=state)
     assert "지금 태도 (§3-1): **파고들기**" in seen[0] and "이름" in seen[0]
+
+
+# ---------------- 질질 끌지 않기 ----------------
+
+def _passive_history(*answers):
+    h = [{"role": "persona", "text": "안녕하세요! 물건 아직 있나요?"}]
+    for a in answers:
+        h += [{"role": "user", "text": a}, {"role": "persona", "text": "네, 편하실 때 확인해 보시면 됩니다."}]
+    return h[:-1]
+
+
+def test_공식_센터로_확인하겠다고_하면_끝냄(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda s, t, **kw: _move_reply(
+        move="물러남", personaMessage="네, 알겠습니다. 확인 기한은 오늘 중이라 편하실 때 확인해 보시면 됩니다.",
+        judgment={"outcome": "safe"}))
+    r = training.run_training_turn("o", _scenario(), 1, _history("링크는 좀요", "일단 공식 센터로 전화해볼게요"))
+    assert r["done"] and r["endReason"] == "user_exit"
+
+
+def test_계속_거절하는데_기다리기만_하면_사기범이_정리하고_나감(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda s, t, **kw: _move_reply(
+        move="물러남", personaMessage="네, 고객님. 필요하실 때 편하게 말씀해 주세요.", judgment={"outcome": "safe"}))
+    state = {"facts": [], "log": [{"t": 1, "o": "safe", "p": [], "r": ["링크"], "e": []},
+                                  {"t": 2, "o": "safe", "p": [], "r": ["링크"], "e": []},
+                                  {"t": 3, "o": "safe", "p": [], "r": ["링크"], "e": []}]}
+    r = training.run_training_turn("g", _scenario(), 1, _passive_history("싫어요", "안 해요", "안 할래요", "됐어요"), state=state)
+    assert r["done"] and r["endReason"] == "scammer_left"
+    assert "편하게" not in r["personaMessage"]
+
+
+def test_짧은_대답에_기다리는_말이_이어지면_다음_요구로_끌고_감(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda s, t, **kw: _move_reply(
+        move="신뢰", personaMessage="네, 상품 포장은 끝나 있어요. 필요하실 때 편하게 말씀해 주세요."))
+    r = training.run_training_turn("n", _scenario(), 1, _passive_history("무슨 물건이요?", "넵"))
+    assert not r["done"]
+    assert training.DEMAND_WORDS.search(r["personaMessage"])

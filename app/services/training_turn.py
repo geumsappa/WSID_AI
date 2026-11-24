@@ -48,6 +48,8 @@ ROLE_BREAK = re.compile(r"보내지\s*마(세요|시고|십시오)|입력하지\
                         r"|공식\s*(경로|채널|앱|홈페이지|사이트|대표\s*번호|고객센터)(에서|로|으로)\s*(직접\s*|따로\s*|별도로\s*)?확인(해\s*(주세요|보세요)|하세요|하시기\s*바랍니다)"
                         r"|사기(일|인|에\s*주의|를\s*조심)|훈련(입니다|이에요|이라서|이니)")
 # 실제로 무언가를 시키는 말 (링크·정보·돈·앱). 두 번 연속 이런 말 없이 맴돌면 시간 끌기로 봐요
+PASSIVE_LINE = re.compile(r"편하실\s*때|편하게\s*(?:말씀|연락|확인)|궁금하신\s*(?:점|게|것)|필요하시면|필요하실\s*때"
+                          r"|언제든|천천히\s*(?:보시|확인|생각)|다시\s*연락\s*주")
 DEMAND_WORDS = re.compile(r"\[모의링크\]|\[모의앱\]|\[모의계좌\]|링크|계좌|성함|이름|주소|생년월일|연락처|번호|입금|송금|보내\s*주|설치|입력|적어|등록|수수료|인증")
 # 사기범 대사에 들어가면 안 되는 내부 표시 (가림 표시, 버튼 사건, 가상 자료 표시)
 FAKE_MARK = re.compile(r"\[\s*(?:가림|훈련\s*행동|가상)[^\]]*\]")
@@ -255,9 +257,19 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     #      장면을 진행시키는 요구를 해요. 첫 답변(신뢰 쌓기)과 마지막 인사는 빼요
     #      새 형식에서는 신뢰 쌓기·압박·물러남처럼 일부러 요구하지 않는 수가 있어서 '같은 말 반복'만 봐요
     recent_persona = [_strip_speaker(t)[1] for t in persona_lines[-2:]]
+    # 5-d) "편하실 때 말씀해 주세요"처럼 기다리기만 하는 대사 (질질 끄는 느낌). 실제 사기범은 시간을 주지 않아요
+    #      두 번 이어지면: 상대가 계속 거절해 온 경우엔 사기범이 먼저 정리하고 나가고, 아니면 다음 요구로 끌고 가요
+    passive_now = (new_format and move not in ("마무리", "중단") and not type_it
+                   and bool(PASSIVE_LINE.search(persona_message)))
+    passive_before = bool(recent_persona) and bool(PASSIVE_LINE.search(recent_persona[-1]))
+    last_logged = turn_log[-1].get("o") if turn_log else None
+    scammer_gives_up = passive_now and judgment["outcome"] != "risky" and (
+        reaction["stance"] == "물러나기"
+        or (reaction["stance"] == "돌아가기" and passive_before and "safe" in (judgment["outcome"], last_logged)))
     repeated = any(_similar(persona_message, old) >= 0.55 for old in recent_persona)
     stalling = (not new_format and user_turns > WARMUP_TURNS and not type_it and recent_persona
                 and not DEMAND_WORDS.search(persona_message) and not DEMAND_WORDS.search(recent_persona[-1]))
+    stalling = stalling or (passive_now and passive_before and not scammer_gives_up)
     if (repeated or stalling) and not data.get("scenarioComplete") and move not in ("마무리",):
         forward = scene_next if scene_next.get("request", "대화 지속") != "대화 지속" else _scene(scenes, min(next_scene + 1, total_scenes))
         forward_request = forward.get("request", "개인정보 제공")
@@ -320,6 +332,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         end_reason = "user_exit"
         if move != "마무리":  # 사용자가 끊었는데 계속 붙잡는 대사면 마지막 한마디로 바꿔요
             persona_message = fallback.TRAINING_EXIT_LINES[user_turns % len(fallback.TRAINING_EXIT_LINES)]
+    elif scammer_gives_up:
+        end_reason = "scammer_left"  # 계속 거절하자 사기범이 먼저 정리하고 나감 (잘 막은 경우)
+        persona_message = fallback.TRAINING_GIVEUP_LINES[user_turns % len(fallback.TRAINING_GIVEUP_LINES)]
     elif new_format and move == "마무리" and data.get("scenarioComplete"):
         end_reason = "user_exit" if user_turns < min_turns else "scenario_complete"
     elif (bool(data.get("scenarioComplete")) and current_scene >= total_scenes and not type_it
@@ -407,6 +422,8 @@ DECISIVE_EXIT = re.compile(
     r"차단|신고|112|1332|대화(를)?\s*(그만|중단|끝)|더\s*(이상|는)\s*(연락|대화|답)"
     r"|공식\s*(앱|홈페이지|사이트|번호|고객센터|채널)|고객센터에\s*(직접|전화|확인)|직접\s*(전화|확인)해\s*볼"
     # 작별 인사·연락 거절·거래 안 함 ("넵 안녕히가세요"에도 계속 붙잡던 문제)
+    # 공식 센터·은행·대표번호로 직접 확인하겠다 ("공식 센터로 전화해볼게요"에도 계속 붙잡던 문제)
+    r"|(?:센터|콜센터|본사|은행|카드사|택배사|대표\s*번호)(?:로|에|에다|에서)?\s*(?:직접\s*)?(?:전화|문의|연락|확인)"
     r"|안녕히|잘\s*있어|이만\s*(갈게|할게|끊|들어)|연락\s*(하지|하시지)\s*마|거래\s*(안\s*할|취소|안\s*해)|안\s*살게|됐어요\s*그만")
 
 

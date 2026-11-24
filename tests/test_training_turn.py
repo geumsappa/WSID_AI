@@ -513,3 +513,34 @@ def test_반말_시나리오에서_존댓말이_섞이면_반말로_맞춤(monke
     h = [{"role": "persona", "text": sc["openingMessage"]}, {"role": "user", "text": "누군데?"}]
     r = training.run_training_turn("tone", sc, 1, h)
     assert "요?" not in r["personaMessage"] and r["personaMessage"].endswith("있어?")
+
+
+# ---------------- 일어나지 않은 일을 받았다고 하지 않기 ----------------
+
+def test_사건_없이_입금_확인했다고_하면_잡음():
+    from app.guard import output_guard as og
+    assert og.false_claims("50만 원 들어온 거 확인했어 고마워", ())
+    assert og.false_claims("네, 입금 확인됐습니다.", ())
+    assert not og.false_claims("네, 입금 확인됐습니다.", ("송금_누름",))
+    assert not og.false_claims("처리하려면 먼저 입금이 확인돼야 해요.", ())        # 앞으로의 일은 괜찮아요
+    assert not og.false_claims("네, 한빛은행 계좌 확인됐습니다.", ())               # 대화창에 적은 정보 확인은 괜찮아요
+    assert og.false_claims("신분증 사진 잘 받았어요.", ())
+    assert not og.false_claims("신분증 사진 잘 받았어요.", ("신분증사진_제공",))
+    assert og.false_claims("입력하신 정보 확인됐습니다.", ())
+    assert og.drop_false_claims("50만 원 들어온 거 확인했어 고마워ㅠ 이제 하나만 더 부탁할게.", ()) == "이제 하나만 더 부탁할게."
+
+
+def test_송금_안_했는데_입금_확인했다는_대사는_빼고_보냄(monkeypatch):
+    monkeypatch.setattr(training, "generate_json", lambda s, t, **kw: _move_reply(
+        move="확전", personaMessage="입금 확인됐어요. 이제 성함이랑 연락처만 알려 주세요."))
+    r = training.run_training_turn("fc", _scenario(), 1, _history("무슨 물건이요?", "네"))
+    assert "입금 확인" not in r["personaMessage"] and "성함" in r["personaMessage"]
+
+
+def test_반말_시나리오의_기본_대사는_반말_짝으로():
+    from app import fallback
+    from app.guard import speech_level as sl
+    assert training._casual_fallback(fallback.TRAINING_EXIT_LINES[0], sl.CASUAL) == "아 응... 알겠어."
+    line = fallback.TRAINING_PERSONA_LINES["개인정보 제공"].replace("{info}", "생년월일")
+    assert training._casual_fallback(line, sl.CASUAL) == "확인 절차라서 그래. 생년월일 여기에 적어 주면 바로 처리할게."
+    assert training._casual_fallback(line, sl.POLITE) == line

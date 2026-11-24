@@ -295,13 +295,21 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     #  - 사용자가 확실하게 끊으면(차단·신고·공식 채널 확인·대화 중단) 끝: 잘 막은 경우라 더 끌지 않아요
     #  - 사용자가 훈련 자체를 그만두겠다고 하면(move=마무리) 최소 답변 수와 상관없이 끝
     #  - 시나리오 마지막 장면이 끝나도 최소 답변 수 전에는 끝내지 않고 사기범이 추가 요구로 이어가요
+    #  - 마지막 장면에서 송금까지 받았으면(사기 성공) 최소 답변 수와 상관없이 끝: 돈을 받은 사기범은 떠나요
     last_user_text = history[-1]["text"]
-    decisive_exit = judgment["outcome"] == "safe" and user_turns >= 2 and bool(DECISIVE_EXIT.search(last_user_text))
+    decisive_exit = judgment["outcome"] != "risky" and bool(DECISIVE_EXIT.search(last_user_text))
+    scam_success = "송금_누름" in events_this_turn and current_scene >= total_scenes
     end_reason = None
     if user_turns >= max_turns:
         end_reason = "max_turns"
+    elif scam_success:
+        end_reason = "scam_success"
+        if move != "마무리":  # 모델이 또 요구하면 확인 한마디로 바꿔요
+            persona_message = fallback.TRAINING_SUCCESS_LINE
     elif decisive_exit:
         end_reason = "user_exit"
+        if move != "마무리":  # 사용자가 끊었는데 계속 붙잡는 대사면 마지막 한마디로 바꿔요
+            persona_message = fallback.TRAINING_EXIT_LINES[user_turns % len(fallback.TRAINING_EXIT_LINES)]
     elif new_format and move == "마무리" and data.get("scenarioComplete"):
         end_reason = "user_exit" if user_turns < min_turns else "scenario_complete"
     elif (bool(data.get("scenarioComplete")) and current_scene >= total_scenes and not type_it
@@ -312,6 +320,8 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         choices = []
         if end_reason == "max_turns":
             persona_message = fallback.TRAINING_END_LINE
+        # 사기범이 대화방을 나가는 연출: 프론트가 이 표시를 "상대방이 대화방을 나갔어요"로 보여 주고 입력창을 닫아요
+        persona_message = f"{persona_message.rstrip()} {fallback.LEFT_MARK}"
 
     # 화자가 바뀌면 "[화자: 이름] " 을 앞에 붙여요 (프론트가 이름표로 보여줘요). 대화 전체에서 2번까지만
     speaker = fictionalize(str(data.get("speaker") or "").strip()[:30]) if new_format and not done else ""
@@ -384,7 +394,9 @@ def _str_list(value) -> list[str]:
 # 사용자가 대화를 확실하게 끊는 말 (차단·신고·공식 채널로 직접 확인·대화 중단)
 DECISIVE_EXIT = re.compile(
     r"차단|신고|112|1332|대화(를)?\s*(그만|중단|끝)|더\s*(이상|는)\s*(연락|대화|답)"
-    r"|공식\s*(앱|홈페이지|사이트|번호|고객센터|채널)|고객센터에\s*(직접|전화|확인)|직접\s*(전화|확인)해\s*볼")
+    r"|공식\s*(앱|홈페이지|사이트|번호|고객센터|채널)|고객센터에\s*(직접|전화|확인)|직접\s*(전화|확인)해\s*볼"
+    # 작별 인사·연락 거절·거래 안 함 ("넵 안녕히가세요"에도 계속 붙잡던 문제)
+    r"|안녕히|잘\s*있어|이만\s*(갈게|할게|끊|들어)|연락\s*(하지|하시지)\s*마|거래\s*(안\s*할|취소|안\s*해)|안\s*살게|됐어요\s*그만")
 
 
 

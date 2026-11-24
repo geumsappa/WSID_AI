@@ -208,7 +208,9 @@ def evaluate(request: EvaluationRequest) -> EvaluationResult:
     for message in request.conversation:
         if message.phase not in (None, "SIMULATION"):
             continue
-        item = {"sender": role_names.get(message.sender, message.sender), "content": _safe(message.content)}
+        # [퇴장]은 화면 연출 표시라 평가에는 '대화방을 나감'으로 풀어서 넘겨요
+        content = _safe(message.content).replace("[퇴장]", "(대화방을 나감)")
+        item = {"sender": role_names.get(message.sender, message.sender), "content": content}
         if message.sender == "USER":
             user_turn += 1
             item["turn"] = user_turn  # 리포트 타임라인이 가리킬 훈련자 답변 번호

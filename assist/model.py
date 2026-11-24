@@ -63,9 +63,16 @@ def clarification_allowed(request: PlanRequest, intent: QuestionIntent) -> bool:
         request.conditionsEnabled and request.remainingClarifications > 0)
 
 
+# "앱이 깔렸는지 모르겠어", "어떻게 확인해?"처럼 사용자가 이미 모른다고 했거나 확인 방법을 묻는 질문.
+# 이때 "설치한 적 있나요?"라고 되물으면 같은 걸 또 묻는 셈이라, 추가 질문 없이 확인 방법을 조건부로 답해요.
+UNSURE = re.compile(r"모르겠|모르는데|몰라|모름|기억이 ?안|확인.{0,4}(방법|하는 ?법|어떻게)|어떻게.{0,6}(알|확인|점검)")
+
+
 def allowed_fact_keys(request: PlanRequest, intent: QuestionIntent) -> list[str]:
     # v1.2: 네 사실은 카드 섹션에서 이미 확정돼 온다. assist는 다시 묻지 않고 바로 근거 검색의 입력으로 쓴다.
     if request.remainingClarifications <= 0 or request.conditionsEnabled:
+        return []
+    if request.question and UNSURE.search(request.question):
         return []
     # 후속 요청(question=null)이면 history의 원래 질문으로 언급 여부를 봐요 (v1.1 history가 있을 때만)
     question = request.question or previous_user(request)
@@ -91,6 +98,7 @@ TRANSFER_RESPONSE, DEVICE_SAFETY, INFO_LEAK_RESPONSE, CONTACT_RESPONSE, GENERAL.
 conditionsEnabled=false이면 (1)만 고를 수 있고, 그 밖의 위험은 답변에서 조건부로 다룬다.
 conditionsEnabled=true이면 네 사실은 카드 섹션에서 이미 확정된 값이다. (1)을 묻지 말고 factKey는 항상 null이다.
 UNKNOWN 사실도 사용자가 모른다고 답한 것이므로 다시 묻지 않고 조건부로 다룬다.
+question에서 사용자가 그 사실을 모른다고 했거나 확인 방법을 물으면 되묻지 말고 SEARCH로 확인·점검 방법을 찾는다.
 confirmedConditions는 사용자가 이미 답한 조건이다. 같은 조건을 다시 묻지 않는다.
 이미 물었거나 횟수가 소진된 대상은 다시 묻지 않고 SEARCH로 진행한다.
 확인할 수 없는 사실은 추측하지 말고 조건부 설명 가능성을 검토한다.

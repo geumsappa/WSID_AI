@@ -242,3 +242,30 @@ def test_photo_content_is_added_to_search_query():
     request = PlanRequest.model_validate(plan(question="이 계좌로 보내도 돼요?", history=[PHOTO]))
     asyncio.run(AssistService(FakeAssistModel(), retriever).run(request))
     assert "사진 내용: [사진 · 메신저 대화]" in retriever.calls[0]["query"]
+
+
+def test_court_venue_question_puts_venue_reference_first():
+    q = "그럼 민사소송 진행하려는데 아무법원이나 가면돼?"
+    assert topic_codes(q, q)[0] == "REF_EASYLAW_CIVIL_VENUE_V1_P1"
+    assert topic_codes("소장은 어느 법원에 내요?", "소장은 어느 법원에 내요?")[0] == "REF_EASYLAW_CIVIL_VENUE_V1_P1"
+
+
+def test_unsure_question_gets_no_clarification():
+    """'앱이 깔렸는지 모르겠어'처럼 이미 모른다고 하면 '설치한 적 있나요?'로 되묻지 않아요."""
+    from assist.model import allowed_fact_keys
+    req = PlanRequest.model_validate(plan(question="모르는 앱이 깔린지 안깔린지 모르겠어"))
+    assert allowed_fact_keys(req, "DEVICE_SAFETY") == []
+    req = PlanRequest.model_validate(plan(question="링크 눌렀는데 앱 깔렸을까요?"))
+    assert allowed_fact_keys(req, "DEVICE_SAFETY") == ["installedApp"]
+
+
+def test_app_check_question_pulls_device_refs():
+    codes = topic_codes("모르는 앱이 깔린지 안깔린지 모르겠어")
+    assert codes[:2] == ["REF_FSC_2026_10_ALERT_V1_P4", "REF_KISA_SMISHING_V1_P1"]
+    assert topic_codes("악성앱 확인하는 법 알려줘")[:1] == ["REF_FSC_2026_10_ALERT_V1_P4"]
+
+
+def test_transfer_statement_pulls_payment_stop_refs_except_secondhand():
+    q = "돈을 이미 보내버렸어. 이제 어떻게 해야 하나요?"
+    assert topic_codes(q, q, "LOAN_FRAUD")[:1] == ["REF_FSS_2023_06_GUIDE_V1_P2"]
+    assert "REF_FSS_2023_06_GUIDE_V1_P2" not in topic_codes(q, q, "SECONDHAND_TRADE")

@@ -1,6 +1,7 @@
 """Discover context, verify readiness before completion, then reuse the approved plan."""
 import json
 import logging
+import time
 from pathlib import Path
 
 from pydantic import TypeAdapter, ValidationError
@@ -247,12 +248,20 @@ def _apply_updates(topics, decision, messages):
 
 
 def run_discovery_turn(session_id, history, known_facts=None):
-    # Leave a margin before Spring's 120s and the browser's 130s limits.
-    with generation_budget(settings.discovery_total_timeout_seconds):
-        return _run_discovery_turn(session_id, history, known_facts)
+    # Counts are decision requests, not provider transport retries. No user text/IDs.
+    stats = {"decision_calls": 0, "question_review_calls": 0, "plan_ms": 0}
+    started = time.perf_counter()
+    try:
+        with generation_budget(settings.discovery_total_timeout_seconds):
+            return _run_discovery_turn(session_id, history, known_facts, stats=stats)
+    finally:
+        logger.info("Discovery timing: elapsed_ms=%d decision_calls=%d question_review_calls=%d plan_ms=%d",
+                    round((time.perf_counter() - started) * 1000), stats["decision_calls"],
+                    stats["question_review_calls"], stats["plan_ms"])
 
 
-def _run_discovery_turn(session_id, history, known_facts=None):
+def _run_discovery_turn(session_id, history, known_facts=None, *, stats=None):
+    stats = stats if stats is not None else {"decision_calls": 0, "question_review_calls": 0, "plan_ms": 0}
     if not history:
         return {"state": {}, "next_question": fallback.FIRST_QUESTION, "done": False, "fallback_used": False}
     if history[-1]["role"] != "user":
@@ -296,15 +305,19 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                    "previousQuestions": [mask_input(message["text"]) for message in history if message["role"] == "ai"][-5:]}
 
         corrections_left = 1
-        question_repair_failed = False
+        question_review_performed = False
         def decide(content, *, review=False):
-            nonlocal corrections_left, question_repair_failed
+            nonlocal corrections_left, question_review_performed
             content = dict(content)
             retained_updates = {}
             retained_focus_change = False
             last_valid_decision = None
             while True:
                 try:
+                    stats["decision_calls"] += 1
+                    if review:
+                        question_review_performed = True
+                        stats["question_review_calls"] += 1
                     raw = generate_json(load_prompt(REVIEW_PROMPT) if review else prompt,
                                         json.dumps(content, ensure_ascii=False, separators=(",", ":")), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
                                         reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True,
@@ -320,6 +333,8 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                         raw = {**raw, "questionAssessments": []}
                     result = ConversationDecision.model_validate(raw)
                     if "questionCorrection" in content:
+                        if review and result.focusChanged:
+                            raise ValueError("Question review cannot reset the user's focus")
                         result.updates = list({**retained_updates, **{item.topic: item for item in result.updates}}.values())
                         if result.focusChanged and not retained_focus_change:
                             logger.warning("Ignored focus reset during question correction")
@@ -336,6 +351,17 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                     prospective = {} if result.focusChanged else dict(topics)
                     prospective_history = [] if result.focusChanged else question_history
                     _apply_updates(prospective, result, messages)
+                    # Reuse confirmed interaction/identity before spending a repair call.
+                    # This is only a candidate; independent plan verification still follows.
+                    if (not result.stopRequested and result.readinessBasis is None
+                            and content.get("mode") != "PLAN_CLARIFICATION"):
+                        candidate = interaction_candidate(prospective, result.personalizationTarget)
+                        gaps = [topic for topic in _requirements(result, prospective)
+                                if not _is_resolved(topic, prospective)]
+                        if candidate and all(topic == "ACCESS" for topic in gaps):
+                            result.readinessBasis = candidate
+                            result.requiredTopics = [topic for topic in _requirements(result, prospective)
+                                                     if _is_resolved(topic, prospective)]
                     will_be_ready, _ = _ready(prospective, result)
                     if content.get("mode") == "PLAN_CLARIFICATION" and any(
                             item.get("code") == "INSUFFICIENT_CONTEXT" for item in content.get("planningIssues", [])):
@@ -348,28 +374,41 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                     selected_question = None if will_be_ready else _select_question(prospective, prospective_history, result, history)
                     has_question = bool(result.nextTopic and result.nextQuestion.strip() and selected_question
                                         and selected_question[0] == result.nextTopic)
-                    if requires_question and not has_question:
+                    needs_reassessment = (not will_be_ready and selected_question is None
+                        and not result.stopRequested and not already_paused
+                        and prospective.get("ACTIVITY", {}).get("status") == "KNOWN"
+                        and content.get("mode") not in {"PLAN_CLARIFICATION", "REVIEW_QUESTION_NEED"})
+                    if (requires_question and not has_question) or needs_reassessment:
                         if corrections_left:
                             corrections_left -= 1
                             retained_updates = {item.topic: item for item in result.updates}
                             retained_focus_change = result.focusChanged
                             last_valid_decision = result.model_copy(deep=True)
-                            if content.get("mode") not in {"PLAN_CLARIFICATION", "REVIEW_QUESTION_NEED"}:
+                            previous_required = known.get("intakeRequirements", {}).get("topics", [])
+                            previous_resolved = bool(previous_required) and all(
+                                _is_resolved(topic, prospective) for topic in previous_required)
+                            # Correct and independently review a newly introduced need in
+                            # one request. Do not run the same review again after this.
+                            if (previous_resolved and not result.focusChanged
+                                    and content.get("mode") != "PLAN_CLARIFICATION"):
+                                review = True
+                                content.update(mode="REVIEW_QUESTION_NEED", proposedDecision=result.model_dump(),
+                                               proposedQuestion=result.nextQuestion)
+                            elif content.get("mode") not in {"PLAN_CLARIFICATION", "REVIEW_QUESTION_NEED"}:
                                 content["mode"] = "REASSESS"
                             content.update(knownTopics=prospective,
                                 exploration=_exploration(prospective, prospective_history),
                                 questionHistory=prospective_history,
                                 questionTargets=_available_topics(prospective, prospective_history))
-                            content["questionRequired"] = True
+                            content["questionRequired"] = requires_question
                             content["questionCorrection"] = {
-                                "reason": "NEXT_QUESTION_REQUIRED",
+                                "reason": "NEXT_QUESTION_REQUIRED" if requires_question else "REASSESS_EXISTING_CONTEXT",
                                 "allowedTopics": _available_topics(prospective, prospective_history),
                                 "proposedDecision": result.model_dump(),
                                 "instruction": "미확인 정보 하나를 질문하세요. 기존 답·거절은 다시 묻지 말고 nextTopic을 requiredTopics에 넣어 nextQuestion과 MISSING 사유를 출력하세요. 충분하면 원문 근거의 readinessBasis를 반환하세요. 검증된 updates는 유지하세요."}
                             continue
                         # An uncooperative model is not the user's inability to explain.
                         # Keep validated facts and let the bounded conversation fallback ask.
-                        question_repair_failed = True
                     return result
                 except (ValidationError, ValueError) as error:
                     if isinstance(error, ValidationError):
@@ -377,8 +416,7 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                                   for item in error.errors(include_input=False)][:6]
                         logger.warning("Discovery decision validation rejected: fields=%s", fields)
                     if not corrections_left:
-                        if "questionCorrection" in content and last_valid_decision is not None:
-                            question_repair_failed = True
+                        if "questionCorrection" in content and last_valid_decision is not None and not review:
                             return last_valid_decision
                         raise
                     corrections_left -= 1
@@ -394,40 +432,13 @@ def _run_discovery_turn(session_id, history, known_facts=None):
         payload["basicOfferAllowed"] = _can_offer_basic(topics, question_history, stop_requested=decision.stopRequested, recovery_count=len(recovery_questions))
         ready, details = _ready(topics, decision)
         selected = None if ready else _select_question(topics, question_history, decision, history)
-        reviewed_question = False
         unchanged_pause = (known.get("intakePaused") is True and not decision.focusChanged
                            and json.dumps(topics, sort_keys=True, ensure_ascii=False) == previous_topics)
-        # Reassess the existing facts once rather than walking through unused topics.
-        if not ready and selected is None and not decision.stopRequested and not question_repair_failed and (details or topics.get("ACTIVITY", {}).get("status") == "KNOWN") and not unchanged_pause:
-            reassess_payload = {**payload, "mode": "REASSESS", "knownTopics": topics,
-                                "exploration": _exploration(topics, question_history),
-                                "questionHistory": question_history,
-                                "questionTargets": _available_topics(topics, question_history),
-                                "previousRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)}}
-            reassessed = decide(reassess_payload)
-            # This pass may simplify a plan, but cannot erase the user's current facts.
-            if reassessed.focusChanged:
-                logger.warning("Ignored focus reset during discovery reassessment")
-            _apply_updates(topics, reassessed, messages)
-            decision = reassessed
-            ready, details = _ready(topics, decision)
-            selected = None if ready else _select_question(topics, question_history, decision, history)
-        # A grounded interaction is stronger than the model's optional wish list.
-        # Contact channel/pretext are fictional planning choices, not missing history.
-        # Do not bypass real identity/detail gaps or an explicit request to stop.
-        if not ready and not decision.stopRequested and decision.readinessBasis is None:
-            candidate = interaction_candidate(topics, decision.personalizationTarget)
-            gaps = [topic for topic in _requirements(decision, topics) if not _is_resolved(topic, topics)]
-            if candidate and all(topic == "ACCESS" for topic in gaps):
-                decision.readinessBasis = candidate
-                decision.requiredTopics = [topic for topic in _requirements(decision, topics)
-                                           if _is_resolved(topic, topics)]
-                ready, details = _ready(topics, decision)
-                selected = None if ready else selected
         previous_required = known.get("intakeRequirements", {}).get("topics", [])
         previous_resolved = bool(previous_required) and all(_is_resolved(topic, topics) for topic in previous_required)
-        reviewed_question = bool(selected and previous_resolved and selected[0] not in previous_required and not decision.focusChanged)
-        if reviewed_question:
+        needs_question_review = bool(selected and previous_resolved and selected[0] not in previous_required
+                                    and not decision.focusChanged and not question_review_performed)
+        if needs_question_review:
             # A newly introduced requirement must be checked against all existing facts,
             # including facts stored under another topic. At most one independent review.
             reviewed = decide({**payload, "mode": "REVIEW_QUESTION_NEED", "knownTopics": topics,
@@ -447,10 +458,14 @@ def _run_discovery_turn(session_id, history, known_facts=None):
                  "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)},
                  "readinessBasis": decision.readinessBasis.model_dump() if decision.readinessBasis else None,
                  "questionAssessments": [item.model_dump() for item in decision.questionAssessments],
-                 "questionNeedReview": {"performed": reviewed_question}}
+                 "questionNeedReview": {"performed": question_review_performed}}
         if ready:
-            graph, plan, verdict = scenario_planner.verify_intake_plan(messages,
-                confirmed_topics=topics, requirements=state["intakeRequirements"], basis=state["readinessBasis"])
+            plan_started = time.perf_counter()
+            try:
+                graph, plan, verdict = scenario_planner.verify_intake_plan(messages,
+                    confirmed_topics=topics, requirements=state["intakeRequirements"], basis=state["readinessBasis"])
+            finally:
+                stats["plan_ms"] += round((time.perf_counter() - plan_started) * 1000)
             if verdict.accepts() and (not plan.referenceUses or verdict.referencesSupported):
                 state["preparedScenario"] = prepared_scenario.seal(graph, plan, verdict,
                     messages=messages, topics=topics, requirements=state["intakeRequirements"], basis=state["readinessBasis"])

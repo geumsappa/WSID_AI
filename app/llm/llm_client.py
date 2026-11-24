@@ -42,7 +42,7 @@ class LLMError(Exception):
 
 def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 800,
                   timeout: float | None = None, attempts: int = 2, reasoning_effort: str | None = None, reuse_connection: bool = False,
-                  model: str | None = None, cache: bool = False) -> dict:
+                  model: str | None = None, cache: bool = False, output_schema: dict | None = None) -> dict:
     """LLM 에게 묻고, 응답을 JSON(dict)으로 바꿔서 돌려준다.
 
     attempts 번까지 시도하고, 그래도 안 되면 LLMError 를 던진다.
@@ -61,7 +61,8 @@ def generate_json(system_prompt: str, user_content: str, *, max_tokens: int = 80
                 call_timeout = min(call_timeout, remaining)
             raw_text = _call_provider(system_prompt, user_content, max_tokens,
                                       call_timeout, reasoning_effort=reasoning_effort, reuse_connection=reuse_connection,
-                                      model=model, cache=cache)
+                                      model=model, cache=cache,
+                                      **({"output_schema": output_schema} if output_schema is not None else {}))
             return parse_json(raw_text)
         except Exception as e:  # 네트워크 오류, 타임아웃, JSON 깨짐 등 전부
             last_error = e
@@ -77,7 +78,7 @@ def _reusable_anthropic_client(api_key):
 
 
 def anthropic_text(system_prompt: str, user_content: str, *, max_tokens: int = 1500,
-                   timeout: float | None = None, model: str | None = None, cache: bool = False) -> str:
+                   timeout: float | None = None, model: str | None = None, cache: bool = False, output_schema: dict | None = None) -> str:
     """Claude 한 번 호출 → 답변 글자. 다른 모듈(RAG·OCR)도 이 함수를 같이 써요."""
     client = _reusable_anthropic_client(settings.llm_api_key)
     # 줄바꿈·들여쓰기도 전부 답 토큰이라 한 줄로 쓰게 해요 (특히 Haiku 가 보기 좋게 길게 쓰는 편)
@@ -101,6 +102,23 @@ def anthropic_text(system_prompt: str, user_content: str, *, max_tokens: int = 1
         temperature=settings.llm_temperature,
         timeout=timeout or settings.llm_timeout_seconds,
     )
+    if output_schema is not None:
+        # Claude's schema subset omits bounds/patterns; non-null types still apply.
+        from copy import deepcopy
+        schema = deepcopy(output_schema)
+        def compatible(node):
+            if isinstance(node, dict):
+                for key in ("minLength", "maxLength", "pattern", "minimum", "maximum", "maxItems"):
+                    node.pop(key, None)
+                if node.get("minItems", 0) > 1:
+                    node["minItems"] = 1
+                for value in node.values():
+                    compatible(value)
+            elif isinstance(node, list):
+                for value in node:
+                    compatible(value)
+        compatible(schema)
+        request["extra_body"] = {"output_config": {"format": {"type": "json_schema", "schema": schema}}}
     try:
         response = client.messages.create(**request)
     except Exception as e:
@@ -129,7 +147,7 @@ def _reusable_openai_client(api_key, base_url):
 
 
 def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeout: float, *, reasoning_effort: str | None = None, reuse_connection: bool = False,
-                   model: str | None = None, cache: bool = False) -> str:
+                   model: str | None = None, cache: bool = False, output_schema: dict | None = None) -> str:
     provider = settings.llm_provider
 
     if provider != "anthropic":
@@ -156,7 +174,8 @@ def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeo
                 {"role": "user", "content": user_content},
             ],
             timeout=timeout,
-            response_format={"type": "json_object"},  # JSON 으로만 답하게 강제
+            response_format=({"type": "json_schema", "json_schema": {"name": "discovery_decision", "strict": True, "schema": output_schema}}
+                             if output_schema is not None else {"type": "json_object"}),
             **({"reasoning_effort": reasoning_effort, "max_completion_tokens": max_tokens} if reasoning_effort else {}),
         )
         try:
@@ -171,7 +190,7 @@ def _call_provider(system_prompt: str, user_content: str, max_tokens: int, timeo
 
     if provider == "anthropic":
         # reasoning_effort 는 OpenAI 추론 모델용이라 Claude 에는 보내지 않아요
-        return anthropic_text(system_prompt, user_content, max_tokens=max_tokens, timeout=timeout, model=model, cache=cache)
+        return anthropic_text(system_prompt, user_content, max_tokens=max_tokens, timeout=timeout, model=model, cache=cache, output_schema=output_schema)
 
     raise LLMError(f"알 수 없는 LLM_PROVIDER: {provider}")
 

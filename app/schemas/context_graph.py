@@ -83,7 +83,9 @@ class ScenarioPlan(Model):
     referenceUses: list[PatternUse] = Field(default_factory=list, max_length=3)
     _retrieval_trace: dict = PrivateAttr(default_factory=dict)
     _joint_review_required: bool = PrivateAttr(default=False)
+    _context_approved: bool = PrivateAttr(default=False)
     _review_messages: list[dict] = PrivateAttr(default_factory=list)
+    _readiness_basis: dict | None = PrivateAttr(default=None)
     id: str = Field(min_length=1, max_length=50)
     anchorClaims: list[ClaimBinding] = Field(min_length=1, max_length=6)
     recipientActorId: str
@@ -157,6 +159,33 @@ class SemanticReview(Model):
         facts = (self.checks.factsSupported, self.checks.actorsPreserved, self.checks.focusPreserved, self.checks.fictionSeparated)
         unsafe = {"UNSUPPORTED_FACT", "ACTOR_CHANGED", "EVENT_CHANGED", "FOCUS_DRIFT", "FICTION_AS_FACT"}
         return all(facts) and not any(issue.code in unsafe for issue in self.issues)
+
+
+class DraftReviewChecks(Model):
+    factsSupported: StrictBool
+    actorsPreserved: StrictBool
+    recipientPlausible: StrictBool
+    focusPreserved: StrictBool
+    fictionSeparated: StrictBool
+    contextDrivesPlot: StrictBool
+    nonGenericProgression: StrictBool
+
+
+class DraftReviewIssue(Model):
+    code: Literal["UNSUPPORTED_FACT", "ACTOR_CHANGED", "EVENT_CHANGED", "RECIPIENT_MISMATCH", "FOCUS_DRIFT", "FICTION_AS_FACT", "NARRATIVE_MISMATCH", "FORCED_CONNECTION", "REPETITIVE_PATTERN", "OTHER"]
+    detail: str = Field(min_length=1, max_length=350)
+
+
+class DraftReview(Model):
+    referencesSupported: StrictBool = False
+    approved: StrictBool
+    checks: DraftReviewChecks
+    issues: list[DraftReviewIssue] = Field(max_length=8)
+
+    def as_semantic_review(self):
+        return SemanticReview(referencesSupported=self.referencesSupported, approved=self.approved,
+            checks={**self.checks.model_dump(), "sufficientContext": True},
+            issues=[issue.model_dump() for issue in self.issues], followupQuestion="")
 
 
 class JudgmentPoint(BaseModel):

@@ -63,6 +63,33 @@ def check_claims(claims, graph):
         raise ContextIntegrityError("unrelated_focus")
 
 
+
+def complete_anchor_claims(graph, claims, personalization):
+    """Fill redundant references from a validated graph without rewriting claims."""
+    from app.schemas.context_graph import ClaimBinding
+    events = {event.id: event for event in graph.events}
+    required = list(graph.focusEventIds)
+    for basis in personalization:
+        event = events.get(basis.eventId)
+        if event is None or basis.evidenceId not in event.evidenceIds:
+            raise ContextIntegrityError("unsupported_personalization_basis")
+        required.append(basis.eventId)
+    completed = list(claims)
+    existing = {claim.eventId for claim in claims}
+    for event_id in dict.fromkeys(required):
+        event = events.get(event_id)
+        if event is None or event.certainty != "CONFIRMED":
+            raise ContextIntegrityError("unconfirmed_anchor")
+        if event_id not in existing:
+            completed.append(ClaimBinding(eventId=event_id, actorId=event.actorId))
+            existing.add(event_id)
+    if len(completed) > 6:
+        raise ContextIntegrityError("too_many_required_anchor_claims")
+    # Incorrect existing actor IDs and duplicate claims remain errors, not repairs.
+    check_claims(completed, graph)
+    return completed
+
+
 def check_plan(plan: ScenarioPlan, graph):
     from app.scenario_data import ALLOWED_CHANNELS
     check_claims(plan.anchorClaims, graph)

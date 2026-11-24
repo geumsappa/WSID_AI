@@ -17,6 +17,10 @@ def fact(topic, turn, quote, status="KNOWN", **extra):
 
 
 def decision(model, updates, *, target="PERSON", next_topic=None, question="", sufficient=True, required=None):
+    from app.services.fast_discovery import QUESTIONS, CLARIFICATIONS
+    if next_topic and not question:
+        partial = any(item["topic"] == next_topic and item.get("status") == "PARTIAL" for item in updates)
+        question = (CLARIFICATIONS if partial else QUESTIONS).get(next_topic, "")
     model[1]["discovery_brief"] = dict(updates=updates, personalizationTarget=target,
         requiredTopics=required if required is not None else ([next_topic] if next_topic else []), contextSufficient=sufficient, nextTopic=next_topic, nextQuestion=question)
 
@@ -143,22 +147,22 @@ def test_received_name_reaches_persona_and_opening(grounded_model, graph_data, p
     assert writer_payload["recipientIdentity"]["displayName"] is None
 
 
-def test_generic_persona_cannot_pass_even_if_semantic_reviewer_approves(grounded_model, graph_data, plan_data, review_data):
+def test_verified_display_name_does_not_require_repetition_in_opening(grounded_model, graph_data, plan_data, review_data):
     facts = named_generation(grounded_model, graph_data, plan_data, review_data)
-    with pytest.raises(AiApiError):
-        training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
-    payloads = [payload for task, payload in grounded_model[0] if task == "scenario_generate"]
-    assert len(payloads) == 2
-    assert payloads[1]["retryIssues"] == ["CONFIRMED_PERSON_NAME_NOT_USED"]
-    assert not any(task == "scenario_classify" for task, _ in grounded_model[0])
+    result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    assert result.scenario["persona"]["name"] == "도토리"
+    assert "도토리" not in result.scenario["openingMessage"]
+    assert sum(task == "scenario_generate" for task, _ in grounded_model[0]) == 1
+    assert any(task == "semantic_review" for task, _ in grounded_model[0])
 
 
-def test_confirmed_name_cannot_be_dropped_from_the_fact_graph(grounded_model, graph_data, plan_data, review_data):
+def test_approved_name_does_not_depend_on_a_later_reextraction(grounded_model, graph_data, plan_data, review_data):
     facts = named_generation(grounded_model, graph_data, plan_data, review_data)
     graph_data["entities"][1]["label"] = "친구"
-    with pytest.raises(AiApiError):
-        training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
-    assert not any(task == "scenario_generate" for task, _ in grounded_model[0])
+    grounded_model[0].clear()
+    result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    assert result.scenario["persona"]["name"] == "도토리"
+    assert not any(task == "generation_plan" for task, _ in grounded_model[0])
 
 
 def test_unselected_inventory_topic_is_never_used_as_fallback(grounded_model):
@@ -167,7 +171,8 @@ def test_unselected_inventory_topic_is_never_used_as_fallback(grounded_model):
     assert not result.canGenerateScenario
     assert result.facts["questionHistory"] == []
     assert "결제" not in result.nextQuestion
-    assert result.facts["intakePaused"]
+    assert not result.facts["intakePaused"]
+    assert result.facts["questionSelectionRecovered"]
 
 
 def test_selected_question_must_be_a_needed_gap(grounded_model):
@@ -207,14 +212,16 @@ def test_blocked_optional_detail_is_reassessed_without_other_inventory_questions
     assert result.canGenerateScenario
     assert result.facts["questionHistory"] == known["questionHistory"]
     assert "SERVICE" not in result.facts["intakeRequirements"]["topics"]
-    assert len(grounded_model[0]) == 2
-    assert grounded_model[0][-1][1]["mode"] == "REASSESS"
+    assert len(grounded_model[0]) == 4
+    assert [p for task, p in grounded_model[0] if task == "discovery_brief"][-1]["mode"] == "REASSESS"
 
 
 def test_paused_acknowledgements_return_nonblank_reply_and_new_facts_can_resume(grounded_model):
     decision(grounded_model,[fact("ACTIVITY",1,"작업을 도왔어요")],target="OTHER",sufficient=False)
     first=ask("작업을 도왔어요")
     decision(grounded_model,[],target="OTHER",sufficient=False)
+    # An already-paused historical state must stay paused on acknowledgements.
+    first.facts.update(intakePaused=True, basicScenarioOffered=True, basicConsentPending=False)
     second=ask("알겠어요",first.facts)
     assert first.nextQuestion and second.nextQuestion.strip()
     assert second.nextQuestion != first.nextQuestion
@@ -288,7 +295,7 @@ def test_rich_answer_retains_more_than_five_topics_in_one_call(grounded_model):
     result = ask(text)
     assert result.canGenerateScenario
     assert len(result.facts["knownTopics"]) == 7
-    assert len(grounded_model[0]) == 1
+    assert len(grounded_model[0]) == 3
     assert result.facts["questionHistory"] == []
 
 
@@ -436,3 +443,27 @@ def test_verified_display_name_is_preserved_when_model_uses_generic_persona(grou
     assert result.scenario["persona"]["name"] == "도토리"
     assert "도토리" in result.scenario["openingMessage"]
     assert len([task for task, _ in grounded_model[0] if task == "scenario_generate"]) == 1
+
+
+def test_removing_misaddressed_name_can_finish_repair_without_replanning(grounded_model, graph_data, plan_data, review_data, generation_data):
+    facts = named_generation(grounded_model, graph_data, plan_data, review_data)
+    wrong = deepcopy(generation_data)
+    wrong["scenario"]["openingMessage"] = "도토리야, 정산 얘기 좀 할까?"
+    reviews = []
+    def verify(payload):
+        reviews.append(payload)
+        verdict = deepcopy(review_data)
+        if len(reviews) == 1:
+            verdict.update(approved=False, issues=[{"code": "ACTOR_CHANGED", "detail": "발신자의 이름을 수신자에게 부름"}])
+            verdict["checks"]["actorsPreserved"] = False
+        return verdict
+    grounded_model[1]["semantic_review"] = verify
+    grounded_model[1]["scenario_generate"] = lambda payload: (
+        {"scenario": {"openingMessage": "안녕, 이용요금 정산에 관해 잠깐 얘기할까?"}}
+        if payload["mode"] == "REPAIR" else wrong)
+    result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    assert result.scenario["persona"]["name"] == "도토리"
+    assert result.scenario["openingMessage"] == "안녕, 이용요금 정산에 관해 잠깐 얘기할까?"
+    assert len(reviews) == 2
+    assert sum(task == "generation_plan" for task, _ in grounded_model[0]) == 1
+    assert [p["mode"] for task, p in grounded_model[0] if task == "scenario_generate"] == ["GENERATE", "REPAIR"]

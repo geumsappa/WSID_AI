@@ -151,15 +151,24 @@ def _place_links(result: dict, history: list[dict], submitted: bool) -> str:
         reply = reply.replace(LINK, ACCOUNT)  # 송금 장면에서는 결제 링크 대신 입금 계좌를 보여줘요
     elif request_type == "앱 설치":
         reply = reply.replace(LINK, APP_LINK)  # 앱 설치 장면의 링크는 앱 설치 링크로 보여줘요
-    # 새 프롬프트는 '이번 대사에서 실제로 요구했는지(requestMade)'를 알려 줘요. 요구하지 않은 대사(신뢰 쌓기·압박)에는 새로 붙이지 않아요
+    # 새 프롬프트는 '이번 대사에서 실제로 요구했는지(requestMade)'를 알려 줘요. 요구하지 않은 대사(신뢰 쌓기)에는 새로 붙이지 않아요
     asked_now = result.get("requestMade") is not False
+    move = result.get("move")
+    # 거절당한 직후(압박·물러남)에 같은 링크를 또 들이밀면 오히려 티가 나요 → 새로 붙이지 않고, 모델이 붙였어도 떼요.
+    # (물러남으로 다음 장면에 넘어가 다른 소품을 처음 요구할 때만 허용)
+    if move in ("압박", "물러남"):
+        for token in (LINK, APP_LINK, ACCOUNT):
+            if token in reply and (move == "압박" or token in "".join(persona_lines)):
+                reply = reply.replace(token, "").strip()
+        asked_now = move == "물러남" and asked_now
     for token, wanted, done in ((LINK, request_type == "링크 클릭" and not submitted, False),
                                 (APP_LINK, request_type == "앱 설치" and not app_clicked, app_clicked),
                                 (ACCOUNT, request_type == "송금" and not transferred, transferred)):
         sent = sum(line.count(token) for line in persona_lines)
         if token in reply and (sent >= MAX_LINKS or done):
             reply = reply.replace(token, "").strip()
-        elif wanted and asked_now and token not in reply and sent < MAX_LINKS and token not in last_persona:
+        elif (wanted and asked_now and token not in reply and sent < MAX_LINKS and token not in last_persona
+              and not (move == "물러남" and sent)):  # 물러난 뒤엔 이미 거절당한 소품을 다시 붙이지 않아요
             reply = f"{reply.rstrip()} {token}"
     return reply
 

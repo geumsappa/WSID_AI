@@ -60,3 +60,13 @@ def test_송금한_뒤에는_계좌를_다시_보내지_않음():
     history = _persona("이 계좌로요 [모의계좌]") + [{"role": "event", "text": TRANSFER_EVENT}]
     reply = _place_links({"personaMessage": "확인됐어요. 수수료도 [모의계좌]", "requestType": "송금"}, history, False)
     assert "[모의계좌]" not in reply
+
+
+def test_거절당한_뒤에는_같은_링크를_다시_보내지_않음():
+    from app.services.training_api import _place_links
+    history = [{"role": "persona", "text": "링크에서 확인해 주세요. [모의링크]"}, {"role": "user", "text": "안할래요"},
+               {"role": "persona", "text": "아까 보내 드린 링크로 들어가 보시면 됩니다."}, {"role": "user", "text": "싫어요"}]
+    base = {"requestType": "링크 클릭", "requestMade": True, "done": False}
+    pushed = _place_links({**base, "move": "압박", "personaMessage": "오늘 안에 확인 안 되면 제한돼요. [모의링크]"}, history, False)
+    backed = _place_links({**base, "move": "물러남", "personaMessage": "네, 불편하시면 괜찮아요. 그럼 채팅으로 성함만 남겨 주세요."}, history, False)
+    assert "[모의링크]" not in pushed and "[모의링크]" not in backed

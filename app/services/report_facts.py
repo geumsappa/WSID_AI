@@ -131,8 +131,11 @@ def _judge(f: ReportFacts) -> None:
 
     did, missed = f.did, f.missed
     text_info = [p for p in f.provided if p not in f.photos]
-    for info in text_info:
-        missed.append(f"요구받은 {_josa(info, '을', '를')} 대화창에 적었어요{_turns_of(f, info=info)}. 사기에 그대로 쓰일 수 있는 정보예요.")
+    if text_info:
+        # 넘긴 정보는 한 줄로 모아요 (리포트가 A4 한 장에 들어가게)
+        turns = sorted({t.turn for t in f.turns if set(t.provided) & set(text_info)})
+        when = f" ({', '.join(str(n) for n in turns[:3])}번째 답변)" if turns else ""
+        missed.append(f"요구받은 {_josa('·'.join(text_info[:5]), '을', '를')} 대화창에 적었어요{when}. 사기에 그대로 쓰일 수 있는 정보예요.")
     kept = [r for r in f.requested if r not in f.provided]
     if kept and not text_info:
         did.append(f"상대가 요구한 {_josa(_list(kept[:4]), '을', '를')} 끝까지 알려 주지 않았어요.")

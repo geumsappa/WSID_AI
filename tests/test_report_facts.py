@@ -85,7 +85,9 @@ def test_LLM이_기록과_다른_판정을_줘도_기록을_따른다(monkeypatc
     assert r.overallFeedback == "결과: 위험. 계좌번호를 넘겼고, 안내받은 계좌로 송금 버튼을 눌렀어요. 판매자 사칭에 인증샷까지 받아 쉽게 믿었어요."
     assert [(t.turn, t.outcome) for t in r.turnFeedback] == [(2, "risky")]
     assert r.turnFeedback[0].feedback == "다음엔 앱 안에서 거래하세요."
-    assert r.improvements[0].startswith("요구받은 계좌번호를") and "명분에 쉽게 수긍했어요." in r.improvements
+    # A4 한 장: 개선할 점은 4개까지, 기록으로 확인된 사실이 먼저 (자리가 없으면 LLM 글은 빠져요)
+    assert r.improvements[0].startswith("요구받은 계좌번호를") and len(r.improvements) == 4
+    assert "택배 가능 여부를 먼저 물었어요." in r.strengths and len(r.strengths) <= 3
 
 
 def test_훈련_턴마다_리포트용_기록이_쌓인다(monkeypatch):
@@ -100,3 +102,10 @@ def test_훈련_턴마다_리포트용_기록이_쌓인다(monkeypatch):
     log = r["trainingState"]["log"]
     assert log[-1]["t"] == 1 and log[-1]["o"] == "risky" and "계좌번호" in log[-1]["p"]
     assert "456789" not in str(log)
+
+
+def test_넘긴_정보는_한_줄로_모은다():
+    log = [{"t": 3, "o": "risky", "p": ["전화번호", "이름"], "r": ["전화번호", "이름", "모의 교육 준비비"], "e": []}]
+    f = report_facts.collect(_scenario(log), CONV, set())
+    assert [m for m in f.missed if m.startswith("요구받은")] == [
+        "요구받은 전화번호·이름을 대화창에 적었어요 (3번째 답변). 사기에 그대로 쓰일 수 있는 정보예요."]

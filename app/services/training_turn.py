@@ -563,7 +563,7 @@ PHOTO_EVENTS = {"[가상 신분증 사진 제공]": ("신분증 사진", "신분
 RISKY_EVENTS = {"앱설치링크_누름", "송금_누름", "확인페이지_제출", "신분증사진_제공", "통장사진_제공", "사진_제공"}
 # Spring 이 먼저 가린 표시 ([계좌번호] 등)와 이 서버가 가린 표시
 MASK_LABELS = ("주민등록번호", "카드번호", "전화번호", "휴대폰번호", "계좌번호", "이메일", "비밀번호",
-               "인증정보", "민감정보", "이름", "성함", "주소", "생년월일", "연락처", "숫자정보")
+               "인증정보", "민감정보", "이름", "성함", "주소", "생년월일", "연락처", "숫자정보", "번호 일부")
 # 시나리오 requestedInfo 이름 → pii_masker 종류
 EXPECT_MAP = (("성함", "이름"), ("이름", "이름"), ("주소", "주소"), ("생년월일", "생년월일"), ("연락처", "휴대폰번호"),
               ("전화", "휴대폰번호"), ("휴대폰", "휴대폰번호"), ("계좌", "계좌번호"), ("카드", "카드번호"),
@@ -575,12 +575,15 @@ MAX_FACTS = 12
 
 NAME_WORDS = re.compile(r"성함|이름|예금주|본명|실명")
 # 성씨로 시작하지만 이름이 아닌 흔한 말 (이름을 요구받은 직후에도 가리지 않아요)
-COMMON_WORDS = {"지금", "이거", "이건", "이게", "이제", "정말", "진짜", "조금", "오늘", "고객", "주소", "문자", "성함", "이름",
+COMMON_WORDS = {"성만", "성은", "성이", "성씨", "성함은", "모르겠", "알겠", "괜찮", "좋아", "싫어", "그건", "그거", "지금",
+                "나중", "다음", "내일", "어제", "이따", "혹시", "아직", "먼저", "우선", "나도", "저도", "그렇", "이거", "이건", "이게", "이제", "정말", "진짜", "조금", "오늘", "고객", "주소", "문자", "성함", "이름",
                 "계좌", "송금", "우리", "제가", "저는", "전화", "번호", "은행", "확인", "하나", "한번", "안녕", "감사", "고마워",
                 "연락", "인증", "카드", "주민", "황당", "장난", "정도", "이상", "김치", "조심", "임시", "신한", "국민", "하나은",
                 "우체국", "농협", "기업", "구매", "판매", "거래", "배송", "택배", "문의", "전에", "이미", "이번", "오후", "오전",
                 "남편", "아내", "엄마", "아빠", "친구", "동생", "형님", "누나", "언니", "오빠", "선생", "사장", "기사", "직원"}
-REFUSAL = re.compile(r"\?|왜|싫|안\s?돼|안\s?할|안\s?드|못\s|못해|아니|사기|누구|뭐|무슨|어디|의심|그만")
+# 거절·되묻기·미루기·고민: 이런 답에는 이름 문맥 가림을 하지 않아요 ("지금은 좀 그렇고 나중에요"의 '나중'을 이름으로 오인하던 문제)
+REFUSAL = re.compile(r"\?|왜|싫|안\s?돼|안\s?할|안\s?드|못\s|못해|아니|사기|누구|뭐|무슨|어디|의심|그만"
+                     r"|나중|다음에|이따|좀\s?그렇|좀\s?그래|생각해|고민|물어보|확인하고|확인되면|검색")
 
 
 def _asked_label(kind: str, asked_info: list[str], last_persona: str = "") -> str | None:
@@ -608,13 +611,19 @@ def _mask_names(text: str, asked_info: list[str], last_persona: str) -> tuple[st
     def repl(m: re.Match) -> str:
         nonlocal found
         word = m.group(1)
+        base = word[:-2] if word.endswith("이요") else word[:-1] if word.endswith("요") else word
+        if len(base) < 2:  # "김이요", "박요" = 성만 말함 (팀 합의: 중립)
+            return m.group(0)
+        if any(word.startswith(common) for common in COMMON_WORDS if len(common) >= 2):  # "이름은", "정말요"
+            return m.group(0)
         if (word[0] not in SURNAMES or word in COMMON_WORDS or word in NOT_NAMES
-                or (len(word) == 2 and len(tokens) > 3)):  # 두 글자는 짧은 답일 때만 이름으로 봐요
+                or (len(word) == 2 and len(tokens) > 3)  # 두 글자는 짧은 답일 때만 이름으로 봐요
+                or (len(word) == 2 and word[1] == "이" and (m.group(2) or "").startswith("요"))):  # "김이요" = 성만 (팀 합의: 중립)
             return m.group(0)
         found = True
         return "[이름]" + (m.group(2) or "")
 
-    masked = re.sub(r"(?<![가-힣\[])([가-힣]{2,3})(입니다|이에요|예요|이요|요|이고|고)?(?![가-힣\]])", repl, text)
+    masked = re.sub(r"(?<![가-힣\[\]\d])([가-힣]{2,3})(입니다|이에요|예요|이요|요|이고|고)?(?![가-힣\]])", repl, text)
     return masked, found
 
 
@@ -662,6 +671,8 @@ def _mask_last(text: str, asked_info: list[str], last_persona: str = "", prev_us
     had_photo = bool(provided) and any(m in text for m in PHOTO_EVENTS)
     text = pii_masker._FORGED_MARKERS.sub("", text).strip() or ("(자료를 보냄)" if had_photo else "(빈 답변)")
 
+    premasked = set(provided)  # 백엔드·프론트가 이미 가려 보낸 표시 (전체 번호였던 것)
+    longest_digits = max((len(re.sub(r"\D", "", run)) for run in re.findall(r"\d(?:[-\s]?\d)*", text)), default=0)
     masked, found = mask_sensitive(text)
     masked, numeric = mask_requested_numbers(masked, asked_info)
     # 이름·주소도 외부 AI로 보내기 전에 규칙으로 먼저 가려요 (AI는 규칙이 놓친 것만 보조로 찾아요)
@@ -685,6 +696,15 @@ def _mask_last(text: str, asked_info: list[str], last_persona: str = "", prev_us
             label = "전화번호" if kind == "휴대폰번호" else kind
         if label and label not in provided:
             provided.append(label)
+    # 숫자가 6자리도 안 되면(카드 뒤 4자리 등) 개인을 특정할 수 없는 '번호 일부'예요 (11/24 팀 합의: 중립)
+    # 값은 그대로 가리되 '입력함'으로 세지 않고, LLM 에도 일부라는 걸 알려요
+    if 0 < longest_digits < 6:
+        for kind in ("계좌번호", "카드번호", "전화번호", "휴대폰번호", "주민등록번호", "생년월일", "숫자정보", "인증정보", "비밀번호"):
+            if kind in premasked:
+                continue
+            masked = masked.replace(f"[{kind}]", "[번호 일부]").replace(f"[가림:{kind}]", "[번호 일부]")
+        provided = [label for label in provided if label in premasked or not any(
+            word in label for word in ("계좌", "카드", "전화", "연락처", "휴대폰", "주민", "생년월일", "숫자"))]
     # 화면·DB 에는 예전처럼 "[계좌번호]" 모양으로 보여 줘요 (LLM 에 보낼 때만 [가림:..] 으로 바꿔요)
     masked = re.sub(r"\[가림:([^\]]+)\]", r"[\1]", masked)
     return masked, provided

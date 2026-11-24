@@ -8,6 +8,12 @@
 
 사용자 발언은 `facts.discoveryEvidence`에 마스킹해 보관한다. 준비 결과는 발언·확인된 주제·필수 항목·준비 근거에 연결되며, 새 답변을 받으면 이전 결과를 그대로 재사용하지 않는다.
 
+### 중복 판단과 지연 확인
+
+질문 수정과 새 필수 질문의 독립 검토가 동시에 필요하면 `discovery_question_review` 한 요청에서 처리한다. 수정 후 같은 검토를 다시 호출하지 않는다. 초기 판단 뒤 별도로 반복하던 REASSESS도 한 번의 수정 예산에 통합했다. 확인된 상호작용·상대 정보로 준비 후보가 성립하면 질문 수정 전에 판단하되, 최종 계획의 근거·주체·충분성 검증은 그대로 수행한다. 검토가 없는 일반 질문은 여전히 판단 한 번이다. 인용 불일치·초점 변경 등 실제 오류의 제한적 수정은 유지하므로 모든 경우를 한 번으로 제한하는 것은 아니다.
+
+`Discovery timing` 로그는 전체 `elapsed_ms`, 판단 요청 수 `decision_calls`, 그중 질문 검토 수 `question_review_calls`, 계획 검증 전체 시간 `plan_ms`를 남긴다. 문장·이름·세션 ID는 기록하지 않는다. 판단 요청 수는 공급자의 통신 재시도를 포함한 HTTP 호출 수와 다르다. 실제 지연·비용·품질 비교에는 기존 `evaluations/discovery_scenario/runner.py`를 사용하며, 로컬 응답으로 확인한 호출 감소를 실제 응답시간 개선 수치로 취급하지 않는다.
+
 ### 질문 출력 계약
 
 실제 공급자 호출은 `discovery_output.py`의 상태별 JSON Schema를 사용한다. OpenAI에는 `response_format=json_schema, strict=true`를 전송한다. `ASK`에는 null이 아닌 주제와 공백이 아닌 질문이 필수이며, `VERIFY_READY`·`STOP`·`OFFER_BASIC`은 별도 형태다. 기본 훈련 제안이 허용되지 않은 요청에서는 `OFFER_BASIC` 분기도 스키마에서 제외한다. 공급자 응답은 `discovery_client.py`에서 기존 내부 상태로 변환한다. 내부의 종료 상태용 nullable 필드와 모델이 내보내는 ASK 형식은 구분한다. 의미상 이미 답한 질문·근거 없는 질문을 걸러내는 검사는 계속 유지한다.

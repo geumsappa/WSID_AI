@@ -187,3 +187,29 @@ def test_discovery_retries_transient_failure_within_shared_budget(monkeypatch):
     assert result["next_question"] == "어떤 작업이었나요?"
     assert not result["done"]
     assert llm._generation_deadline.get() is None
+
+
+def test_confirmed_interaction_skips_question_repair_but_keeps_plan_review(grounded_model):
+    text = "별빛서점 직원에게 배송 일정을 물었어요"
+    grounded_model[1]["discovery_brief"] = {
+        "updates": [{"topic": topic, "turn": 1, "quote": text} for topic in ("ACTIVITY", "SERVICE", "INTERACTION")],
+        "personalizationTarget": "SERVICE", "requiredTopics": ["ACCESS"], "contextSufficient": False,
+        "readinessBasis": None, "nextTopic": None, "nextQuestion": ""}
+    result = ask(text)
+    assert result.canGenerateScenario and result.facts["preparedScenario"]
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "generation_plan", "semantic_review"]
+    assert result.facts["readinessBasis"]["evidence"] == [{"turn": 1, "quote": text}]
+
+
+def test_discovery_timing_logs_counts_without_user_text(grounded_model, caplog):
+    import logging
+    caplog.set_level(logging.INFO, logger="app.services.fast_discovery")
+    grounded_model[1]["discovery_brief"] = {
+        "updates": [{"topic": "ACTIVITY", "turn": 1, "quote": "빵 먹었어요"}],
+        "personalizationTarget": "OTHER", "requiredTopics": ["SETTING"], "nextTopic": "SETTING"}
+    ask("빵 먹었어요")
+    records = [record for record in caplog.records if record.message.startswith("Discovery timing:")]
+    assert len(records) == 1
+    assert "decision_calls=1" in records[0].message
+    assert "question_review_calls=0" in records[0].message and "plan_ms=0" in records[0].message
+    assert "빵 먹었어요" not in caplog.text

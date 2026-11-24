@@ -131,10 +131,13 @@ def test_reassessment_cannot_bypass_review_of_a_new_question(grounded_model):
     grounded_model[1]["discovery_question_review"] = {"updates": [], "personalizationTarget": "PERSON",
         "requiredTopics": [], "contextSufficient": True, "nextTopic": None,
         "questionAssessments": [need("INTERACTION", status="ANSWERED", quote="제가 자료를 정리하기로 했어요")]}
+    grounded_model[0].clear()
     result = ask("별명은 도토리", first.facts)
     assert result.canGenerateScenario and result.facts["questionNeedReview"]["performed"]
     assert sum(task == "discovery_question_review" for task, _ in grounded_model[0]) == 1
 
+    assert [task for task, _ in grounded_model[0]] == [
+        "discovery_brief", "discovery_question_review", "generation_plan", "semantic_review"]
 
 @pytest.mark.parametrize("topic", [None, "ACTIVITY"])
 def test_missing_or_already_answered_question_gets_one_internal_correction(grounded_model, topic):
@@ -181,3 +184,47 @@ def test_explicit_stop_allows_null_without_forcing_a_question(grounded_model):
     assert result.facts["basicScenarioOffered"]
     assert len(grounded_model[0]) == 1
     assert "questionCorrection" not in grounded_model[0][0][1]
+
+
+def test_question_repair_and_independent_review_share_one_request(grounded_model):
+    from copy import deepcopy
+    first = initial(grounded_model)
+    new_question(grounded_model)
+    proposed = deepcopy(grounded_model[1]["discovery_brief"])
+    proposed["questionAssessments"] = []  # Cannot accept an ungrounded new question.
+    grounded_model[1]["discovery_brief"] = proposed
+    # The independent reviewer confirms that this particular gap is real.
+    reviewed = deepcopy(proposed)
+    reviewed.update(updates=[], questionAssessments=[need("INTERACTION")])
+    grounded_model[1]["discovery_question_review"] = reviewed
+    grounded_model[0].clear()
+    result = ask("별명은 도토리", first.facts)
+    assert not result.canGenerateScenario
+    assert result.nextQuestion == proposed["nextQuestion"]
+    assert result.facts["questionNeedReview"]["performed"]
+    assert result.facts["knownTopics"]["PERSON_NAME"]["name"] == "도토리"
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "discovery_question_review"]
+    correction = grounded_model[0][1][1]
+    assert correction["questionCorrection"] and correction["questionRequired"]
+    assert correction["knownTopics"]["ROLE"]["quote"] == "제가 자료를 정리하기로 했어요"
+
+
+@pytest.mark.parametrize("failure", ["fabricated_evidence", "focus_reset"])
+def test_combined_review_still_rejects_unsupported_facts_or_focus_changes(grounded_model, failure):
+    from copy import deepcopy
+    first = initial(grounded_model)
+    new_question(grounded_model)
+    proposed = deepcopy(grounded_model[1]["discovery_brief"])
+    proposed["questionAssessments"] = []
+    grounded_model[1]["discovery_brief"] = proposed
+    reviewed = deepcopy(proposed)
+    reviewed.update(updates=[], questionAssessments=[need("INTERACTION")])
+    if failure == "fabricated_evidence":
+        reviewed["questionAssessments"] = [need("INTERACTION", status="ANSWERED", quote="친구가 송금을 약속했어요")]
+    else:
+        reviewed["focusChanged"] = True
+    grounded_model[1]["discovery_question_review"] = reviewed
+    grounded_model[0].clear()
+    with pytest.raises(AiApiError):
+        ask("별명은 도토리", first.facts)
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "discovery_question_review"]

@@ -1,4 +1,5 @@
 import json
+import re
 
 from pydantic import ValidationError
 
@@ -120,7 +121,7 @@ def simulation(request: SimulationRequest) -> SimulationResult:
     if fresh_submission:
         actions = [action for action in actions if action != "SAFE_RESPONSE"]
         actions = list(dict.fromkeys([*actions, "RISKY_RESPONSE", "SENSITIVE_INFO_SHARED", "MOCK_LOGIN_ATTEMPT"]))
-    reply = _place_links(result, history, submitted)
+    reply = _place_links(result, history, submitted, request.userInput)
     has_link = LINK in reply
     page = BANK_PAGE if has_link and not result["done"] and not submitted else None
     if submitted and has_link:
@@ -139,11 +140,20 @@ def simulation(request: SimulationRequest) -> SimulationResult:
                             trainingState=result.get("trainingState"))
 
 
-def _place_links(result: dict, history: list[dict], submitted: bool) -> str:
+# 사용자가 소품을 달라고 함 ("계좌 주세요", "링크가 없는데?", "어디로 보내요?")
+USER_ASKS_PROP = re.compile(r"(계좌|번호|링크|주소|앱).{0,8}(주세요|줘|알려|없는데|없어|어디|안\s?보여|안\s?왔|다시)|어디로\s?(보내|입금|송금)")
+# 대사가 "여기로 보내 주세요", "계좌 다시 드릴게요"처럼 소품을 가리킴 → 카드가 없으면 누를 게 없어서 어색해요
+REPLY_POINTS_PROP = re.compile(r"아래|여기로|이\s?계좌|그\s?계좌|계좌.{0,6}(드릴|보내\s?드릴|남겨|알려\s?드릴)|링크.{0,6}(드릴|보내\s?드릴)|눌러\s?주세요")
+MAX_TRANSFERS = 2  # 보증금·수수료 명목의 '추가 송금'까지 (실제 중고거래 사기에서 흔해요)
+
+
+def _place_links(result: dict, history: list[dict], submitted: bool, user_text: str = "") -> str:
     """모의 링크·모의 앱 표시를 장면에 맞게 정리해요.
 
     - 링크는 '링크 클릭' 장면, 앱 설치 링크는 '앱 설치' 장면에서만 새로 붙여요.
     - 바로 앞 대사에 이미 같은 링크가 있거나 대화 전체에서 2번 보냈으면 다시 붙이지 않아요.
+    - 사용자가 직접 달라고 하거나, 대사가 "여기로 보내 주세요"처럼 소품을 가리키면 한도 안에서 붙여요.
+    - 계좌는 한 번 송금하면 카드가 닫혀요 → 추가 송금을 요구하면 새 계좌 카드를 붙여요 (송금 2번까지).
     """
     reply = result["personaMessage"]
     if result.get("done"):
@@ -152,7 +162,10 @@ def _place_links(result: dict, history: list[dict], submitted: bool) -> str:
     persona_lines = [message["text"] for message in history if message["role"] == "persona"]
     last_persona = persona_lines[-1] if persona_lines else ""
     app_clicked = any(message["role"] == "event" and message["text"] == APP_CLICK_EVENT for message in history)
-    transferred = any(message["role"] == "event" and message["text"] == TRANSFER_EVENT for message in history)
+    transfers = sum(1 for message in history if message["role"] == "event" and message["text"] == TRANSFER_EVENT)
+    transferred = transfers > 0
+    user_asked = bool(USER_ASKS_PROP.search(user_text or ""))
+    points = bool(REPLY_POINTS_PROP.search(reply))
     if request_type == "송금":
         reply = reply.replace(LINK, ACCOUNT)  # 송금 장면에서는 결제 링크 대신 입금 계좌를 보여줘요
     elif request_type == "앱 설치":
@@ -162,19 +175,26 @@ def _place_links(result: dict, history: list[dict], submitted: bool) -> str:
     move = result.get("move")
     # 거절당한 직후(압박·물러남)에 같은 링크를 또 들이밀면 오히려 티가 나요 → 새로 붙이지 않고, 모델이 붙였어도 떼요.
     # (물러남으로 다음 장면에 넘어가 다른 소품을 처음 요구할 때만 허용)
-    if move in ("압박", "물러남"):
+    if move in ("압박", "물러남") and not user_asked:
         for token in (LINK, APP_LINK, ACCOUNT):
             if token in reply and (move == "압박" or token in "".join(persona_lines)):
                 reply = reply.replace(token, "").strip()
         asked_now = move == "물러남" and asked_now
-    for token, wanted, done in ((LINK, request_type == "링크 클릭" and not submitted, False),
-                                (APP_LINK, request_type == "앱 설치" and not app_clicked, app_clicked),
-                                (ACCOUNT, request_type == "송금" and not transferred, transferred)):
+    if user_asked or points:
+        asked_now = True
+    # 추가 송금 요구: 이미 한 번 보냈고, 대사가 다시 보내라고 하면 장면과 상관없이 새 계좌 카드를 붙여요
+    more_money = transferred and transfers < MAX_TRANSFERS and (points or "한 번만 더" in reply or "더 보내" in reply)
+    for token, wanted, done, limit in (
+            (LINK, request_type == "링크 클릭" and not submitted, False, MAX_LINKS),
+            (APP_LINK, request_type == "앱 설치" and not app_clicked, app_clicked, MAX_LINKS),
+            (ACCOUNT, (request_type == "송금" and not transferred) or more_money,
+             transfers >= MAX_TRANSFERS or (transferred and not more_money), MAX_LINKS + MAX_TRANSFERS - 1)):
         sent = sum(line.count(token) for line in persona_lines)
-        if token in reply and (sent >= MAX_LINKS or done):
+        if token in reply and (sent >= limit or done):
             reply = reply.replace(token, "").strip()
-        elif (wanted and asked_now and token not in reply and sent < MAX_LINKS and token not in last_persona
-              and not (move == "물러남" and sent)):  # 물러난 뒤엔 이미 거절당한 소품을 다시 붙이지 않아요
+        elif (wanted and asked_now and token not in reply and sent < limit
+              and (token not in last_persona or user_asked or more_money)
+              and not (move == "물러남" and sent and not user_asked)):  # 물러난 뒤엔 이미 거절당한 소품을 다시 붙이지 않아요
             reply = f"{reply.rstrip()} {token}"
     return reply
 

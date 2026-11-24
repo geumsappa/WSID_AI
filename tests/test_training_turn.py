@@ -404,3 +404,28 @@ def test_마지막_장면에서_송금하면_사기범이_떠나며_끝남(monke
     r = training.run_training_turn("paid", _scenario(), 3, history)
     assert r["done"] and r["endReason"] == "scam_success"
     assert "보증금" not in r["personaMessage"] and r["personaMessage"].endswith("[퇴장]")
+
+
+def test_상대_반응에_따라_사기범_태도가_바뀐다():
+    # 정보를 넘긴 사람 → 파고들기, 거절한 사람 → 돌아가기, 연달아 거절 → 물러나기, 처음 → 떠보기
+    assert training._reaction([], [], [])["stance"] == "떠보기"
+    gave = [{"t": 1, "o": "risky", "p": ["이름"], "r": ["이름"], "e": []}]
+    assert training._reaction(gave, ["계좌번호"], [])["stance"] == "파고들기"
+    refused = [{"t": 1, "o": "safe", "p": [], "r": ["계좌번호"], "e": []}]
+    r = training._reaction(refused, [], [])
+    assert r["stance"] == "돌아가기" and r["refused"] == {"계좌번호": 1}
+    many = [{"t": i, "o": "safe", "p": [], "r": ["계좌번호"], "e": []} for i in (1, 2, 3)]
+    assert training._reaction(many, [], [])["stance"] == "물러나기"
+
+
+def test_상대_반응이_프롬프트에_들어간다(monkeypatch):
+    seen = []
+
+    def fake(system, content, **kwargs):
+        seen.append(content)
+        return {"judgment": {"outcome": "risky"}, "move": "확전", "speaker": None, "personaMessage": "네 확인했어요. 생년월일도 알려 주세요.",
+                "requestMade": True, "requestType": "개인정보 제공", "nextScene": 1, "newFacts": [], "scenarioComplete": False, "realConcern": False}
+    monkeypatch.setattr(training, "generate_json", fake)
+    state = {"facts": [], "log": [{"t": 1, "o": "risky", "p": ["이름"], "r": ["이름"], "e": []}]}
+    training.run_training_turn("s1", _scenario(), 1, _history("네", "010-1234-5678 이에요"), state=state)
+    assert "지금 태도 (§3-1): **파고들기**" in seen[0] and "이름" in seen[0]

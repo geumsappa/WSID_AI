@@ -112,8 +112,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         speaker_changes=_speaker_changes(persona_lines), allowed_requests=tuple(ALLOWED_REQUESTS),
         media_counts=scam_media.count_used(persona_lines))
     # prompt(규칙)는 매 턴 똑같아서 캐시되고, 매 턴 바뀌는 서버 정보는 대본 맨 앞에 붙여요 (비용 절약)
+    reaction = _reaction(turn_log, provided, events_this_turn)
     prompt, server_info = _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,
-                                        state, events, guard_state)
+                                        state, events, guard_state, reaction)
     transcript = server_info + "\n\n---\n\n" + _build_transcript(history, masked_last, asked_info)
     try:
         data = generate_json(prompt, transcript, max_tokens=1600, cache=True)
@@ -412,7 +413,8 @@ DECISIVE_EXIT = re.compile(
 
 
 def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,
-                  state: dict, events: list[str], guard_state) -> str:
+                  state: dict, events: list[str], guard_state, reaction: dict | None = None) -> str:
+    reaction = reaction or _reaction([], [], [])
     # 근거 사례 출처 같은 내부 값은 빼고, 연기·판정에 필요한 것만 보여줌
     shown = {k: scenario.get(k) for k in
              ("riskType", "fraudSubtype", "title", "channel", "persona", "background", "keyScenes", "expectedActions", "allowedOrganizations", "completedPageSubmission")}
@@ -435,6 +437,11 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, 
         "APP_COUNT": str(counts.get("[모의앱]", 0)),
         "ACCOUNT_COUNT": str(counts.get("[모의계좌]", 0)),
         "SPEAKER_CHANGE_COUNT": str(guard_state.speaker_changes),
+        "STANCE": reaction["stance"],
+        "GIVEN_SO_FAR": ", ".join(reaction["given"]) or "(없음)",
+        "REFUSED_SO_FAR": ", ".join(f"{k}({v}번)" for k, v in reaction["refused"].items()) or "(없음)",
+        "COMPLY_COUNT": str(reaction["comply"]),
+        "REFUSE_COUNT": str(reaction["refuse"]),
         "MEDIA_COUNTS": " · ".join(f"[{kind}] {n}/{scam_media.KINDS[kind][0]}" for kind, n in guard_state.media_counts.items()),
         "EVENT_LOG": "\n".join(f"- {e}" for e in events) or "(없음)",
         "REQUESTS": ", ".join(ALLOWED_REQUESTS),
@@ -816,6 +823,36 @@ def _load_state(raw, current_scene: int, scene_now: dict, persona_lines: list[st
     if state["scene"] != current_scene:  # 장면이 바뀌었으면 장면별 횟수는 새로 세요
         state.update(scene=current_scene, trust=0, push=0, requestMade=_request_seen(scene_now, persona_lines[-1:]))
     return state
+
+
+# ---------------- 상대 반응 읽기 (사기범 태도) ----------------
+# 실제 사기범은 상대를 떠보며 반응에 따라 태도를 바꿔요. 정보를 잘 주는 사람은 계속 파고들고,
+# 경계하는 사람에게는 같은 요구를 반복하지 않고 다른 길로 돌아가요. 대화 전체 기록(trainingState.log)으로 정해요.
+STANCES = ("떠보기", "파고들기", "돌아가기", "물러나기")
+
+
+def _reaction(log: list[dict], provided_now: list[str], events_now: list[str]) -> dict:
+    """대화 전체에서 상대가 얼마나 넘어왔는지 → 태도. 이번 답변에서 넘긴 정보·사건도 넣어요 (판정 전에도 확실한 것)."""
+    given = list(dict.fromkeys([p for item in log for p in item.get("p", [])] + list(provided_now)))
+    risky_events = [e for item in log for e in item.get("e", []) if e in RISKY_EVENTS] + [e for e in events_now if e in RISKY_EVENTS]
+    comply = sum(1 for item in log if item.get("o") == "risky") + (1 if provided_now or set(events_now) & RISKY_EVENTS else 0)
+    refuse = sum(1 for item in log if item.get("o") == "safe")
+    refused: dict[str, int] = {}
+    for item in log:
+        if item.get("o") == "safe":
+            for r in item.get("r", []) or ["요구"]:
+                refused[r] = refused.get(r, 0) + 1
+    recent = [item.get("o") for item in log[-2:]]
+    score = 2 * len(given) + 2 * len(risky_events) + comply - refuse
+    if given or risky_events:
+        stance = "파고들기" if score >= 3 else "떠보기"
+    elif refuse >= 3 and recent == ["safe", "safe"]:
+        stance = "물러나기"
+    elif refuse >= 1:
+        stance = "돌아가기"
+    else:
+        stance = "떠보기"
+    return {"stance": stance, "given": given, "refused": refused, "comply": comply, "refuse": refuse}
 
 
 # ---------------- 리포트용 턴별 기록 ----------------

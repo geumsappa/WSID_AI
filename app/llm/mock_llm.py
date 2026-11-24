@@ -7,7 +7,7 @@ import json
 
 def respond(system_prompt: str, user_content: str) -> str:
     task = system_prompt.splitlines()[0].removeprefix("TASK: ")
-    if task in ("candidate_plan", "candidate_compare", "discovery_brief", "discovery_question_review", "intake_plan", "semantic_review", "scenario_generate", "scenario_classify"):
+    if task in ("candidate_plan", "candidate_compare", "discovery_brief", "discovery_question_review", "intake_plan", "semantic_review", "draft_review", "scenario_generate", "scenario_classify"):
         from app.llm.mock_pipeline import respond as pipeline_respond
         return json.dumps(pipeline_respond(task, json.loads(user_content)), ensure_ascii=False)
     if "overallFeedback" in system_prompt and "mockPageEvaluation" in user_content:

@@ -27,14 +27,14 @@ def ask():
     return discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput=TEXT))
 
 
-def test_grounded_anchor_finishes_without_optional_question_or_extra_call(grounded_model):
+def test_grounded_anchor_skips_optional_question_then_verifies_plan(grounded_model):
     grounded_model[1]["discovery_brief"] = decision()
     result = ask()
     assert result.canGenerateScenario
     assert "ACTIVITY_DETAIL" not in result.facts["intakeRequirements"]["topics"]
     assert result.facts["readinessEvidence"]["quote"] == "직원에게 배송 일정을 물었어요"
     assert result.facts["questionHistory"] == []
-    assert [task for task, _ in grounded_model[0]] == ["discovery_brief"]
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "generation_plan", "semantic_review"]
 
 
 def test_anchor_does_not_skip_a_real_blocking_gap(grounded_model):
@@ -89,7 +89,8 @@ def test_topic_selection_gets_an_opening_question_without_plan_justification(gro
     assert result.facts["questionHistory"][-1]["topic"] == "ACTIVITY"
     assert result.facts["intakeRequirements"]["topics"] == ["ACTIVITY"]
     assert "ACTIVITY" not in result.facts["knownTopics"]
-    assert len(grounded_model[0]) == 1
+    assert len(grounded_model[0]) == 2  # null proposal is corrected once before the safe opening fallback
+    assert grounded_model[0][1][1]["questionRequired"]
 
 
 def test_opening_can_use_a_model_question_without_detailed_assessment(grounded_model):
@@ -131,3 +132,53 @@ def test_opening_is_not_repeated_when_no_experience_can_be_supplied(grounded_mod
     assert second.nextQuestion != first.nextQuestion
     assert second.facts["basicScenarioOffered"]
     assert len(second.facts["questionHistory"]) == 1
+
+
+def test_sufficient_flag_without_contact_basis_keeps_asking(grounded_model):
+    text = "집에서 고기랑 채소를 구워 먹었어요"
+    grounded_model[1]["discovery_brief"] = {
+        "updates": [{"topic": "ACTIVITY", "turn": 1, "quote": "집에서 고기랑 채소를 구워 먹었어요"},
+                    {"topic": "ACTIVITY_DETAIL", "turn": 1, "quote": "고기랑 채소"}],
+        "personalizationTarget": "OTHER", "contextSufficient": True, "readinessBasis": None,
+        "requiredTopics": ["INTERACTION"], "nextTopic": "INTERACTION",
+        "nextQuestion": "그 식사와 관련해 누군가와 정하거나 부탁받은 일이 있었나요?"}
+    result = discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput=text))
+    assert not result.canGenerateScenario
+    assert not result.facts["discoveryReady"]
+    assert result.nextQuestion == "그 식사와 관련해 누군가와 정하거나 부탁받은 일이 있었나요?"
+    assert not result.facts["basicScenarioOffered"]
+    assert len(grounded_model[0]) == 1
+
+
+def test_contact_evidence_must_support_the_claimed_context_topic(grounded_model):
+    value = decision()
+    # A real quotation about a purchase cannot justify the separate shipping interaction.
+    value["readinessBasis"]["topics"] = ["INTERACTION"]
+    value["readinessBasis"]["evidence"] = [{"turn": 1, "quote": "책을 샀고"}]
+    value["contextSufficient"] = True
+    grounded_model[1]["discovery_brief"] = value
+    assert not ask().canGenerateScenario
+
+
+@pytest.mark.parametrize("text", ["카페 갔어요", "집에서 밥 먹었어요", "친구랑 만났어요"])
+def test_first_experience_does_not_offer_basic_when_model_omits_question(grounded_model, text):
+    grounded_model[1]["discovery_brief"] = {"updates": [{"topic": "ACTIVITY", "turn": 1, "quote": text}],
+        "personalizationTarget": "UNDECIDED", "contextSufficient": False, "readinessBasis": None,
+        "requiredTopics": [], "nextTopic": None}
+    result = discover(DiscoveryRequest(conversation=[], knownFacts={}, currentInput=text))
+    assert not result.canGenerateScenario
+    assert not result.facts["basicScenarioOffered"]
+    assert not result.facts["intakePaused"]
+    assert result.nextQuestion.endswith("?")
+    assert result.facts["questionSelectionRecovered"]
+    assert result.facts["knownTopics"].keys() == {"ACTIVITY"}
+    assert grounded_model[0][0][1]["basicOfferAllowed"] is False
+
+
+def test_basic_offer_requires_followup_difficulty_or_explicit_stop():
+    from app.services.fast_discovery import _can_offer_basic
+    topics = {"ACTIVITY": {"status": "KNOWN"}, "ACTIVITY_DETAIL": {"status": "PARTIAL"}}
+    assert not _can_offer_basic(topics, [])
+    assert not _can_offer_basic(topics, [{"topic": "ACTIVITY_DETAIL"}])
+    assert _can_offer_basic(topics, [{"topic": "ACTIVITY_DETAIL"}, {"topic": "ACTIVITY_DETAIL"}])
+    assert _can_offer_basic({}, [], stop_requested=True)

@@ -23,9 +23,11 @@ def test_single_plan_and_joint_review_receive_original_evidence_and_same_criteri
     facts = ready(graph_data).facts
     training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
     calls = grounded_model[0]
-    assert [task for task, _ in calls[1:]] == ["generation_plan", "scenario_generate", "semantic_review", "scenario_classify"]
+    assert [task for task, _ in calls[1:]] == ["generation_plan", "semantic_review", "scenario_generate", "draft_review", "scenario_classify"]
     review = next(payload for task, payload in calls if task == "semantic_review")
-    assert review["reviewScope"] == "CONTEXT_PLAN_AND_DRAFT"
+    assert review["reviewScope"] == "CONTEXT_AND_PLAN"
+    draft_review = next(payload for task, payload in calls if task == "draft_review")
+    assert draft_review["reviewScope"] == "DRAFT_AGAINST_ACCEPTED_PLAN"
     assert review["userMessages"] == facts["discoveryEvidence"]
     writer = next(payload for task, payload in calls if task == "scenario_generate")
     assert writer["userMessages"] == facts["discoveryEvidence"]
@@ -42,7 +44,7 @@ def test_plan_with_changed_actor_fails_before_draft_generation(grounded_model, g
     grounded_model[1]["generation_plan"] = {"context": graph.model_dump(), "selectedPlan": body}
     with pytest.raises(AiApiError) as error:
         training_api.scenario(ScenarioRequest(facts=ready(graph_data).facts, fraudTypeCode="SMISHING"))
-    assert error.value.status == 422
+    assert error.value.status == 503
     assert not any(task == "scenario_generate" for task, _ in grounded_model[0])
 
 
@@ -88,3 +90,67 @@ def test_saved_context_quotes_are_not_presented_as_a_full_conversation(grounded_
     assert writer["sourceScope"] == reviewer["sourceScope"] == "RETAINED_QUOTES"
     assert writer["userMessages"] == [{"turn": item["sourceTurn"], "text": item["quote"]} for item in graph_data["evidence"]]
     assert reviewer["userMessages"] == writer["userMessages"]
+
+
+def test_readiness_reason_is_shared_by_intake_plan_writer_and_review(grounded_model, graph_data):
+    facts = ready(graph_data).facts
+    basis = facts["readinessBasis"]
+    assert basis and basis["contactReason"]
+    training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    for task in ("generation_plan", "scenario_generate", "semantic_review"):
+        payload = next(p for name, p in grounded_model[0] if name == task)
+        assert payload["readinessBasis"] == basis
+    from app.services.prompt_templates import load_prompt
+    policy = (PROMPTS / "context_sufficiency.md").read_text(encoding="utf-8")
+    for name in ("discovery_brief", "discovery_question_review", "single_generation_plan", "semantic_review"):
+        prompt = load_prompt(PROMPTS / (name + ".md"))
+        assert policy in prompt
+        assert "{{CONTEXT_SUFFICIENCY}}" not in prompt
+
+
+def test_generation_reuses_the_approved_anchor_instead_of_replanning(grounded_model, graph_data):
+    facts = ready(graph_data).facts
+    grounded_model[0].clear()
+    grounded_model[1]["generation_plan"] = lambda _: pytest.fail("Generation must not replan approved context")
+    result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    assert result.scenario["sourceFacts"][0]["eventId"] == "event_a"
+    assert not any(task == "generation_plan" for task, _ in grounded_model[0])
+
+
+def test_changed_intake_basis_is_rejected_before_model_call(grounded_model, graph_data):
+    facts = ready(graph_data).facts
+    facts["readinessBasis"]["evidence"][0]["quote"] = "말한 적 없는 사전 결제 약속"
+    grounded_model[0].clear()
+    with pytest.raises(AiApiError) as error:
+        training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    assert error.value.status == 422
+    assert not grounded_model[0]
+
+
+def test_missing_personalization_anchor_is_completed_before_draft(grounded_model, graph_data, plan_data, generation_data):
+    graph_data["evidence"].append({"id": "quote_b", "sourceTurn": 1, "quote": "동료와 함께 이용했고"})
+    graph_data["events"].append({"id": "event_b", "actorId": "actor_peer", "action": "함께 이용함",
+        "participantIds": ["actor_user"], "certainty": "CONFIRMED", "evidenceIds": ["quote_b"], "category": "기타"})
+    plan_data["personalizationBasis"].append({"eventId": "event_b", "evidenceId": "quote_b",
+        "detail": "함께 이용한 동료", "scenarioImpact": "함께한 경험을 아는 척하는 첫 연락에 활용"})
+    # The model omits event_b from anchorClaims; the writer must receive canonical claims.
+    generation_data["preservedClaims"].append({"eventId": "event_b", "actorId": "actor_peer"})
+    facts = ready(graph_data).facts
+    result = training_api.scenario(ScenarioRequest(facts=facts, fraudTypeCode="SMISHING"))
+    writer = next(p for task, p in grounded_model[0] if task == "scenario_generate")
+    assert writer["plan"]["anchorClaims"] == [
+        {"eventId": "event_a", "actorId": "actor_peer"}, {"eventId": "event_b", "actorId": "actor_peer"}]
+    assert result.scenario["title"]
+    assert sum(task == "generation_plan" for task, _ in grounded_model[0]) == 1
+
+
+def test_reference_completion_never_promotes_uncertain_events(grounded_model, graph_data, plan_data):
+    graph_data["evidence"].append({"id": "quote_b", "sourceTurn": 1, "quote": "동료와 함께 이용했고"})
+    graph_data["events"].append({"id": "event_b", "actorId": "actor_peer", "action": "함께 이용함",
+        "participantIds": ["actor_user"], "certainty": "UNCERTAIN", "evidenceIds": ["quote_b"], "category": "기타"})
+    plan_data["personalizationBasis"].append({"eventId": "event_b", "evidenceId": "quote_b",
+        "detail": "불확실한 사건", "scenarioImpact": "이 사건을 접근에 이용하려는 잘못된 계획"})
+    with pytest.raises(AiApiError) as error:
+        training_api.scenario(ScenarioRequest(facts=ready(graph_data).facts, fraudTypeCode="SMISHING"))
+    assert error.value.status == 503
+    assert not any(task == "scenario_generate" for task, _ in grounded_model[0])

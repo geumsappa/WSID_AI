@@ -8,8 +8,9 @@ from pydantic import ValidationError
 from app.config import settings
 from app.guard.sensitive import mask_name_address, mask_sensitive
 from app.llm.llm_client import generate_json
-from app.schemas.context_graph import ContextGraph, ScenarioPlan, IntakePlan, GenerationIntakePlan, SemanticReview, CandidateProposal, CandidateComparison, SinglePlanProposal
-from app.services.context_graph import ContextIntegrityError, check_graph, check_plan
+from app.schemas.context_graph import ContextGraph, ScenarioPlan, IntakePlan, GenerationIntakePlan, SemanticReview, DraftReview, CandidateProposal, CandidateComparison, SinglePlanProposal
+from app.services.context_graph import ContextIntegrityError, check_graph, check_plan, complete_anchor_claims
+from app.services.readiness import load_basis, plan_uses_basis
 from app.services.scenario_retrieval import retrieve_patterns, prompt_patterns, validate_uses
 
 from app.services.prompt_templates import load_prompt, response_schema
@@ -54,11 +55,18 @@ def ask(task, payload, model, *, timeout=None, max_tokens=2500, validate=None):
                 validate(result)
             return result
         except (ValidationError, ContextIntegrityError) as error:
+            # Codes/field paths only; never log user quotations, names or raw output.
+            check = (str(error) if isinstance(error, ContextIntegrityError) else "schema_validation")
+            check = check if re.fullmatch(r"[a-z_]{1,90}", check) else "context_validation"
+            logger.warning("Planning output rejected: task=%s attempt=%d check=%s", task, attempt + 1, check)
             if attempt:
                 raise
             content["schemaErrors"] = ([{"path": ".".join(map(str, item["loc"])), "type": item["type"]} for item in error.errors()]
                                        if isinstance(error, ValidationError) else [{"path": task, "type": str(error)}])
-            content["formatCorrection"] = "오류가 있는 필드를 출력 스키마에 맞춰 다시 생성하세요. 설명은 설명 필드에, 분류는 enum의 정확한 값으로 작성하세요. 사실을 바꾸지 마세요."
+            # A repair needs the rejected object, not just an isolated error code.
+            # This stays within the request; never persisted or logged.
+            content["rejectedOutput"] = safe_tree(raw)
+            content["formatCorrection"] = "schemaErrors와 rejectedOutput을 대조해 해당 필드와 연결 참조만 고치세요. 원문·정상 사건·주체는 유지하세요. 인용은 해당 turn의 원문에서 복사하고 PERSON_NAME=KNOWN의 name은 PERSON entity.label에 그대로 복사해 같은 ID를 impersonatedActorId에 쓰세요. 다른 사람으로 바꾸지 마세요. 전체 JSON을 반환하세요."
 
 
 def intake(messages, previous=None, previous_plan=None, question_budget=5, asked_questions=None, *, generation_requested=False, readiness_evidence=None, confirmed_topics=None):
@@ -68,6 +76,7 @@ def intake(messages, previous=None, previous_plan=None, question_budget=5, asked
         # Grounding is checked before any generated plan can be used.
         check_graph(result.context, messages, previous)
         if result.selectedPlan is not None:
+            result.selectedPlan.anchorClaims = complete_anchor_claims(result.context, result.selectedPlan.anchorClaims, result.selectedPlan.personalizationBasis)
             check_plan(result.selectedPlan, result.context)
 
     previous_plan = {key: value for key, value in previous_plan.items() if key in ScenarioPlan.model_fields} if isinstance(previous_plan, dict) else None
@@ -84,7 +93,7 @@ def intake(messages, previous=None, previous_plan=None, question_budget=5, asked
     return result, selected
 
 
-def review(graph, plan, *, messages=None, previous=None, generated=None, source_scope=None):
+def review(graph, plan, *, messages=None, previous=None, generated=None, source_scope=None, revision_history=None):
     source_messages = messages if messages is not None else (plan._review_messages if plan else [])
     payload = {"reviewStage": "GENERATED" if generated is not None else "PLAN",
                "sourceScope": source_scope or ("USER_STATEMENTS" if source_messages else "RETAINED_QUOTES"),
@@ -92,6 +101,13 @@ def review(graph, plan, *, messages=None, previous=None, generated=None, source_
                "context": graph.model_dump(), "plan": plan.model_dump() if plan else None,
                "userMessages": source_messages, "previousContext": previous.model_dump() if previous else None,
                "generated": generated, "retrievedPatterns": prompt_patterns(plan._retrieval_trace) if plan and plan._retrieval_trace else []}
+    if plan and plan._readiness_basis:
+        payload["readinessBasis"] = plan._readiness_basis
+    if revision_history:
+        payload["revisionHistory"] = revision_history
+    if generated is not None and plan and plan._context_approved:
+        payload["contextVerified"] = True
+        return ask("draft_review", payload, DraftReview, timeout=settings.verification_timeout_seconds, max_tokens=1500).as_semantic_review()
     return ask("semantic_review", payload, SemanticReview, timeout=settings.verification_timeout_seconds, max_tokens=1500)
 
 
@@ -118,6 +134,7 @@ def _approach_plan(proposal, candidate):
 
 
 def _check_selected_plan(graph, plan, confirmed_topics=None, personalization_target=None):
+    plan.anchorClaims = complete_anchor_claims(graph, plan.anchorClaims, plan.personalizationBasis)
     check_plan(plan, graph)
     name_fact = (confirmed_topics or {}).get("PERSON_NAME", {})
     name = name_fact.get("name") if name_fact.get("status") == "KNOWN" else None
@@ -147,6 +164,7 @@ def _check_selected_plan(graph, plan, confirmed_topics=None, personalization_tar
 
 def _check_candidates(proposal, messages, confirmed_topics=None, personalization_target=None):
     check_graph(proposal.context, messages)
+    proposal.anchorClaims = complete_anchor_claims(proposal.context, proposal.anchorClaims, proposal.personalizationBasis)
     ids = [candidate.id for candidate in proposal.candidates]
     if len(set(ids)) != len(ids):
         raise ContextIntegrityError("duplicate_candidate_id")
@@ -159,21 +177,32 @@ def _check_candidates(proposal, messages, confirmed_topics=None, personalization
         raise ContextIntegrityError("duplicate_candidate_approach")
 
 
-def prepare_generation_plan(messages, *, readiness_evidence=None, confirmed_topics=None, personalization_target=None):
+def prepare_generation_plan(messages, *, readiness_evidence=None, confirmed_topics=None, personalization_target=None,
+                            reference_trace=None, previous_plan=None, recovery_feedback=None, readiness_basis=None):
     """Build one grounded plan; independently review plan and draft together later."""
     from app.scenario_data import ALLOWED_CHANNELS, ALLOWED_REQUESTS
-    trace = retrieve_patterns(" ".join(message["text"] for message in messages[-6:]))
+    basis = load_basis(readiness_basis, messages, confirmed_topics or {})
+    trace = reference_trace if reference_trace is not None else retrieve_patterns(" ".join(message["text"] for message in messages[-6:]))
     def validate(result):
         check_graph(result.context, messages)
         _check_selected_plan(result.context, result.selectedPlan, confirmed_topics, personalization_target)
         validate_uses(result.selectedPlan.referenceUses, trace)
-    result = ask("generation_plan", {"messages": messages, "readinessEvidence": readiness_evidence,
+        if not plan_uses_basis(result.context, result.selectedPlan, basis):
+            raise ContextIntegrityError("readiness_anchor_not_used")
+    payload = {"messages": messages, "readinessEvidence": readiness_evidence,
         "confirmedTopics": confirmed_topics, "personalizationTarget": personalization_target,
         "channels": ALLOWED_CHANNELS, "allowedActions": ALLOWED_REQUESTS,
-        "retrievedPatterns": prompt_patterns(trace)}, SinglePlanProposal, max_tokens=3000, validate=validate)
+        "retrievedPatterns": prompt_patterns(trace)}
+    if basis:
+        payload["readinessBasis"] = basis.model_dump()
+    if recovery_feedback:
+        payload.update(mode="REPLAN", previousPlan=previous_plan.model_dump() if previous_plan else None,
+                       recoveryFeedback=recovery_feedback)
+    result = ask("generation_plan", payload, SinglePlanProposal, max_tokens=3000, validate=validate)
     selected = result.selectedPlan
     selected._retrieval_trace = trace
     selected._joint_review_required = True
+    selected._readiness_basis = basis.model_dump() if basis else None
     selected._review_messages = [dict(message) for message in messages]
     return result.context, selected
 
@@ -219,3 +248,31 @@ def choose_generation_plan(messages, *, readiness_evidence=None, confirmed_topic
         logger.warning("Candidate comparison rejected: distinct=%s eligible=%d", comparison.alternativesDistinct, len(eligible))
     from app.api_errors import AiApiError
     raise AiApiError(422, "INVALID_REQUEST", "상황에 자연스럽게 연결되는 훈련을 확인하지 못했어요. 상황을 조금 더 알려 주세요.")
+
+
+def verify_intake_plan(messages, *, confirmed_topics, requirements, basis):
+    """Approve sufficiency before advertising readiness; repair plan mistakes internally."""
+    selected = None
+    feedback = []
+    for attempt in range(2):
+        try:
+            graph, selected = prepare_generation_plan(messages, confirmed_topics=confirmed_topics,
+                readiness_evidence=basis["evidence"][0] if basis else None, personalization_target=requirements["target"], readiness_basis=basis,
+                previous_plan=selected, recovery_feedback=feedback,
+                reference_trace=selected._retrieval_trace if selected else None)
+        except ContextIntegrityError as error:
+            # Structural failures used to bypass this recovery loop entirely.
+            # Rebuild from the same sources; never ask the user to repair IDs/quotes.
+            if attempt:
+                raise
+            feedback = ["STRUCTURAL_PLAN_ERROR: " + str(error)]
+            logger.info("Intake plan recovery: structural check failed; rebuilding from source")
+            continue
+        verdict = review(graph, selected, messages=messages)
+        if verdict.accepts() and (not selected.referenceUses or verdict.referencesSupported):
+            selected._context_approved = True
+            return graph, selected, verdict
+        if any(issue.code == "INSUFFICIENT_CONTEXT" for issue in verdict.issues):
+            return graph, selected, verdict
+        feedback = [issue.code + ": " + mask_input(issue.detail) for issue in verdict.issues] or ["PLAN_REVIEW_FAILED"]
+    return graph, selected, verdict

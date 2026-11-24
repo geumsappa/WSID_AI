@@ -36,6 +36,9 @@ PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "training_tur
 OUTCOMES = {"safe", "risky", "neutral"}
 INFO_REQUEST = "개인정보 제공"
 TYPE_IT_MARK = "여기에 적어 주세요"  # '직접 입력하라'는 재요구를 이미 했는지 알아보는 표시
+GENDER_ANSWER = re.compile(r"(?:^|[\s,.])(?:남자|여자|남성|여성|남|여)(?:예요|이에요|입니다|이요|요|임|[\s,.!]|$)")
+AGE_ASKED = re.compile(r"나이|연세|몇\s*살|연령")
+AGE_ANSWER = re.compile(r"\d{1,3}\s*(?:살|세)|(?:스물|서른|마흔|쉰|예순|일흔)")
 TYPE_IT_SEEN = re.compile(r"여기에\s*적어\s*(?:주세요|줘)")  # 반말로 바뀐 표시("여기에 적어 줘")도 알아봐요
 # 실제 사기범은 처음 몇 마디는 신뢰를 쌓는 데 써요. 이 답변 수까지는 요구 문장을 억지로 덧붙이지 않아요.
 WARMUP_TURNS = 1
@@ -798,6 +801,12 @@ def _mask_last(text: str, asked_info: list[str], last_persona: str = "", prev_us
             masked = masked.replace(f"[{kind}]", "[번호 일부]").replace(f"[가림:{kind}]", "[번호 일부]")
         provided = [label for label in provided if label in premasked or not any(
             word in label for word in ("계좌", "카드", "전화", "연락처", "휴대폰", "주민", "생년월일", "숫자"))]
+    # 성별·나이는 가리지 않지만, 사기범이 물어본 뒤 답했으면 '알려 줌'으로 세요 (확인 화면 입력과 같은 기준으로 리포트에 모아요)
+    context = " ".join(asked_info) + " " + last_persona
+    if "성별" in context and GENDER_ANSWER.search(text) and "성별" not in provided:
+        provided.append("성별")
+    if AGE_ASKED.search(context) and AGE_ANSWER.search(text) and "나이" not in provided:
+        provided.append("나이")
     # 화면·DB 에는 예전처럼 "[계좌번호]" 모양으로 보여 줘요 (LLM 에 보낼 때만 [가림:..] 으로 바꿔요)
     masked = re.sub(r"\[가림:([^\]]+)\]", r"[\1]", masked)
     return masked, provided

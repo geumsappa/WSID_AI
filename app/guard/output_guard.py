@@ -16,7 +16,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
-from app.guard import scam_media
+from app.guard import scam_media, speech_level
 
 MOVES = {"접근", "신뢰", "답변후진행", "요구", "압박", "확전", "물러남", "마무리", "중단"}
 OUTCOMES = {"safe", "risky", "neutral"}
@@ -53,6 +53,7 @@ class TurnState:
     media_counts: dict = field(default_factory=dict)  # 사진 소품 종류별 사용 횟수 (scam_media.count_used)
     photo_kinds: tuple = ()          # 시나리오에 나오는 사진 자료 종류 (신분증·통장·상품권). 이 밖의 사진은 요구하지 않아요
     photo_asked: tuple = ()          # 지금까지 사기범이 요구한 사진 종류
+    speech_level: str | None = None  # 대화 내내 지킬 말투 (반말 | 존댓말). 첫 메시지 기준
 
 
 # 사기범이 자료 사진을 보내 달라고 하는 말 ("신분증 앞면 사진 한 장만 보내 주세요", "통장 사본 찍어서 올려 주세요")
@@ -100,6 +101,11 @@ def _check_message(msg: str, data: dict, st: TurnState) -> list[str]:
         errs.append("가리지 않은 전화번호가 있다 (X로 가려야 함)")
     if _LONG_NUM.search(_DATE.sub("", msg)):
         errs.append("계좌·카드번호처럼 보이는 숫자가 있다")
+
+    # 말투 섞임: 첫 메시지와 다른 말투로 끝나는 문장이 있으면 다시 쓰게 해요 (그래도 섞이면 서버가 말끝을 고쳐요)
+    off = speech_level.mismatched(msg, st.speech_level)
+    if off:
+        errs.append(f"말투가 섞였다: {off[0][:40]!r} → 처음부터 끝까지 {st.speech_level}로 통일한다")
 
     # 자료 사진 요구: 시나리오에 없는 자료를 갑자기 요구하거나, 같은 자료를 앞면·뒷면으로 나눠 또 요구하지 않아요
     for kind in photo_requests(msg):

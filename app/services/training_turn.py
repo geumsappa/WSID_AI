@@ -23,7 +23,7 @@ from pathlib import Path
 
 from app import fallback
 from app.config import settings
-from app.guard import output_guard, pii_masker, scam_media
+from app.guard import output_guard, pii_masker, scam_media, speech_level
 from app.guard.brand_names import fictionalize, fictionalize_tree
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
 from app.guard.sensitive import MASK_NAMES, NOT_NAMES, SURNAMES, mask_name_address, mask_requested_numbers, mask_sensitive
@@ -114,7 +114,8 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         speaker_changes=_speaker_changes(persona_lines), allowed_requests=tuple(ALLOWED_REQUESTS),
         media_counts=scam_media.count_used(persona_lines),
         photo_kinds=output_guard.scenario_photo_kinds(scenario),
-        photo_asked=tuple(k for line in persona_lines for k in output_guard.photo_requests(line)))
+        photo_asked=tuple(k for line in persona_lines for k in output_guard.photo_requests(line)),
+        speech_level=_speech_level(scenario, persona_lines))
     # prompt(규칙)는 매 턴 똑같아서 캐시되고, 매 턴 바뀌는 서버 정보는 대본 맨 앞에 붙여요 (비용 절약)
     reaction = _reaction(turn_log, provided, events_this_turn)
     prompt, server_info = _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,
@@ -137,8 +138,13 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
                 retried = generate_json(prompt, transcript + output_guard.retry_note(serious),
                                         max_tokens=1600, attempts=1, cache=True)
                 errors2, _ = output_guard.validate(json.dumps(retried, ensure_ascii=False), guard_state)
-                if "move" in retried and not [e for e in errors2 if not _server_fixable(e)]:
+                serious2 = [e for e in errors2 if not _server_fixable(e)]
+                if "move" in retried and not serious2:
                     data = retried
+                elif "move" in retried and all(e.startswith("말투") for e in serious2):
+                    data = retried  # 말투만 남았으면 서버가 말끝을 고쳐요 (speech_level.conform)
+                elif all(e.startswith("말투") for e in serious):
+                    pass            # 원래 대사도 말투만 문제였으면 그대로 두고 서버가 고쳐요
                 else:
                     raise LLMError("still invalid")
             except LLMError:
@@ -349,6 +355,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
             persona_message = fallback.TRAINING_END_LINE
         # 사기범이 대화방을 나가는 연출: 프론트가 이 표시를 "상대방이 대화방을 나갔어요"로 보여 주고 입력창을 닫아요
         persona_message = f"{persona_message.rstrip()} {fallback.LEFT_MARK}"
+
+    # 말투 고정: 기본 대사·마지막 인사까지 포함해 문장 끝을 첫 메시지 말투로 맞춰요 (반말↔존댓말 섞임 방지)
+    persona_message = speech_level.conform(persona_message, guard_state.speech_level)
 
     # 화자가 바뀌면 "[화자: 이름] " 을 앞에 붙여요 (프론트가 이름표로 보여줘요). 대화 전체에서 2번까지만
     speaker = fictionalize(str(data.get("speaker") or "").strip()[:30]) if new_format and not done else ""
@@ -813,6 +822,15 @@ def _current_speaker(persona_lines: list[str]) -> str | None:
         if name:
             return name
     return None
+
+
+def _speech_level(scenario: dict, persona_lines: list[str]) -> str | None:
+    """대화 내내 지킬 말투. 첫 메시지(시나리오 openingMessage)로 정하고, 거기서 알 수 없으면 지금까지 대사 전체로 정해요"""
+    first = scenario.get("openingMessage") or (persona_lines[0] if persona_lines else "")
+    level = speech_level.detect(_strip_speaker(first)[1] if first else "")
+    if level is None and persona_lines:
+        level = speech_level.detect(" ".join(_strip_speaker(t)[1] for t in persona_lines))
+    return level
 
 
 def _server_fixable(error: str) -> bool:

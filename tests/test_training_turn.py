@@ -489,3 +489,27 @@ def test_시나리오에_나온_사진_종류만_허용():
     from app.guard import output_guard
     assert output_guard.scenario_photo_kinds({"title": "보상금 입금 안내", "scenes": [{"request": "개인정보 제공"}]}) == ()
     assert output_guard.scenario_photo_kinds({"background": "주민등록증 사진을 받아 계좌를 연다"}) == ("신분증",)
+
+
+# ---------------- 말투 고정 (반말·존댓말 섞임) ----------------
+
+def test_말투_판별과_말끝_고치기():
+    from app.guard import speech_level as sl
+    assert sl.detect("엄마 나야 ㅠㅠ 폰 액정 깨져서 이 번호로 연락해. 잠깐 시간 돼?") == sl.CASUAL
+    assert sl.detect("안녕하세요! 물건 아직 있나요?") == sl.POLITE
+    mixed = "엄마 나 딸이야. 이거 확인해 주세요 [모의링크]"
+    assert sl.mismatched(mixed, sl.CASUAL) == ["이거 확인해 주세요 [모의링크]"]
+    assert sl.conform(mixed, sl.CASUAL) == "엄마 나 딸이야. 이거 확인해 줘 [모의링크]"
+    assert sl.conform("네, 계좌 확인됐습니다. 오늘까지 해줘.", sl.POLITE) == "네, 계좌 확인됐습니다. 오늘까지 해 주세요."
+    assert sl.conform("고객님 확인해 주시면 됩니다.", sl.POLITE) == "고객님 확인해 주시면 됩니다."
+    assert sl.conform("보상금 피해 접수", sl.CASUAL) == "보상금 피해 접수"
+
+
+def test_반말_시나리오에서_존댓말이_섞이면_반말로_맞춤(monkeypatch):
+    sc = _scenario()
+    sc["openingMessage"] = "나야, 휴대폰이 고장 나서 지금 임시 계정으로 연락해. 잠깐 시간 돼?"
+    monkeypatch.setattr(training, "generate_json", lambda s, t, **kw: _move_reply(
+        move="신뢰", personaMessage="아 진짜 급해서 그래 ㅠㅠ\n이거 좀 도와주실 수 있어요?"))
+    h = [{"role": "persona", "text": sc["openingMessage"]}, {"role": "user", "text": "누군데?"}]
+    r = training.run_training_turn("tone", sc, 1, h)
+    assert "요?" not in r["personaMessage"] and r["personaMessage"].endswith("있어?")

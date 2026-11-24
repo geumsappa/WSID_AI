@@ -86,8 +86,14 @@ def _looks_like_name(word: str) -> bool:
     return 2 <= len(word) <= 4 and word[0] in SURNAMES and word not in NOT_NAMES and not word.endswith(("요", "다", "까", "죠", "네"))
 
 
-def mask_name_address(text: str, requested_info: list[str] | None = None) -> tuple[str, list[str]]:
-    """이름·주소를 [이름]·[주소]로 가리고, 찾은 종류를 돌려준다.
+# 11/24 팀 결정: 이름은 개인정보로 가리지 않아요 (상황 파악에서 이름을 받아 시나리오에 써요).
+# 이름을 알려 줬는지는 그대로 찾아서 '입력함'으로 기록해요 (사기범에게 이름을 준 행동은 리포트 대상).
+MASK_NAMES = False
+
+
+def mask_name_address(text: str, requested_info: list[str] | None = None,
+                      mask_names: bool | None = None) -> tuple[str, list[str]]:
+    """주소를 [주소]로 가리고, 이름은 찾기만 해요(MASK_NAMES=False). 찾은 종류를 돌려준다.
 
     requested_info: 사기범이 방금 요구한 정보. '이름'을 요구받았을 때만 이름 단독 답변을 이름으로 봐요
     (평소 대화의 짧은 답을 이름으로 잘못 가리지 않게).
@@ -99,6 +105,7 @@ def mask_name_address(text: str, requested_info: list[str] | None = None) -> tup
         text = UNIT_PATTERN.sub(f"[{address_label}]", ADDRESS_PATTERN.sub(f"[{address_label}]", text))
         found.append(address_label)
 
+    mask_names = MASK_NAMES if mask_names is None else mask_names
     name_label = _labels(requested_info, ("이름", "성함", "성명"), "이름")[0]
     asked_name = any(w in r for r in requested_info for w in ("이름", "성함", "성명"))
     masked = False
@@ -110,17 +117,19 @@ def mask_name_address(text: str, requested_info: list[str] | None = None) -> tup
         if match.group(0) == match.group(1) + "이나" or match.group(2) in NOT_NAMES:
             return match.group(0)
         masked = True
-        return match.group(0).replace(match.group(2), f"[{name_label}]", 1)
+        return match.group(0).replace(match.group(2), f"[{name_label}]", 1) if mask_names else match.group(0)
 
     text = NAMED_PATTERN.sub(named, text)
     if asked_name and not masked:
         only = NAME_ONLY.match(text)
         lead = NAME_LEAD.match(text)
         if only and _looks_like_name(only.group(1)):
-            text = text.replace(only.group(1), f"[{name_label}]", 1)
+            if mask_names:
+                text = text.replace(only.group(1), f"[{name_label}]", 1)
             masked = True
         elif lead and _looks_like_name(lead.group(1)):
-            text = text.replace(lead.group(1), f"[{name_label}]", 1)
+            if mask_names:
+                text = text.replace(lead.group(1), f"[{name_label}]", 1)
             masked = True
     if masked:
         found.append(name_label)

@@ -26,7 +26,7 @@ from app.config import settings
 from app.guard import output_guard, pii_masker
 from app.guard.brand_names import fictionalize, fictionalize_tree
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
-from app.guard.sensitive import NOT_NAMES, SURNAMES, mask_name_address, mask_requested_numbers, mask_sensitive
+from app.guard.sensitive import MASK_NAMES, NOT_NAMES, SURNAMES, mask_name_address, mask_requested_numbers, mask_sensitive
 from app.llm.llm_client import CACHE_BREAK, LLMError, generate_json
 from app.scenario_data import ALLOWED_REQUESTS, is_unavailable_info
 
@@ -151,7 +151,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     if llm_disclosed:
         provided += list(dict.fromkeys(llm_disclosed))
         # 값이 어디 있는지 알 수 없으므로 답변 전체를 '무엇을 넘겼는지'만 남기고 바꿈
-        masked_last = f"[{', '.join(provided)} 입력함]"
+        # (이름은 가리지 않기로 해서, 이름만 신고된 경우엔 답변을 그대로 둬요)
+        if MASK_NAMES or any(not NAME_WORDS.search(label) for label in llm_disclosed):
+            masked_last = f"[{', '.join(provided)} 입력함]"
 
     if new_format:
         # 서버가 정답을 아는 값(가림 결과·사건·턴 수)은 서버 값으로 덮어써요
@@ -613,7 +615,8 @@ def _asked_label(kind: str, asked_info: list[str], last_persona: str = "") -> st
 
 
 def _mask_names(text: str, asked_info: list[str], last_persona: str) -> tuple[str, bool]:
-    """이름을 요구받은 직후 답에 섞인 이름(예: "박선홍 국민은행 …")을 가려요. 거절·질문이면 손대지 않아요."""
+    """이름을 요구받은 직후 답에 섞인 이름(예: "박선홍 국민은행 …")을 찾아요. 거절·질문이면 손대지 않아요.
+    11/24 팀 결정으로 이름은 가리지 않고(MASK_NAMES=False) '이름을 알려 줌'으로만 기록해요."""
     expected = any(NAME_WORDS.search(info) for info in asked_info) or bool(NAME_WORDS.search(last_persona))
     if not expected or REFUSAL.search(text):
         return text, False
@@ -636,7 +639,7 @@ def _mask_names(text: str, asked_info: list[str], last_persona: str) -> tuple[st
         return "[이름]" + (m.group(2) or "")
 
     masked = re.sub(r"(?<![가-힣\[\]\d])([가-힣]{2,3})(입니다|이에요|예요|이요|요|이고|고)?(?![가-힣\]])", repl, text)
-    return masked, found
+    return (masked if MASK_NAMES else text), found
 
 
 SPLIT_TAIL = re.compile(r"(\d[\d\s\-]*\d|\d)\s*$")

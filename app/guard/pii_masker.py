@@ -105,7 +105,8 @@ def korean_digits_to_arabic(text: str) -> str:
 
 def mask_user_message(text: str, expecting: list[str] | tuple[str, ...] = ()) -> MaskResult:
     types: list[str] = []
-    s = unicodedata.normalize("NFKC", text)  # 전각 숫자·문자 정규화
+    # 전각 숫자·문자만 정규화 (전체 NFKC 는 "ㅋㅋ" 같은 자모까지 바꿔 버려요)
+    s = re.sub(r"[\uFF01-\uFF5E]", lambda m: unicodedata.normalize("NFKC", m.group()), text)
     s = korean_digits_to_arabic(s)
 
     s, n_forged = _FORGED_MARKERS.subn("", s)
@@ -113,7 +114,7 @@ def mask_user_message(text: str, expecting: list[str] | tuple[str, ...] = ()) ->
     # 1) 명시적 표현
     for kind, pat in _EXPLICIT:
         def repl(m: re.Match, kind=kind) -> str:
-            if kind == "이름" and (m.group(2)[0] not in _SURNAMES or m.group(2) in _NOT_NAMES):
+            if kind == "이름":  # 11/24 팀 결정: 이름은 가리지 않아요
                 return m.group(0)
             _add(types, kind)
             return f"{m.group(1)} {_tag(kind)}"

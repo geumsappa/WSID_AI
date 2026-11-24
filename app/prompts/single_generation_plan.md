@@ -1,14 +1,16 @@
 TASK: generation_plan
-사기 예방훈련의 실제 context와 selectedPlan 하나를 작성한다. 여러 방향을 고려하되 원문으로 성립하는 최소 전제의 접근을 선택한다. 고정 유형·예시 대본·후보 비교·추가 질문은 출력하지 않는다. 코드 검사 뒤 독립 검증이 계획과 본문을 함께 심사한다.
+원문으로 성립하는 최소 전제의 context와 selectedPlan 하나를 만든다. 고정 유형·예시 대본·후보 비교·추가 질문은 출력하지 않는다. 계획과 본문은 이후 함께 검증한다.
 
 {{CONTEXT_FACTS}}
 
-계획 계약:
-- anchorClaims는 focusEventIds와 personalizationBasis에 사용한 확정 사건의 원래 actorId를 보존한다. personalizationBasis에 실제 eventId/evidenceId, 추가 맥락과 접근에 미치는 영향을 짧게 연결한다. readinessEvidence도 원문과 대조한다.
-- PERSON은 확인된 이름의 인물을 impersonatedActorId로 참조한다. SERVICE/OTHER를 임의 지인 사칭으로 바꾸거나 미완료 이름 확인을 우회하지 않는다. recipientActorId는 사용자다.
-- requestedActions는 allowedActions의 값이다. desiredOutcome은 중간 확인 이후의 위험 요구/학습 목표, escalation은 3~4단계와 의심·거절 분기를 간결히 계획한다.
-- contactSetup은 필수다. senderRole/contactPremise/knowledgePremise, 실제 evidenceIds와 새 가정 fictionalAssumptions를 구분한다. 앞으로의 가상 사건은 fictionalEvents에 쓴다.
-- referenceUses는 실제 참고한 검색 수법만 caseId/정확한 technique/adaptationReason으로 연결한다. 미사용은 빈 배열이다. missingInformation=[]이다.
-- 설명은 필요한 근거와 연결만 짧게 쓴다. 분류·태그·대안 목록 없이 출력 스키마의 JSON 하나만 반환한다.
+{{CONTEXT_SUFFICIENCY}}
+
+REPLAN은 recoveryFeedback의 원인이 된 previousPlan의 명분·가정을 수정한다. 실패한 본문을 사실로 삼지 말고 messages와 confirmedTopics를 유지한다.
+- anchorClaims는 focusEventIds와 personalizationBasis의 확정 사건·원래 actorId를 보존한다. personalizationBasis는 실제 eventId/evidenceId와 접근에 미치는 영향을 연결하고 readinessEvidence도 원문과 대조한다.
+- PERSON_NAME=KNOWN이면 name 전체(호칭 포함)를 PERSON entity.label에 그대로 쓰고 PERSON은 그 ID를 impersonatedActorId로 사용한다. SERVICE/OTHER를 임의 지인 사칭으로 바꾸거나 미완료 이름을 우회하지 않는다. recipientActorId는 사용자다.
+- requestedActions는 allowedActions의 값이다. desiredOutcome은 최종 위험 요구/학습 목표, escalation은 3~4단계와 의심·거절 분기다.
+- contactSetup의 발신 역할·명분·지식 전제, 실제 evidenceIds와 fictionalAssumptions를 구별한다. 이후 가상 사건은 fictionalEvents다.
+- referenceUses는 실제 사용한 검색 수법의 caseId/정확한 technique/adaptationReason이다. 미사용은 [],missingInformation=[]이다.
+분류·태그·대안 없이 근거와 연결을 짧게 쓴 출력 스키마 JSON만 반환한다.
 
 {{SCENARIO_QUALITY_CRITERIA}}

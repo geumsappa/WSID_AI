@@ -49,6 +49,16 @@ def generation_data(plan_data):
 def discovery_fixture_contract(value, payload=None):
     """Add question reasons to legacy scripted fixtures; new policy tests provide explicit assessments."""
     value = deepcopy(value)
+    # Older scripted fixtures specified the question topic and used the server template.
+    # Supply that text explicitly under the new mandatory-question contract.
+    if "nextQuestion" not in value and value.get("nextTopic"):
+        from app.services.fast_discovery import QUESTIONS, CLARIFICATIONS
+        if value["nextTopic"] in QUESTIONS:
+            status = (payload or {}).get("knownTopics", {}).get(value["nextTopic"], {}).get("status")
+            status = next((item.get("status", "KNOWN") for item in value.get("updates", [])
+                           if item.get("topic") == value["nextTopic"]), status)
+            templates = CLARIFICATIONS if status == "PARTIAL" else QUESTIONS
+            value["nextQuestion"] = templates.get(value["nextTopic"], QUESTIONS[value["nextTopic"]])
     if "questionAssessments" not in value:
         topics = [*value.get("requiredTopics", [])]
         if value.get("nextTopic"):
@@ -66,6 +76,20 @@ def discovery_fixture_contract(value, payload=None):
         value["questionAssessments"] = [{"topic": topic, "status": "MISSING",
             "missingDetail": "scripted missing " + topic, "scenarioImpact": "scripted scenario dependency " + topic,
             "reason": "legacy fixture declares this requirement", "evidence": []} for topic in dict.fromkeys(topics) if topic in get_args(Topic)]
+    # Legacy scripted successes now include the mandatory contact justification.
+    # Tests of missing/invalid readiness set readinessBasis explicitly and bypass this adapter.
+    if "readinessBasis" not in value and value.get("contextSufficient") is True:
+        from app.services.readiness import CONTEXT_TOPICS
+        known = deepcopy((payload or {}).get("knownTopics", {}))
+        for item in value.get("updates", []):
+            known[item["topic"]] = {**item, "status": item.get("status", "KNOWN")}
+        detail = next(((topic, row) for topic, row in known.items()
+                       if topic in CONTEXT_TOPICS and row.get("status") == "KNOWN"), None)
+        if detail:
+            topic, row = detail
+            value["readinessBasis"] = {"topics": [topic],
+                "evidence": [{"turn": row["turn"], "quote": row["quote"]}],
+                "contactReason": "scripted contact pretext grounded in the confirmed interaction or role"}
     return value
 
 
@@ -78,13 +102,42 @@ def grounded_model(monkeypatch, graph_data, plan_data, review_data, generation_d
         task = system.splitlines()[0].removeprefix("TASK: ")
         payload = json.loads(content)
         calls.append((task, payload))
+        if task == "draft_review":
+            value = overrides.get(task, overrides.get("semantic_review", review_data))
+            value = deepcopy(value(payload) if callable(value) else value)
+            value.get("checks", {}).pop("sufficientContext", None)
+            value.pop("followupQuestion", None)
+            return value
         if task == "generation_plan" and task not in overrides:
+            graph = deepcopy(graph_data)
             plan = deepcopy(plan_data)
+            source = {row["turn"]: row["text"] for row in payload["messages"]}
+            known = payload.get("confirmedTopics") or {}
+            name = known.get("PERSON_NAME", {})
+            target = payload.get("personalizationTarget")
+            # Intake-only fixtures previously never needed a plan. Supply one grounded
+            # in this test's actual messages instead of the unrelated default quotation.
+            if any(quote["quote"] not in source.get(quote["sourceTurn"], "") for quote in graph["evidence"]):
+                evidence = (payload.get("readinessBasis") or {}).get("evidence") or [
+                    {"turn": row["turn"], "quote": row["text"][:180]} for row in payload["messages"][-1:]]
+                quote = evidence[0]
+                graph = {"version": 1, "userActorId": "actor_user", "entities": [
+                    {"id": "actor_user", "label": "사용자", "kind": "USER"},
+                    {"id": "actor_peer", "label": name.get("name") or "동료", "kind": "PERSON"}],
+                    "events": [{"id": "event_a", "actorId": "actor_user", "action": "scripted activity",
+                        "participantIds": [], "certainty": "CONFIRMED", "evidenceIds": ["quote_a"], "category": "기타"}],
+                    "evidence": [{"id": "quote_a", "sourceTurn": quote["turn"], "quote": quote["quote"]}],
+                    "focusEventIds": ["event_a"], "summary": "scripted intake plan"}
+                plan["anchorClaims"] = [{"eventId": "event_a", "actorId": "actor_user"}]
+            if name.get("status") == "KNOWN":
+                graph["entities"][1]["label"] = name["name"]
+            if target == "SERVICE":
+                plan.update(impersonatedActorId=None, impersonatedRole="scripted service contact")
             plan.update(desiredOutcome="정산을 구실로 정보 요구", escalation="안내 뒤 정보 요청으로 진행",
                 contactSetup={"contactBasis": "FICTIONAL_FIRST_CONTACT", "senderRole": plan["impersonatedRole"],
                     "contactPremise": "훈련에서 가정한 첫 사칭 연락", "knowledgePremise": "사용자가 말한 이용 경험을 아는 척함",
-                    "evidenceIds": [graph_data["evidence"][0]["id"]], "fictionalAssumptions": ["새 사칭 연락"]})
-            return {"context": deepcopy(graph_data), "realConcern": False, "selectedPlan": plan}
+                    "evidenceIds": [graph["evidence"][0]["id"]], "fictionalAssumptions": ["새 사칭 연락"]})
+            return {"context": graph, "realConcern": False, "selectedPlan": plan}
         if task in overrides:
             value = overrides[task]
             value = deepcopy(value(payload) if callable(value) else value)
@@ -113,7 +166,7 @@ def grounded_model(monkeypatch, graph_data, plan_data, review_data, generation_d
                             "contextSufficient": True, "personalizationTarget": "OTHER"}}[task])
         if task == "scenario_generate" and payload.get("mode") == "REPAIR":
             return {"scenario": result["scenario"], "analysis": result["analysis"]}
-        return result
+        return discovery_fixture_contract(result, payload) if task == "discovery_brief" else result
     monkeypatch.setattr(scenario_planner, "generate_json", generate)
     monkeypatch.setattr(scenario, "generate_json", generate)
     monkeypatch.setattr(fast_discovery, "generate_json", generate)

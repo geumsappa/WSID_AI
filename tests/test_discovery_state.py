@@ -23,7 +23,8 @@ def test_after_specific_activity_the_same_intent_cannot_be_asked_again(grounded_
     assert first.nextQuestion == QUESTIONS["ACTIVITY"]
     model(grounded_model, [fact("ACTIVITY", 2, "물레 실습을 했어요")], "ACTIVITY")
     second = ask("물레 실습을 했어요", first.facts)
-    assert second.facts["intakePaused"]
+    assert not second.facts["intakePaused"]
+    assert second.facts["questionSelectionRecovered"]
     assert second.nextQuestion != first.nextQuestion
     assert [item["topic"] for item in second.facts["questionHistory"]] == ["ACTIVITY"]
 
@@ -50,7 +51,8 @@ def test_an_already_named_service_is_not_requested_again(grounded_model):
     assert not result.canGenerateScenario
     assert result.nextQuestion != QUESTIONS["SERVICE"]
     assert result.facts["questionHistory"] == []
-    assert result.facts["intakePaused"]
+    assert not result.facts["intakePaused"]
+    assert result.facts["questionSelectionRecovered"]
 
 
 def test_a_single_rich_answer_can_finish_without_a_turn_threshold(grounded_model):
@@ -84,7 +86,8 @@ def test_without_an_activity_we_do_not_ask_who_did_it(grounded_model):
 def test_unsupported_question_intents_cannot_generate_procedure_questions(grounded_model):
     model(grounded_model, [fact("ACTIVITY", 1, "공예 실습을 했어요")], "ACTIVITY_METHOD")
     result = ask("공예 실습을 했어요")
-    assert result.facts["intakePaused"]
+    assert not result.facts["intakePaused"]
+    assert result.facts["questionSelectionRecovered"]
     assert result.facts["questionHistory"] == []
 
 
@@ -124,7 +127,8 @@ def test_existing_conversation_without_a_ledger_can_recover_known_answers(ground
     result = ask("앞에서 답했어요", known)
     assert not result.canGenerateScenario
     assert result.facts["questionHistory"] == []
-    assert result.facts["intakePaused"]
+    assert not result.facts["intakePaused"]
+    assert result.facts["questionSelectionRecovered"]
     assert result.facts["knownTopics"]["ACCESS"]["turn"] == 3
 
 

@@ -97,7 +97,7 @@ def korean_digits_to_arabic(text: str) -> str:
         # "…팔이요", "…칠이에요"의 '이'는 숫자가 아니라 조사예요
         if run.endswith("이") and rest and rest in "요에고랑야":
             run = run[:-1]
-        if sum(ch in _KO_DIGIT for ch in run) < 7:
+        if sum(ch in _KO_DIGIT for ch in run) < 7:cccccccccccccccccccccccccccccccccccccccccccccc
             return m.group(0)
         return "".join(_KO_DIGIT.get(ch, ch) for ch in run) + m.group(0)[len(run):]
     return _KO_RUN.sub(repl, text)
@@ -107,6 +107,8 @@ def mask_user_message(text: str, expecting: list[str] | tuple[str, ...] = ()) ->
     types: list[str] = []
     # 전각 숫자·문자만 정규화 (전체 NFKC 는 "ㅋㅋ" 같은 자모까지 바꿔 버려요)
     s = re.sub(r"[\uFF01-\uFF5E]", lambda m: unicodedata.normalize("NFKC", m.group()), text)
+    # 전각 숫자·문자는 정규화하되 ㅋㅋ/ㅎㅎ 같은 한글 호환 자모는 보존한다.
+    s = re.sub(r"[^\u3130-\u318f]+", lambda m: unicodedata.normalize("NFKC", m.group()), text)
     s = korean_digits_to_arabic(s)
 
     s, n_forged = _FORGED_MARKERS.subn("", s)

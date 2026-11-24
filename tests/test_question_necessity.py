@@ -45,7 +45,7 @@ def test_cross_topic_evidence_resolves_redundant_question_without_inventing_a_ne
     assert "INTERACTION" not in result.facts["intakeRequirements"]["topics"]
     assert "INTERACTION" not in result.facts["knownTopics"]  # Reuse evidence; do not manufacture a new statement.
     assert result.facts["knownTopics"]["ROLE"]["quote"] == "제가 자료를 정리하기로 했어요"
-    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "discovery_brief", "discovery_question_review"]
+    assert [task for task, _ in grounded_model[0]] == ["discovery_brief", "discovery_brief", "discovery_question_review", "generation_plan", "semantic_review"]
 
 
 def test_a_genuine_new_gap_keeps_one_question_after_review(grounded_model):
@@ -134,3 +134,50 @@ def test_reassessment_cannot_bypass_review_of_a_new_question(grounded_model):
     result = ask("별명은 도토리", first.facts)
     assert result.canGenerateScenario and result.facts["questionNeedReview"]["performed"]
     assert sum(task == "discovery_question_review" for task, _ in grounded_model[0]) == 1
+
+
+@pytest.mark.parametrize("topic", [None, "ACTIVITY"])
+def test_missing_or_already_answered_question_gets_one_internal_correction(grounded_model, topic):
+    text = "카페 갔어요"
+    def answer(payload):
+        if payload.get("questionRequired"):
+            assert payload["questionCorrection"]["reason"] == "NEXT_QUESTION_REQUIRED"
+            return {"updates": [], "personalizationTarget": "OTHER", "contextSufficient": False,
+                "requiredTopics": ["SETTING"], "nextTopic": "SETTING", "nextQuestion": "어느 카페에 가셨나요?",
+                "questionAssessments": [{"topic": "SETTING", "status": "MISSING", "reason": "방문 매장 미확인",
+                    "missingDetail": "카페 이름", "scenarioImpact": "매장 관련 접근의 발신자 구체화", "evidence": []}]}
+        return {"updates": [{"topic": "ACTIVITY", "turn": 1, "quote": text}],
+            "personalizationTarget": "OTHER", "contextSufficient": False, "readinessBasis": None,
+            "requiredTopics": [], "nextTopic": topic, "nextQuestion": ""}
+    grounded_model[1]["discovery_brief"] = answer
+    result = ask(text)
+    assert result.nextQuestion == "어느 카페에 가셨나요?"
+    assert result.facts["knownTopics"]["ACTIVITY"]["quote"] == text
+    assert not result.facts["basicScenarioOffered"]
+    assert "questionSelectionRecovered" not in result.facts
+    assert [name for name, _ in grounded_model[0]] == ["discovery_brief", "discovery_brief"]
+
+
+def test_bad_question_correction_preserves_facts_and_asks_instead_of_error(grounded_model):
+    text = "카페 갔어요"
+    def answer(payload):
+        if payload.get("questionRequired"):
+            return {"nextTopic": "SETTING", "nextQuestion": None, "updates": []}
+        return {"updates": [{"topic": "ACTIVITY", "turn": 1, "quote": text}],
+            "contextSufficient": False, "readinessBasis": None, "nextTopic": None, "nextQuestion": ""}
+    grounded_model[1]["discovery_brief"] = answer
+    result = ask(text)
+    assert result.nextQuestion.endswith("?")
+    assert result.facts["knownTopics"]["ACTIVITY"]["quote"] == text
+    assert result.facts["questionSelectionRecovered"]
+    assert not result.facts["basicScenarioOffered"]
+    assert len(grounded_model[0]) == 2
+
+
+def test_explicit_stop_allows_null_without_forcing_a_question(grounded_model):
+    grounded_model[1]["discovery_brief"] = {"updates": [], "stopRequested": True,
+        "contextSufficient": False, "nextTopic": None, "nextQuestion": ""}
+    result = ask("여기까지만 말할게요")
+    assert result.facts["basicScenarioOffered"]
+    assert len(grounded_model[0]) == 1
+    assert "questionCorrection" not in grounded_model[0][0][1]

@@ -60,7 +60,7 @@ def test_generation_keeps_grounded_organization(pipeline_model, graph_data, plan
     assert result["scenario"]["persona"]["organization"] == "기업은행"
 
 
-def test_followup_dialogue_keeps_allowed_organization(monkeypatch):
+def test_followup_dialogue_fictionalizes_allowed_organization(monkeypatch):
     scenario = validate_and_normalize(scenario_output(), ["기업은행"])[0]["scenario"]
     scenario["maxTurns"] = 15
     monkeypatch.setattr(training_turn, "generate_json", lambda *a, **k: {
@@ -68,7 +68,8 @@ def test_followup_dialogue_keeps_allowed_organization(monkeypatch):
         "nextScene": 1, "requestType": "대화 지속",
     })
     result = training_turn.run_training_turn("context", scenario, 1, [{"role": "user", "text": "어디라고요?"}])
-    assert "기업은행" in result["personaMessage"]
+    assert "기업은행" not in result["personaMessage"]
+    assert "한빛은행" in result["personaMessage"]
     assert not result["fallbackUsed"]
 
 

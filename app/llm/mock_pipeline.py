@@ -65,6 +65,11 @@ def respond(task, payload):
                 "personalizationBasis": [{"eventId": graph["focusEventIds"][0], "evidenceId": events[graph["focusEventIds"][0]]["evidenceIds"][0], "detail": "mock 구조 검사용", "scenarioImpact": "mock은 실제 맥락 충분성을 평가하지 않음"}],
                 "fictionalEvents": ["mock 요청 메시지가 도착함"], "requestedActions": ["개인정보 제공"], "channel": "중고거래 앱 채팅", "missingInformation": []}
         return {"candidates": [plan], "selectedPlanId": plan["id"], "followupQuestion": ""}
+    if task == "draft_review":
+        result = respond("semantic_review", payload)
+        result["checks"].pop("sufficientContext")
+        result.pop("followupQuestion")
+        return result
     if task == "semantic_review":
         enough = payload.get("plan") is not None
         return {"approved": enough, "checks": {"factsSupported": True, "actorsPreserved": True, "recipientPlausible": enough,

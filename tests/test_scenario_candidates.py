@@ -109,7 +109,7 @@ def test_generic_draft_can_be_rejected_even_when_ids_match(grounded_model, graph
         training_api.scenario(ScenarioRequest(facts={"discoveryReady": True,
             "discoveryEvidence": [{"turn": 1, "text": graph_data["evidence"][0]["quote"]}]}, fraudTypeCode="SMISHING"))
     assert error.value.status == 503
-    assert sum(task == "scenario_generate" for task, _ in grounded_model[0]) == 2
+    assert sum(task == "scenario_generate" for task, _ in grounded_model[0]) == 4
     assert not any(task == "scenario_classify" for task, _ in grounded_model[0])
 
 

@@ -54,7 +54,8 @@ def test_invalid_scenario_is_rejected_without_input_echo():
     assert "do-not-echo" not in response.text
 
 
-def test_evaluation_model_failure_returns_safe_error(monkeypatch):
+def test_evaluation_model_failure_still_returns_recorded_report(monkeypatch):
+    """LLM 이 실패해도 서버 기록만으로 리포트를 만들어요 (리포트가 안 나오는 일이 없게)."""
     from app.services import training_api
     from app.llm.llm_client import LLMError
 
@@ -70,8 +71,10 @@ def test_evaluation_model_failure_returns_safe_error(monkeypatch):
         response = client.post("/internal/ai/training/evaluate", json={
             "scenario": scenario, "conversation": [], "actions": [],
         })
-    assert response.status_code == 503
-    assert response.json()["error"]["code"] == "AI_SERVICE_UNAVAILABLE"
+    assert response.status_code == 200, response.text
+    report = response.json()["data"]
+    assert report["overallFeedback"].startswith("결과:")
+    assert report["recommendations"]
     assert "private-provider-detail" not in response.text
 
 

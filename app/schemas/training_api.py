@@ -74,6 +74,12 @@ class TurnFeedback(BaseModel):
     feedback: str = Field(min_length=1, max_length=300)
 
 
+class ReportInfoDisclosure(BaseModel):
+    """요구받은 개인정보 종류와 실제로 넘긴 종류 (서버 기록 기준, 값은 없음)"""
+    requested: list[str] = Field(default_factory=list, max_length=10)
+    provided: list[str] = Field(default_factory=list, max_length=10)
+
+
 class EvaluationResult(BaseModel):
     overallFeedback: str = Field(min_length=1, max_length=1000)
     strengths: list[str] = Field(max_length=10)
@@ -81,3 +87,4 @@ class EvaluationResult(BaseModel):
     turnFeedback: list[TurnFeedback] = Field(default_factory=list, max_length=8)
     mockPageEvaluation: MockPageEvaluation
     recommendations: list[str] = Field(max_length=10)
+    infoDisclosure: ReportInfoDisclosure | None = None

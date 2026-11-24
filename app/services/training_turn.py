@@ -23,7 +23,7 @@ from pathlib import Path
 
 from app import fallback
 from app.config import settings
-from app.guard import output_guard, pii_masker
+from app.guard import output_guard, pii_masker, scam_media
 from app.guard.brand_names import fictionalize, fictionalize_tree
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
 from app.guard.sensitive import MASK_NAMES, NOT_NAMES, SURNAMES, mask_name_address, mask_requested_numbers, mask_sensitive
@@ -46,7 +46,7 @@ UNAVAILABLE_THING = re.compile(r"인증\s*(번호|코드)|OTP|보안\s*카드|�
 # 사기범이 역할을 깨고 예방 조언을 하는 대사 (예: "실제 정보는 보내지 마시고 공식 경로에서 확인하세요")
 ROLE_BREAK = re.compile(r"보내지\s*마(세요|시고|십시오)|입력하지\s*마(세요|시고)|적지\s*마(세요|시고)"
                         r"|공식\s*(경로|채널|앱|홈페이지|사이트|대표\s*번호|고객센터)(에서|로|으로)\s*(직접\s*|따로\s*|별도로\s*)?확인(해\s*(주세요|보세요)|하세요|하시기\s*바랍니다)"
-                        r"|사기(일|인|에\s*주의|를\s*조심)|주의하세요|훈련(입니다|이에요|이라서|이니)")
+                        r"|사기(일|인|에\s*주의|를\s*조심)|훈련(입니다|이에요|이라서|이니)")
 # 실제로 무언가를 시키는 말 (링크·정보·돈·앱). 두 번 연속 이런 말 없이 맴돌면 시간 끌기로 봐요
 DEMAND_WORDS = re.compile(r"\[모의링크\]|\[모의앱\]|\[모의계좌\]|링크|계좌|성함|이름|주소|생년월일|연락처|번호|입금|송금|보내\s*주|설치|입력|적어|등록|수수료|인증")
 # 사기범 대사에 들어가면 안 되는 내부 표시 (가림 표시, 버튼 사건, 가상 자료 표시)
@@ -93,6 +93,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     scene_now = _scene(scenes, current_scene)          # 사용자가 답할 때의 장면
     asked_info = _requested(scene_now)                 # 그 장면에서 사기범이 요구한 정보
     persona_lines = [m["text"] for m in history if m["role"] == "persona"]
+    turn_log = _load_log(state)  # 리포트용 턴별 기록 (판정·넘긴 정보 종류·사건). _load_state 가 지우기 전에 꺼내요
     state = _load_state(state, current_scene, scene_now, persona_lines)
 
     # 2) 개인정보 감지 (값은 버리고 종류만) + 서버가 확인한 사건 정리
@@ -108,7 +109,8 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         next_scene_request_type=_scene(scenes, min(current_scene + 1, total_scenes)).get("request", "대화 지속"),
         user_turns=user_turns, min_turns=min_turns, max_turns=max_turns,
         prop_counts={p: sum(line.count(p) for line in persona_lines) for p in output_guard.PROPS},
-        speaker_changes=_speaker_changes(persona_lines), allowed_requests=tuple(ALLOWED_REQUESTS))
+        speaker_changes=_speaker_changes(persona_lines), allowed_requests=tuple(ALLOWED_REQUESTS),
+        media_counts=scam_media.count_used(persona_lines))
     # prompt(규칙)는 매 턴 똑같아서 캐시되고, 매 턴 바뀌는 서버 정보는 대본 맨 앞에 붙여요 (비용 절약)
     prompt, server_info = _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,
                                         state, events, guard_state)
@@ -180,7 +182,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
             request_type="대화 지속", requested_info=[], choices=[], judgment=judgment,
             info_disclosure={"requested": asked_info, "provided": provided, "disclosed": bool(provided)},
             masked_text=_shown(masked_last, history), done=True, end_reason="real_concern", real_concern=True,
-            fallback_used=used_fallback, training_state=state)
+            fallback_used=used_fallback,
+            training_state={**state, "log": _append_log(turn_log, user_turns, judgment, provided, asked_info,
+                                                        events_this_turn, "real_concern")})
 
     # 장면 진행 (한 번에 1칸까지만)
     try:
@@ -195,6 +199,9 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     persona_message, _ = mask_sensitive(persona_message)  # 혹시 숫자를 지어내도 가림
     persona_message = FAKE_MARK.sub("", persona_message).strip()  # LLM 이 가림·사건 표시를 흉내 내면 지워요
     persona_message = fictionalize(persona_message)  # 실제 브랜드 이름이 나오면 가상 이름으로
+    # 사진·화면 소품([사진:상품|...] 등)을 정해진 모양으로 고치고, 한 메시지 1개·대화 전체 종류별 한도만 남겨요
+    persona_name = str((scenario.get("persona") or {}).get("name") or "") if isinstance(scenario.get("persona"), dict) else ""
+    persona_message = scam_media.clean(persona_message, persona_lines, persona_name)
     choices = _clean_choices(data.get("choices"))
     type_it = False
 
@@ -331,7 +338,8 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
             and not find_unsafe_text(speaker, scenario.get("allowedOrganizations", [])):
         persona_message = f"[화자: {speaker}] {persona_message}"
 
-    new_state = _next_state(state, data, move, current_scene, next_scene) if new_format else state
+    new_state = _next_state(state, data, move, current_scene, next_scene) if new_format else dict(state)
+    new_state["log"] = _append_log(turn_log, user_turns, judgment, provided, asked_info, events_this_turn, end_reason)
 
     logger.info("session=%s turn=%d scene=%d->%d move=%s outcome=%s provided=%s done=%s fallback=%s",
                 session_id, user_turns, current_scene, next_scene, move or "-", judgment["outcome"],
@@ -427,6 +435,7 @@ def _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, 
         "APP_COUNT": str(counts.get("[모의앱]", 0)),
         "ACCOUNT_COUNT": str(counts.get("[모의계좌]", 0)),
         "SPEAKER_CHANGE_COUNT": str(guard_state.speaker_changes),
+        "MEDIA_COUNTS": " · ".join(f"[{kind}] {n}/{scam_media.KINDS[kind][0]}" for kind, n in guard_state.media_counts.items()),
         "EVENT_LOG": "\n".join(f"- {e}" for e in events) or "(없음)",
         "REQUESTS": ", ".join(ALLOWED_REQUESTS),
     }
@@ -512,7 +521,7 @@ def _clean_choices(raw) -> list[str]:
 
 
 def _is_photo_info(info: str) -> bool:
-    return any(word in info for word in ("사진", "이미지", "캡처", "스크린샷", "신분증", "주민등록증", "운전면허", "여권", "통장"))
+    return any(word in info for word in ("사진", "이미지", "캡처", "스크린샷", "신분증", "주민등록증", "운전면허", "여권", "통장", "상품권"))
 
 
 def _request_info_line(info: list[str]) -> str:
@@ -573,8 +582,10 @@ EVENT_NAMES = {
 }
 PHOTO_EVENTS = {"[가상 신분증 사진 제공]": ("신분증 사진", "신분증사진_제공"),
                 "[가상 통장 사진 제공]": ("통장 사진", "통장사진_제공"),
-                "[가상 사진 제공]": ("사진", "사진_제공")}
-RISKY_EVENTS = {"앱설치링크_누름", "송금_누름", "확인페이지_제출", "신분증사진_제공", "통장사진_제공", "사진_제공"}
+                "[가상 사진 제공]": ("사진", "사진_제공"),
+                "[가상 상품권 사진 제공]": ("상품권 사진", "상품권사진_제공")}
+RISKY_EVENTS = {"앱설치링크_누름", "송금_누름", "확인페이지_제출", "신분증사진_제공", "통장사진_제공", "사진_제공",
+                "상품권사진_제공"}
 # Spring 이 먼저 가린 표시 ([계좌번호] 등)와 이 서버가 가린 표시
 MASK_LABELS = ("주민등록번호", "카드번호", "전화번호", "휴대폰번호", "계좌번호", "이메일", "비밀번호",
                "인증정보", "민감정보", "이름", "성함", "주소", "생년월일", "연락처", "숫자정보", "번호 일부")
@@ -805,6 +816,43 @@ def _load_state(raw, current_scene: int, scene_now: dict, persona_lines: list[st
     if state["scene"] != current_scene:  # 장면이 바뀌었으면 장면별 횟수는 새로 세요
         state.update(scene=current_scene, trust=0, push=0, requestMade=_request_seen(scene_now, persona_lines[-1:]))
     return state
+
+
+# ---------------- 리포트용 턴별 기록 ----------------
+# 매 턴 서버가 확정한 것(판정, 넘긴 개인정보 '종류', 버튼 사건, 종료 이유)을 trainingState.log 에 쌓아요.
+# Spring 이 시나리오 진행 JSON 에 그대로 보관했다가 평가(/training/evaluate) 때 함께 넘겨 줘서,
+# 리포트의 '한 것/안 한 것'을 LLM 짐작이 아니라 이 기록으로 정해요. 실제 값은 넣지 않아요 (종류 이름만).
+MAX_LOG = 15
+_LOG_WORD = re.compile(r"^[가-힣A-Za-z ·_]{1,20}$")
+
+
+def _clean_words(values, limit: int = 6) -> list[str]:
+    return [str(v)[:20] for v in (values or []) if isinstance(v, str) and _LOG_WORD.match(str(v))][:limit]
+
+
+def _load_log(raw) -> list[dict]:
+    if not isinstance(raw, dict) or not isinstance(raw.get("log"), list):
+        return []
+    log = []
+    for item in raw["log"][-MAX_LOG:]:
+        if not isinstance(item, dict) or not isinstance(item.get("t"), int):
+            continue
+        entry = {"t": item["t"], "o": item.get("o") if item.get("o") in OUTCOMES else "neutral",
+                 "p": _clean_words(item.get("p")), "r": _clean_words(item.get("r")), "e": _clean_words(item.get("e"), 4)}
+        if isinstance(item.get("x"), str) and _LOG_WORD.match(item["x"]):
+            entry["x"] = item["x"]
+        log.append(entry)
+    return log
+
+
+def _append_log(log: list[dict], turn: int, judgment: dict | None, provided: list[str], asked: list[str],
+                events: list[str], end_reason: str | None) -> list[dict]:
+    entry = {"t": turn, "o": (judgment or {}).get("outcome") if (judgment or {}).get("outcome") in OUTCOMES else "neutral",
+             "p": _clean_words(provided), "r": _clean_words(asked), "e": _clean_words(events, 4)}
+    if end_reason:
+        entry["x"] = end_reason
+    kept = [item for item in log if item.get("t") != turn]  # 같은 턴을 다시 보내면 새 기록으로 바꿔요
+    return (kept + [entry])[-MAX_LOG:]
 
 
 def _small_int(value) -> int:

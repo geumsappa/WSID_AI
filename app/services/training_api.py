@@ -245,8 +245,14 @@ def evaluate(request: EvaluationRequest) -> EvaluationResult:
     LLM 이 실패하거나 이상한 답을 줘도 기록만으로 리포트를 만들어요 (리포트가 안 나오는 일이 없게)."""
     _scenario(request.scenario)
     actions = {action.actionCode for action in request.actions}
+    # 확인 화면에서 채운 칸 종류. 제출 기록에 칸 정보가 아예 없으면(예전 훈련) None
+    page_fields = None
+    for action in request.actions:
+        if action.actionCode == "MOCK_LOGIN_ATTEMPT" and action.filledFields is not None:
+            page_fields = list(dict.fromkeys((page_fields or []) + [f[:10] for f in action.filledFields if report_facts.PAGE_FIELD.match(f)]))
     sim_messages = [m for m in request.conversation if m.phase in (None, "SIMULATION")]
-    facts = report_facts.collect(request.scenario, [{"sender": m.sender, "content": m.content} for m in sim_messages], actions)
+    facts = report_facts.collect(request.scenario, [{"sender": m.sender, "content": m.content} for m in sim_messages], actions,
+                                 page_fields=page_fields)
     page = MockPageEvaluation(
         openedPage=facts.opened_page,
         attemptedMockLogin=facts.submitted_page,

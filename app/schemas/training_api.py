@@ -50,6 +50,8 @@ class SimulationResult(BaseModel):
 
 class EvaluationAction(BaseModel):
     actionCode: str = Field(min_length=1, max_length=100)
+    # 확인 화면 제출(MOCK_LOGIN_ATTEMPT)이면 값을 채운 칸의 종류 (이름·휴대폰 번호·주소·생년월일·성별). 예전 기록에는 없어요
+    filledFields: list[str] | None = Field(default=None, max_length=10)
 
 
 class EvaluationRequest(BaseModel):

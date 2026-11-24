@@ -109,3 +109,28 @@ def test_넘긴_정보는_한_줄로_모은다():
     f = report_facts.collect(_scenario(log), CONV, set())
     assert [m for m in f.missed if m.startswith("요구받은")] == [
         "요구받은 전화번호·이름을 대화창에 적었어요 (3번째 답변). 사기에 그대로 쓰일 수 있는 정보예요."]
+
+
+def test_확인_화면에서_채운_칸만_리포트에_들어감():
+    conv = [{"sender": "AI", "phase": "SIMULATION", "content": "여기서 확인해 주세요 [모의링크]"},
+            {"sender": "USER", "phase": "SIMULATION", "content": "네"}]
+    log = [{"t": 1, "o": "risky", "p": [], "r": [], "e": []}]
+    facts = report_facts.collect(_scenario(log), conv, {"MOCK_PAGE_OPEN", "MOCK_LOGIN_ATTEMPT"}, page_fields=["이름", "생년월일"])
+    assert facts.grade == "위험" and "이름" in facts.provided and "생년월일" in facts.provided
+    assert any("이름·생년월일을 입력하고 제출" in m for m in facts.missed)
+    assert not any("대화창에 적었" in m for m in facts.missed)
+
+
+def test_확인_화면에서_아무것도_안_적고_제출하면_주의():
+    conv = [{"sender": "AI", "phase": "SIMULATION", "content": "여기서 확인해 주세요 [모의링크]"}]
+    facts = report_facts.collect(_scenario([]), conv, {"MOCK_PAGE_OPEN", "MOCK_LOGIN_ATTEMPT"}, page_fields=[])
+    assert facts.grade == "주의" and not facts.provided
+    assert any("아무것도 적지 않았지만" in m for m in facts.missed)
+
+
+def test_가상_모의_표현은_대사에서_지움():
+    clean = training._unreal_clean
+    assert clean("여기 채팅에 [가상 생년월일], [가상 계좌 끝자리] 여기에 적어 주세요.") == "여기 채팅에 생년월일, 계좌 끝자리 여기에 적어 주세요."
+    assert clean("모의 훈련용 링크예요 [모의링크]") == "링크예요 [모의링크]"
+    assert clean("가상화폐 거래소 안내예요") == "가상화폐 거래소 안내예요"
+    assert training._info_name("[가상 생년월일]") == "생년월일"

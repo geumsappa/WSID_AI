@@ -19,6 +19,7 @@ PHOTO_EVENTS = {"신분증사진_제공": "신분증 사진", "통장사진_제�
 # 훈련자 답변에 남은 가림 표시 → 넘긴 정보 종류 (예전 훈련처럼 턴별 기록이 없을 때 씀)
 _MARK = re.compile(r"\[(?:가림:)?(주민등록번호|카드번호|전화번호|휴대폰번호|계좌번호|이메일|비밀번호|인증번호|인증정보|이름|주소|생년월일|연락처)\]")
 _ENTERED = re.compile(r"\[([가-힣 ,·]{2,40}) 입력함\]")
+PAGE_FIELD = re.compile(r"^(이름|휴대폰 번호|주소|생년월일|성별)$")
 _LEFT = ("user_exit",)
 _GAVE_UP = ("scammer_left",)
 
@@ -49,6 +50,7 @@ class ReportFacts:
     ended_contact: bool                 # 훈련자가 먼저 연락을 끊음
     scam_finished: bool                 # 사기범이 돈을 받고 나감
     gave_up: bool = False               # 계속 거절해서 사기범이 먼저 나감
+    page_fields: list[str] | None = None  # 확인 화면에서 채워 제출한 칸 종류 (None: 예전 기록이라 모름)
     grade: str = ""                     # 안전 | 주의 | 위험
     did: list[str] = field(default_factory=list)       # 잘한 점 (사실)
     missed: list[str] = field(default_factory=list)    # 개선할 점 (사실)
@@ -76,7 +78,7 @@ def _unique(items) -> list[str]:
     return list(dict.fromkeys(i for i in items if i))
 
 
-def collect(scenario: dict, conversation: list[dict], actions: set[str]) -> ReportFacts:
+def collect(scenario: dict, conversation: list[dict], actions: set[str], page_fields: list[str] | None = None) -> ReportFacts:
     """conversation: [{"sender": "USER"|"AI"|"SYSTEM", "content": "..."}] (훈련 대화만)"""
     state = scenario.get("trainingState") if isinstance(scenario, dict) else None
     log = state.get("log") if isinstance(state, dict) and isinstance(state.get("log"), list) else []
@@ -102,7 +104,7 @@ def collect(scenario: dict, conversation: list[dict], actions: set[str]) -> Repo
                      + [PHOTO_EVENTS[e] for t in turns for e in t.events if e in PHOTO_EVENTS])
     transfers = max(sum(1 for t in turns for e in t.events if e == "송금_누름"), 1 if "MOCK_TRANSFER" in actions else 0)
     facts = ReportFacts(
-        requested=requested, provided=_unique(provided + photos), turns=turns,
+        requested=requested, provided=_unique(provided + photos + (page_fields or [])), turns=turns,
         sent_link="[모의링크]" in ai_text or "OPEN" in " ".join(actions), sent_app="[모의앱]" in ai_text,
         sent_account="[모의계좌]" in ai_text, asked_photo=bool(re.search(r"사진|상품권", ai_text)),
         opened_page="MOCK_PAGE_OPEN" in actions, submitted_page="MOCK_LOGIN_ATTEMPT" in actions,
@@ -112,6 +114,7 @@ def collect(scenario: dict, conversation: list[dict], actions: set[str]) -> Repo
         ended_contact=any(isinstance(i, dict) and i.get("x") in _LEFT for i in log),
         gave_up=any(isinstance(i, dict) and i.get("x") in _GAVE_UP for i in log),
         scam_finished=any(isinstance(i, dict) and i.get("x") == "scam_success" for i in log),
+        page_fields=page_fields if "MOCK_LOGIN_ATTEMPT" in actions else None,
     )
     _judge(facts)
     return facts
@@ -123,17 +126,19 @@ def _turns_of(facts: ReportFacts, *, info: str | None = None, event: str | None 
 
 
 def _judge(f: ReportFacts) -> None:
-    risky_action = f.submitted_page or f.clicked_app or f.transfers > 0 or bool(f.photos)
+    # 확인 화면은 칸을 비워 두고 제출할 수도 있어요: 아무것도 안 적었으면 위험이 아니라 주의
+    page_risky = f.submitted_page and (f.page_fields is None or bool(f.page_fields))
+    risky_action = page_risky or f.clicked_app or f.transfers > 0 or bool(f.photos)
     risky_turns = [t for t in f.turns if t.outcome == "risky"]
     if f.provided or risky_action:
         f.grade = "위험"
-    elif risky_turns or not (f.verified or f.ended_contact or f.gave_up):
+    elif risky_turns or f.submitted_page or not (f.verified or f.ended_contact or f.gave_up):
         f.grade = "주의"
     else:
         f.grade = "안전"
 
     did, missed = f.did, f.missed
-    text_info = [p for p in f.provided if p not in f.photos]
+    text_info = _unique(p for t in f.turns for p in t.provided if p not in f.photos)  # 대화창에 적은 것만
     if text_info:
         # 넘긴 정보는 한 줄로 모아요 (리포트가 A4 한 장에 들어가게)
         turns = sorted({t.turn for t in f.turns if set(t.provided) & set(text_info)})
@@ -145,7 +150,11 @@ def _judge(f: ReportFacts) -> None:
     elif kept:
         did.append(f"{_josa(_list(kept[:3]), '은', '는')} 알려 주지 않았어요.")
     if f.sent_link:
-        if f.submitted_page:
+        if f.submitted_page and f.page_fields:
+            missed.append(f"링크로 연 확인 화면에 {_josa('·'.join(f.page_fields), '을', '를')} 입력하고 제출했어요. 문자·메신저로 받은 링크에는 정보를 넣지 마세요.")
+        elif f.submitted_page and f.page_fields is not None:
+            missed.append("링크로 연 확인 화면에서 아무것도 적지 않았지만 제출 버튼을 눌렀어요. 링크로 연 화면의 버튼은 누르지 않는 게 안전해요.")
+        elif f.submitted_page:
             missed.append("링크를 열어 확인 화면에 정보를 입력했어요. 문자·메신저로 받은 링크에는 정보를 넣지 마세요.")
         elif f.opened_page:
             missed.append("상대가 보낸 링크를 열었어요. 정보를 넣지는 않았지만, 링크를 여는 것만으로도 위험할 수 있어요.")
@@ -183,13 +192,16 @@ def grade_sentence(f: ReportFacts) -> str:
     if f.grade == "위험":
         # 말끝을 붙여 한 문장으로: "계좌번호를 넘겼고, 송금 버튼을 눌렀어요."
         stems = []
-        if f.provided:
-            stems.append(f"{_josa('·'.join(f.provided[:4]), '을', '를')} 넘겼")
+        handed = [p for p in f.provided if p not in (f.page_fields or [])]
+        if handed:
+            stems.append(f"{_josa('·'.join(handed[:4]), '을', '를')} 넘겼")
         if f.transfers:
             stems.append("안내받은 계좌로 송금 버튼을 눌렀")
         if f.clicked_app:
             stems.append("앱 설치 링크를 눌렀")
-        if f.submitted_page:
+        if f.submitted_page and f.page_fields:
+            stems.append(f"링크로 연 확인 화면에 {_josa('·'.join(f.page_fields), '을', '를')} 입력했")
+        elif f.submitted_page and f.page_fields is None:
             stems.append("링크로 연 확인 화면에 정보를 입력했")
         body = ("고, ".join(stems) + "어요.") if stems else "요구에 응한 행동이 있었어요."
         return f"결과: 위험. {body}"

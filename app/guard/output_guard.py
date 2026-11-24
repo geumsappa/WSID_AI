@@ -54,6 +54,7 @@ class TurnState:
     photo_kinds: tuple = ()          # 시나리오에 나오는 사진 자료 종류 (신분증·통장·상품권). 이 밖의 사진은 요구하지 않아요
     photo_asked: tuple = ()          # 지금까지 사기범이 요구한 사진 종류
     speech_level: str | None = None  # 대화 내내 지킬 말투 (반말 | 존댓말). 첫 메시지 기준
+    events_seen: tuple = ()          # 지금까지 서버가 확인한 사건 이름 (송금_누름, 확인페이지_제출, 사진 제공 등)
 
 
 # 사기범이 자료 사진을 보내 달라고 하는 말 ("신분증 앞면 사진 한 장만 보내 주세요", "통장 사본 찍어서 올려 주세요")
@@ -61,6 +62,42 @@ PHOTO_KINDS = ("신분증", "통장", "상품권")
 _PHOTO_ASK = re.compile(r"(신분증|주민등록증|운전면허증|통장|상품권)[^.?!\n]{0,20}(?:사진|사본|앞면|뒷면|촬영|찍)"
                         r"[^.?!\n]{0,20}(?:보내|올려|찍어|전송|첨부|부탁)")
 _PHOTO_ALIAS = {"주민등록증": "신분증", "운전면허증": "신분증"}
+
+
+# 일어나지 않은 일을 받았다고 하는 말 (환각). 사건이 있어야만 할 수 있는 말이에요.
+# "입금이 확인돼야 해요"처럼 앞으로의 일은 걸리지 않게, 끝난 일("확인됐어요", "들어왔어요", "받았어요")만 봐요.
+_DONE = r"(?:확인\s*(?:됐|되었|했|완료)|들어왔|들어온|받았|잘\s*받|완료\s*(?:됐|되었|했))"
+FALSE_CLAIMS = [
+    ("송금_누름", "송금 버튼을 누르지 않았는데 입금·송금을 확인했다고 했다",
+     re.compile(rf"(?:입금|송금|이체|돈)\S{{0,4}}\s*{_DONE}|\d[\d,]*\s*만?\s*원\S{{0,3}}\s*{_DONE}")),
+    ("사진", "자료 사진을 보내지 않았는데 받았다고 했다",
+     re.compile(rf"(?:사진|신분증|통장\s*사본|상품권|사본)\S{{0,4}}\s*(?:{_DONE}|도착)")),
+    ("확인페이지_제출", "확인 화면을 제출하지 않았는데 입력·제출을 확인했다고 했다",
+     re.compile(rf"(?:입력|제출|작성|등록)\s*(?:하신|해\s*주신|해\s*준|한)\s*(?:정보|내용|거|것)\S{{0,3}}\s*{_DONE}"
+                rf"|(?:입력|제출)\S{{0,2}}\s*(?:확인|완료)\s*(?:됐|되었|했)")),
+]
+
+
+def false_claims(msg: str, events_seen) -> list[str]:
+    """사건 없이 '받았다·확인됐다'고 한 말의 종류 설명. 사진은 어떤 사진 제공 사건이든 있으면 괜찮아요"""
+    seen = " ".join(events_seen or ())
+    out = []
+    for need, why, pattern in FALSE_CLAIMS:
+        if need not in seen and pattern.search(msg or ""):
+            out.append(why)
+    return out
+
+
+def drop_false_claims(msg: str, events_seen) -> str:
+    """사건 없이 받았다고 한 문장만 빼요. 남는 문장이 없으면 빈 문자열 (호출하는 쪽이 기본 대사로 바꿔요)"""
+    seen = " ".join(events_seen or ())
+    patterns = [p for need, _, p in FALSE_CLAIMS if need not in seen]
+    if not patterns or not msg:
+        return msg
+    parts = re.split(r"((?<=[.?!…~ㅠㅜ])\s+|\n+)", msg)
+    kept = [part for part in parts if not any(p.search(part) for p in patterns)]
+    result = re.sub(r"[ \t]{2,}", " ", "".join(kept)).strip()
+    return result
 
 
 def photo_requests(msg: str) -> list[str]:
@@ -101,6 +138,10 @@ def _check_message(msg: str, data: dict, st: TurnState) -> list[str]:
         errs.append("가리지 않은 전화번호가 있다 (X로 가려야 함)")
     if _LONG_NUM.search(_DATE.sub("", msg)):
         errs.append("계좌·카드번호처럼 보이는 숫자가 있다")
+
+    # 일어나지 않은 일(송금·사진·확인 화면 제출)을 받았다고 하는 환각
+    for why in false_claims(msg, st.events_seen):
+        errs.append(f"{why} (사건 기록에 없는 일은 일어났다고 말하지 않는다)")
 
     # 말투 섞임: 첫 메시지와 다른 말투로 끝나는 문장이 있으면 다시 쓰게 해요 (그래도 섞이면 서버가 말끝을 고쳐요)
     off = speech_level.mismatched(msg, st.speech_level)

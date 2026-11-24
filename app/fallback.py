@@ -45,8 +45,30 @@ TRAINING_SUCCESS_LINE = "네, 입금 확인됐습니다. 처리해 드릴게요.
 TRAINING_REAL_CONCERN_LINE = ("잠깐 훈련을 멈출게요. 실제로 돈을 보냈거나 정보를 알려 줬다면 지금 바로 112(경찰)나 "
                               "1332(금융감독원)에 신고하고, '긴급 대응' 메뉴에서 해야 할 일을 확인해 주세요.")
 
+# 반말 시나리오(지인·가족 사칭 등)에서 쓰는 같은 대사. 존댓말 기본 대사가 나가려 하면 이 짝으로 바꿔요
+# (말끝만 바꾸는 자동 변환보다 자연스러워요). {info} 자리는 그대로 옮겨요
+CASUAL_LINES = {
+    TRAINING_PERSONA_LINES["링크 클릭"]: "확인하려면 아래에서 바로 해 줘. 오늘 안에 처리돼야 해. [모의링크]",
+    TRAINING_PERSONA_LINES["개인정보 제공"]: "확인 절차라서 그래. {info} 여기에 적어 주면 바로 처리할게.",
+    TRAINING_PERSONA_LINES["송금"]: "처리하려면 먼저 입금이 확인돼야 해. 이 계좌로 보내 주면 바로 진행할게. [모의계좌]",
+    TRAINING_PERSONA_LINES["앱 설치"]: "이 앱 설치해야 다음 단계로 넘어가. [모의앱]",
+    TRAINING_PERSONA_LINES["대화 지속"]: "응, 그래서 말인데. 잠깐 시간 괜찮아?",
+    TRAINING_END_LINE: "알겠어. 그럼 이만 끊을게.",
+    TRAINING_EXIT_LINES[0]: "아 응... 알겠어.",
+    TRAINING_EXIT_LINES[1]: "그래, 그럼 어쩔 수 없지.",
+    TRAINING_EXIT_LINES[2]: "아... 응. 알겠어.",
+    TRAINING_GIVEUP_LINES[0]: "응, 알겠어. 그럼 이 얘기는 여기까지 할게.",
+    TRAINING_GIVEUP_LINES[1]: "아... 그래. 그럼 어쩔 수 없네.",
+    TRAINING_GIVEUP_LINES[2]: "응, 알겠어. 이만할게.",
+    TRAINING_SUCCESS_LINE: "응, 입금 확인했어. 고마워, 바로 처리할게.",
+    "여기에 적어 주세요": "여기에 적어 줘",
+    "보내 주세요": "보내 줘",
+    "확인을 위해 ": "확인하려고 그러는데 ",
+}
+
 # 사용자가 "알려드릴게요"라고만 하고 실제 값을 안 썼을 때, 대화창에 직접 입력하라고 다시 요구하는 대사
 TRAINING_TYPE_IT_LINE = "네, 감사합니다. 그럼 지금 {info} 여기에 적어 주세요. 확인되는 대로 바로 처리할게요."
+CASUAL_LINES[TRAINING_TYPE_IT_LINE] = "응, 고마워. 그럼 지금 {info} 여기에 적어 줘. 확인되는 대로 바로 처리할게."
 TRAINING_TYPE_IT_CHOICES = ["아니요, 다시 생각해 볼게요", "잠시만요, 그게 왜 필요한 거죠?"]
 
 # 선택지 기본값: (안전, 위험, 애매)

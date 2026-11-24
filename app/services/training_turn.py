@@ -146,7 +146,8 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         media_counts=scam_media.count_used(persona_lines),
         photo_kinds=output_guard.scenario_photo_kinds(scenario),
         photo_asked=tuple(k for line in persona_lines for k in output_guard.photo_requests(line)),
-        speech_level=_speech_level(scenario, persona_lines))
+        speech_level=_speech_level(scenario, persona_lines),
+        events_seen=tuple(dict.fromkeys([e.split(": ", 1)[-1] for e in events] + list(events_this_turn))))
     # prompt(규칙)는 매 턴 똑같아서 캐시되고, 매 턴 바뀌는 서버 정보는 대본 맨 앞에 붙여요 (비용 절약)
     reaction = _reaction(turn_log, provided, events_this_turn)
     prompt, server_info = _build_prompt(scenario, current_scene, total_scenes, user_turns, max_turns, min_turns,
@@ -172,10 +173,10 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
                 serious2 = [e for e in errors2 if not _server_fixable(e)]
                 if "move" in retried and not serious2:
                     data = retried
-                elif "move" in retried and all(e.startswith("말투") for e in serious2):
-                    data = retried  # 말투만 남았으면 서버가 말끝을 고쳐요 (speech_level.conform)
-                elif all(e.startswith("말투") for e in serious):
-                    pass            # 원래 대사도 말투만 문제였으면 그대로 두고 서버가 고쳐요
+                elif "move" in retried and all(_fix_after_retry(e) for e in serious2):
+                    data = retried  # 말투·사건 없는 확인만 남았으면 서버가 고쳐요 (말끝 교정, 그 문장 빼기)
+                elif all(_fix_after_retry(e) for e in serious):
+                    pass            # 원래 대사도 그것만 문제였으면 그대로 두고 서버가 고쳐요
                 else:
                     raise LLMError("still invalid")
             except LLMError:
@@ -329,6 +330,15 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     # 5-b) 훈련에서 일어나지 않은 일을 전제로 한 대사 바로잡기
     #  - 인증번호·OTP·앱 화면 속 번호처럼 사용자가 받을 수 없는 값을 요구하면
     #  - 앱 설치 링크를 누르지도 않았는데 설치가 확인됐다고 하면
+    # 5-e) 송금·사진·확인 화면 제출이 없었는데 "입금 확인됐어요", "사진 받았어요"라고 하면 그 문장을 빼요
+    #      (LLM 에 한 번 다시 쓰게 했는데도 남은 경우). 다 빠지면 장면 기본 대사로 바꿔요
+    claims = output_guard.false_claims(persona_message, guard_state.events_seen)
+    if claims:
+        logger.info("session=%s 일어나지 않은 일을 받았다고 한 대사 교정: %s", session_id, claims)
+        persona_message = output_guard.drop_false_claims(persona_message, guard_state.events_seen) \
+            or _fallback_line(scene_next, request_type)
+        used_fallback = True
+
     app_clicked = any(m["role"] == "event" and m["text"] == APP_CLICK_EVENT for m in history)
     false_install = not app_clicked and bool(INSTALL_DONE.search(persona_message))
     if false_install or _asks_unavailable(persona_message):
@@ -388,7 +398,8 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
         persona_message = f"{persona_message.rstrip()} {fallback.LEFT_MARK}"
 
     # 말투 고정: 기본 대사·마지막 인사까지 포함해 문장 끝을 첫 메시지 말투로 맞춰요 (반말↔존댓말 섞임 방지)
-    persona_message = speech_level.conform(persona_message, guard_state.speech_level)
+    persona_message = speech_level.conform(_casual_fallback(persona_message, guard_state.speech_level),
+                                           guard_state.speech_level)
 
     # 화자가 바뀌면 "[화자: 이름] " 을 앞에 붙여요 (프론트가 이름표로 보여줘요). 대화 전체에서 2번까지만
     speaker = fictionalize(str(data.get("speaker") or "").strip()[:30]) if new_format and not done else ""
@@ -865,6 +876,21 @@ def _current_speaker(persona_lines: list[str]) -> str | None:
     return None
 
 
+def _casual_fallback(text: str, level: str | None) -> str:
+    """반말 시나리오면 존댓말 기본 대사를 미리 써 둔 반말 짝(fallback.CASUAL_LINES)으로 바꿔요. 긴 것부터"""
+    if level != speech_level.CASUAL or not text:
+        return text
+    for polite in sorted(fallback.CASUAL_LINES, key=len, reverse=True):
+        casual = fallback.CASUAL_LINES[polite]
+        if "{info}" in polite:
+            head, tail = polite.split("{info}", 1)
+            pattern = re.compile(re.escape(head) + r"(.+?)" + re.escape(tail))
+            text = pattern.sub(lambda m: casual.replace("{info}", m.group(1)), text)
+        elif polite in text:
+            text = text.replace(polite, casual)
+    return text
+
+
 def _speech_level(scenario: dict, persona_lines: list[str]) -> str | None:
     """대화 내내 지킬 말투. 첫 메시지(시나리오 openingMessage)로 정하고, 거기서 알 수 없으면 지금까지 대사 전체로 정해요"""
     first = scenario.get("openingMessage") or (persona_lines[0] if persona_lines else "")
@@ -872,6 +898,11 @@ def _speech_level(scenario: dict, persona_lines: list[str]) -> str | None:
     if level is None and persona_lines:
         level = speech_level.detect(" ".join(_strip_speaker(t)[1] for t in persona_lines))
     return level
+
+
+def _fix_after_retry(error: str) -> bool:
+    """다시 물어도 남으면 서버가 직접 고치는 위반: 말투 섞임(말끝 교정), 사건 없는 확인(그 문장만 빼기)"""
+    return error.startswith("말투") or "사건 기록에 없는" in error
 
 
 def _server_fixable(error: str) -> bool:

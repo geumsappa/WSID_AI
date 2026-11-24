@@ -7,6 +7,7 @@ from app.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
+from app.guard.brand_names import fictionalize_tree
 from app.guard.scenario_guard import PHONE_PATTERN, URL_PATTERN
 from app.guard.sensitive import mask_sensitive
 from app.llm.llm_client import LLMError, generate_json
@@ -64,7 +65,8 @@ def scenario(request: ScenarioRequest) -> ScenarioResult:
                           readiness_evidence=request.facts.get("readinessEvidence"),
                           discovery_topics=request.facts.get("knownTopics"),
                           discovery_requirements=request.facts.get("intakeRequirements"))
-    generated = _scenario(result["scenario"])
+    # 실제 회사·서비스 이름은 가상 이름으로 (사기범 역할에 실제 브랜드가 나오지 않게)
+    generated = fictionalize_tree(_scenario(result["scenario"]))
     # Spring은 제목·설명과 함께 전체 시나리오를 보관하고 다음 AI 요청에 재사용한다.
     generated["description"] = generated["background"]
     code = result["scenario"].get("fraudTypeCode") or SUBTYPE_TO_FRAUD_CODE.get(generated["fraudSubtype"])

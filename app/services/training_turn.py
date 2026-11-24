@@ -24,6 +24,7 @@ from pathlib import Path
 from app import fallback
 from app.config import settings
 from app.guard import output_guard, pii_masker
+from app.guard.brand_names import fictionalize, fictionalize_tree
 from app.guard.scenario_guard import find_copycat_risk, find_unsafe_text
 from app.guard.sensitive import NOT_NAMES, SURNAMES, mask_name_address, mask_requested_numbers, mask_sensitive
 from app.llm.llm_client import CACHE_BREAK, LLMError, generate_json
@@ -65,6 +66,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     history 예: [{"role": "persona", "text": "..."}, {"role": "user", "text": "..."}]
     state: 지난 턴에 돌려준 trainingState (확정 설정·직전 수·장면별 횟수). 없으면 대화 기록으로 짐작해요.
     """
+    scenario = fictionalize_tree(scenario)  # 예전에 만든 시나리오에 실제 브랜드가 있어도 가상 이름으로
     scenes = scenario.get("keyScenes") or []
     total_scenes = max(1, len(scenes))
     current_scene = min(max(1, current_scene), total_scenes)
@@ -94,7 +96,8 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     state = _load_state(state, current_scene, scene_now, persona_lines)
 
     # 2) 개인정보 감지 (값은 버리고 종류만) + 서버가 확인한 사건 정리
-    masked_last, provided = _mask_last(history[-1]["text"], asked_info, persona_lines[-1] if persona_lines else "")
+    prev_user = next((m["text"] for m in reversed(history[:-1]) if m["role"] == "user"), "")
+    masked_last, provided = _mask_last(history[-1]["text"], asked_info, persona_lines[-1] if persona_lines else "", prev_user)
     events, events_this_turn = _event_log(history)
 
     # 3) LLM 호출 → 출력 검사 → (규칙 위반이면 1번 다시) → 그래도 안 되면 기본 대사
@@ -189,6 +192,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
     persona_message = str(data.get("personaMessage", "")).strip()[:350]
     persona_message, _ = mask_sensitive(persona_message)  # 혹시 숫자를 지어내도 가림
     persona_message = FAKE_MARK.sub("", persona_message).strip()  # LLM 이 가림·사건 표시를 흉내 내면 지워요
+    persona_message = fictionalize(persona_message)  # 실제 브랜드 이름이 나오면 가상 이름으로
     choices = _clean_choices(data.get("choices"))
     type_it = False
 
@@ -310,7 +314,7 @@ def run_training_turn(session_id: str, scenario: dict, current_scene: int, histo
             persona_message = fallback.TRAINING_END_LINE
 
     # 화자가 바뀌면 "[화자: 이름] " 을 앞에 붙여요 (프론트가 이름표로 보여줘요). 대화 전체에서 2번까지만
-    speaker = str(data.get("speaker") or "").strip()[:30] if new_format and not done else ""
+    speaker = fictionalize(str(data.get("speaker") or "").strip()[:30]) if new_format and not done else ""
     if speaker and speaker != _current_speaker(persona_lines) and guard_state.speaker_changes < output_guard.SPEAKER_LIMIT \
             and not find_unsafe_text(speaker, scenario.get("allowedOrganizations", [])):
         persona_message = f"[화자: {speaker}] {persona_message}"
@@ -614,9 +618,32 @@ def _mask_names(text: str, asked_info: list[str], last_persona: str) -> tuple[st
     return masked, found
 
 
-def _mask_last(text: str, asked_info: list[str], last_persona: str = "") -> tuple[str, list[str]]:
+SPLIT_TAIL = re.compile(r"(\d[\d\s\-]*\d|\d)\s*$")
+SPLIT_HEAD = re.compile(r"^\s*(\d[\d\s\-]*\d|\d)")
+
+
+def _split_number(text: str, prev_user: str, asked_info: list[str]) -> tuple[str, str | None]:
+    """번호를 두 메시지로 나눠 보낸 경우("010-1234" 다음 "5678"): 이어 붙이면 번호가 되면 이번 조각을 가려요.
+    (앞 조각은 이미 보낸 메시지라 되돌릴 수 없지만, 그것만으로는 번호가 완성되지 않아요)"""
+    tail, head = SPLIT_TAIL.search(prev_user or ""), SPLIT_HEAD.search(text)
+    if not tail or not head:
+        return text, None
+    digits = re.sub(r"\D", "", tail.group(1) + head.group(1))
+    if len(digits) < 9:
+        return text, None
+    kind = ("전화번호" if digits.startswith("01") and len(digits) in (10, 11)
+            else "카드번호" if len(digits) in (15, 16)
+            else next((info for info in asked_info if "계좌" in info), "계좌번호"))
+    return text[:head.start(1)] + f"[{kind}]" + text[head.end(1):], kind
+
+
+def _mask_last(text: str, asked_info: list[str], last_persona: str = "", prev_user: str = "") -> tuple[str, list[str]]:
     """사용자 마지막 답변을 가려요. 기존 규칙(sensitive.py) → pii_masker 순서로 두 번 가려요 (애매하면 가림)."""
     provided: list[str] = []
+    text = pii_masker.korean_digits_to_arabic(text)  # "공일공 일이삼사…" 도 숫자 규칙이 잡게
+    text, split_kind = _split_number(text, prev_user, asked_info)
+    if split_kind:
+        provided.append(split_kind)
     # 앱이 만든 가상 자료 표시는 위조 표시를 지우기 전에 먼저 '사진 제공'으로 기록해요
     for marker, (label, _) in PHOTO_EVENTS.items():
         if marker in text and label not in provided:
@@ -626,6 +653,12 @@ def _mask_last(text: str, asked_info: list[str], last_persona: str = "") -> tupl
     for label in ("주민등록번호", "카드번호", "전화번호", "계좌번호", "이메일", "비밀번호", "인증정보", "민감정보"):
         if f"[{label}]" in text and label not in provided:
             provided.append(label)
+    # 프론트가 먼저 가려서 보낸 이름·주소·생년월일 표시도 '입력함'으로 세요 (시나리오 표기로 맞춤)
+    for kind in ("이름", "주소", "생년월일"):
+        if f"[{kind}]" in text:
+            label = _asked_label(kind, asked_info, last_persona) or kind
+            if label not in provided:
+                provided.append(label)
     had_photo = bool(provided) and any(m in text for m in PHOTO_EVENTS)
     text = pii_masker._FORGED_MARKERS.sub("", text).strip() or ("(자료를 보냄)" if had_photo else "(빈 답변)")
 

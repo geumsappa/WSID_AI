@@ -20,6 +20,7 @@ from rag.facts import FACT_PHRASES
 from .context import (REFERENTIAL, drop_refund_notice, photo_text, previous_ai, previous_user, topic_codes,
                       topic_text)
 from .model import AssistModel, INTENT_QUERIES, allowed_fact_keys
+from .observability import record
 from .upstream import request_id
 
 # 조건 제안이 검증에 걸렸을 때 모델에 돌려주는 설명. 질문·근거 원문은 담지 않는다.
@@ -77,9 +78,9 @@ class AssistState(TypedDict, total=False):
     reassessed: bool
 
 
-def unable(intent: QuestionIntent | None, reason: str) -> PlanResponse:
+def unable(intent: QuestionIntent | None, reason: str, guidance: str | None = None) -> PlanResponse:
     return PlanResponse(status="UNABLE_TO_ANSWER", questionIntent=intent, clarification=None,
-                        candidateReferences=[], reasonCode=reason)
+                        candidateReferences=[], reasonCode=reason, guidance=guidance)
 
 
 class AssistService:
@@ -197,12 +198,13 @@ class AssistService:
         request = state["request"]
         started = time.monotonic()
         assessment = await self.model.assess(request)
+        record("assess", decision=assessment.decision, elapsed_ms=round((time.monotonic() - started) * 1000))
         logger.info("assist request_id=%s stage=assess elapsed_ms=%d decision=%s",
                     request_id.get(), round((time.monotonic() - started) * 1000), assessment.decision)
         # 후속 요청 intent는 모델 출력과 관계없이 Spring이 보낸 원래 값을 유지한다.
         intent = request.questionIntent or assessment.questionIntent
         if assessment.decision == "OUT_OF_SCOPE":
-            return {"result": unable(intent, "OUT_OF_SCOPE")}
+            return {"result": unable(intent, "OUT_OF_SCOPE", assessment.guidance if request.question else None)}
         clarify_key = None
         if assessment.decision == "NEED_USER_INPUT" and self._askable(request, intent, assessment.factKey):
             clarify_key = assessment.factKey
@@ -251,6 +253,7 @@ class AssistService:
         # 질문 주제로 꼭 넣을 근거를 앞에 두고(검색 결과와 합쳐 최대 10개), 중고거래면 환급 안내 문단은 빼요
         text = topic_text(request)
         forced = self.retriever.by_codes(topic_codes(text, request.question or "")) if hasattr(self.retriever, "by_codes") else []
+        ranked_codes = [ref["code"] for ref in references]
         if forced:
             seen = {ref["code"] for ref in forced}
             references = (forced + [ref for ref in references if ref["code"] not in seen])[:10]
@@ -264,6 +267,12 @@ class AssistService:
         candidates = [CandidateReference.model_validate(ref) for ref in references]
         if len({ref.code for ref in candidates}) != len(candidates):
             raise ValueError("duplicate retrieved reference code")
+        candidate_codes = [ref.code for ref in candidates]
+        record("search", document_codes=candidate_codes, attempt=state["searches"] + 1, ranked_reference_codes=ranked_codes,
+               forced_reference_codes=[ref["code"] for ref in forced],
+               branch_reference_codes=[ref["code"] for ref in branch[:BRANCH_SLOTS]],
+               candidate_reference_codes=candidate_codes,
+               elapsed_ms=round((time.monotonic() - started) * 1000))
         return {"references": references, "searches": state["searches"] + 1, "retry": False}
 
     async def _evaluate(self, state: AssistState) -> dict:
@@ -279,6 +288,7 @@ class AssistService:
         feedback = state.get("conditionFeedback")
         extra = {"feedback": feedback} if feedback else {}
         assessment = await self.model.evaluate(state["request"], state["intent"], references, **extra)
+        self._record_evaluation(references, assessment, started)
         logger.info("assist request_id=%s stage=evaluate elapsed_ms=%d sufficient=%s retry=%s clarify=%s",
                     request_id.get(), round((time.monotonic() - started) * 1000),
                     assessment.sufficient, assessment.retryQuery is not None,
@@ -312,6 +322,7 @@ class AssistService:
             reassessed = True
             started = time.monotonic()
             assessment = await self.model.evaluate(conditional, state["intent"], references)
+            self._record_evaluation(references, assessment, started)
             logger.info("assist request_id=%s stage=evaluate elapsed_ms=%d sufficient=%s retry=%s clarify=%s",
                         request_id.get(), round((time.monotonic() - started) * 1000),
                         assessment.sufficient, assessment.retryQuery is not None,
@@ -336,7 +347,17 @@ class AssistService:
             if state["deadline"] - time.monotonic() >= config.ASSIST_RETRY_MIN_SECONDS:
                 return {"retry": True, "query": assessment.retryQuery}
             logger.info("assist request_id=%s stage=retry decision=SKIP reason=TIME_BUDGET", request_id.get())
-        return {"retry": False, "result": unable(state["intent"], "NO_EVIDENCE")}
+        return {"retry": False, "result": unable(state["intent"], "NO_EVIDENCE", assessment.guidance)}
+
+    @staticmethod
+    def _record_evaluation(references: list[dict], assessment, started: float) -> None:
+        offered_codes = [ref["code"] for ref in references]
+        selected_codes = [code for code in assessment.referenceCodes if code in offered_codes]
+        record("evaluate", document_codes=selected_codes, offered_reference_codes=offered_codes,
+               selected_reference_codes=selected_codes,
+               sufficient=assessment.sufficient, retry_requested=assessment.retryQuery is not None,
+               clarification_requested=assessment.clarification is not None,
+               elapsed_ms=round((time.monotonic() - started) * 1000))
 
     async def _answer(self, state: AssistState) -> dict:
         # ANSWER의 그래프 경로에는 search 노드가 없다.

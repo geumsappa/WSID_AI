@@ -31,6 +31,7 @@ ASSIST_MAX_RESEARCHES = int(os.getenv("ASSIST_MAX_RESEARCHES", "1"))
 ASSIST_RETRY_MIN_SECONDS = float(os.getenv("ASSIST_RETRY_MIN_SECONDS", "7"))
 ASSIST_LLM_MODEL = os.getenv("ASSIST_LLM_MODEL", "").strip()
 ASSIST_REASONING_EFFORT = os.getenv("ASSIST_REASONING_EFFORT", "").strip().lower()
+ASSIST_LANGFUSE_ENABLED = os.getenv("ASSIST_LANGFUSE_ENABLED", "0") == "1"
 if not 0 <= ASSIST_MAX_RESEARCHES <= 2 or not 0 < ASSIST_RETRY_MIN_SECONDS < float("inf"):
     raise ValueError("invalid assist retry settings")
 if ASSIST_REASONING_EFFORT not in ("", "low"):

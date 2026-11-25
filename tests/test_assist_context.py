@@ -20,6 +20,24 @@ CIVIL = {"code": "REF_EASYLAW_CIVIL_FILING_V1_P1", "version": "1", "title": "민
 REFUND = {"code": "REF_LAW_REFUND_PROCEDURE_V1_P2", "version": "1", "title": "환급 적용 대상", "excerpt": "재화 거래는 제외."}
 
 
+@pytest.mark.parametrize("question", [
+    "검찰이라고 하는데 사칭인지 확인하고 싶어요.",
+    "전화가 진짜인지 어떻게 확인하나요?",
+    "확인할 방법이 있나요? 받은 문자가 사칭 같아요.",
+])
+def test_impersonation_verification_prefers_official_contact_references(question):
+    codes = topic_codes(question, question)
+    assert codes[0] == "REF_FSS_2026_04_VOICE_V1_P1"
+    assert CIVIL["code"] not in codes
+
+
+def test_impersonation_rules_do_not_capture_refund_or_court_fees():
+    refund_question = "진짜 환급이 되는지 확인하고 싶어요."
+    assert "REF_FSS_2026_04_VOICE_V1_P1" not in topic_codes(refund_question, refund_question)
+    fee_question = "인지대는 얼마예요?"
+    assert CIVIL["code"] in topic_codes(fee_question, fee_question)
+
+
 def plan(**changes):
     data = {"phase": "PLAN", "question": "둘 다 알려줘", "questionIntent": None, "facts": deepcopy(FACTS),
             "askedFactKeys": [], "remainingClarifications": 3}

@@ -730,6 +730,17 @@
       },
       "AnswerResponse": {
         "properties": {
+          "guidance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -1431,7 +1442,7 @@
           },
           "remainingClarifications": {
             "type": "integer",
-            "maximum": 3.0,
+            "maximum": 5.0,
             "minimum": 0.0,
             "title": "Remainingclarifications"
           },
@@ -1498,6 +1509,17 @@
       },
       "PlanResponse": {
         "properties": {
+          "guidance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance"
+          },
           "status": {
             "type": "string",
             "enum": [

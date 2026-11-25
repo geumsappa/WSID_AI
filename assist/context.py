@@ -17,7 +17,14 @@ SHORT_QUESTION = 40
 HISTORY_FOR_MODEL = 6
 HISTORY_CHARS = 600
 
+VERIFY_IMPERSONATION = re.compile(
+    r"(?:사칭|진위).{0,45}확인|확인.{0,45}(?:사칭|진위)|공식\s*(?:대표\s*)?번호.{0,12}확인"
+    r"|(?:전화|문자|연락|등기).{0,24}진짜.{0,24}확인",
+    re.S,
+)
 TOPIC_REFS = [
+    (VERIFY_IMPERSONATION,
+     ["REF_FSS_2026_04_VOICE_V1_P1", "REF_FSC_2026_10_ALERT_V1_P3", "REF_KISA_CARD_DELIVERY_PHISHING_V1_P1"]),
     # 제도 이름을 콕 집어 물으면 그 제도 문단을 가장 먼저 (그룹 안 순서보다 우선)
     (re.compile(r"배상 ?명령"), ["REF_EASYLAW_COMPENSATION_ORDER_V1_P1"]),
     (re.compile(r"지급 ?명령"), ["REF_EASYLAW_PAYMENT_ORDER_V1_P1"]),
@@ -26,7 +33,7 @@ TOPIC_REFS = [
      ["REF_FSS_2024_28_ALERT_V1_P1"]),
     (re.compile(r"고소|형사|어디(에|로|서)? ?(신고|접수|가)|경찰서|접수 ?(방법|절차)"),
      ["REF_EASYLAW_COMPLAINT_V1_P1", "REF_EASYLAW_SECONDHAND_REPORT_V1_P1"]),
-    (re.compile(r"민사|소송|소장|전자소송|인지|송달료|비용|소액|지급명령|손해배상"),
+    (re.compile(r"민사|소송|소장|전자소송|인지대|인지액|인지\s*비용|인지(?=\s+(?:얼마|계산|납부))|송달료|소액|지급명령|손해배상"),
      ["REF_EASYLAW_CIVIL_FILING_V1_P1", "REF_EASYLAW_SECONDHAND_CIVIL_V1_P1",
       "REF_EASYLAW_SMALL_CLAIMS_V1_P1", "REF_EASYLAW_PAYMENT_ORDER_V1_P1"]),
     (re.compile(r"배상|합의|돌려받|되찾|회수|피해 ?회복"),

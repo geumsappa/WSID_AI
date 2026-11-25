@@ -342,12 +342,17 @@ def test_shared_id_photo_does_not_open_money_question():
     assert result.status == "EVIDENCE_READY" and result.clarification is None
 
 
-def test_repeated_clarification_after_reassessment_is_no_evidence():
+def test_repeated_clarification_after_reassessment_falls_back_to_answer(monkeypatch):
+    from rag import config
     class RepeatedQuestion(SearchModel):
         async def evaluate(self, request, intent, references):
             return EvidenceAssessment(sufficient=False, referenceCodes=[], retryQuery=None,
                                       clarification=ModelClarification(factKey="installedApp"))
 
+    # 근거가 딱 맞지 않아도 상위 근거로 답변 단계에 넘겨요 (ASSIST_GENERAL_FALLBACK 기본값)
+    result = run(plan_request(askedFactKeys=["installedApp"]), model=RepeatedQuestion())
+    assert result.status == "EVIDENCE_READY" and [r.code for r in result.candidateReferences] == [REFERENCE["code"]]
+    monkeypatch.setattr(config, "ASSIST_GENERAL_FALLBACK", False)
     result = run(plan_request(askedFactKeys=["installedApp"]), model=RepeatedQuestion())
     assert result.status == "UNABLE_TO_ANSWER" and result.reasonCode == "NO_EVIDENCE"
 
@@ -365,15 +370,15 @@ def test_research_is_bounded_to_initial_plus_one_and_can_recover():
                                       referenceCodes=[REFERENCE["code"]] if sufficient else [],
                                       retryQuery=None if sufficient else f"재검색 조건 {self.evaluations}")
 
-    for recover, count, expected in [(False, 2, "UNABLE_TO_ANSWER"), (True, 2, "EVIDENCE_READY")]:
+    # 재검색은 처음 + 1번까지. 끝내 부족해도 상위 근거로 답변 단계에 넘겨요 (ASSIST_GENERAL_FALLBACK).
+    for recover, count, expected in [(False, 2, "EVIDENCE_READY"), (True, 2, "EVIDENCE_READY")]:
         retriever = Retriever()
         model = RetryModel(recover)
         result = run(plan_request(), model=model, retriever=retriever)
         assert len(retriever.queries) == count and model.evaluations == count
         assert result.status == expected
         assert retriever.queries[0][1] == FACTS  # NO와 UNKNOWN을 변경하지 않는다
-        if not recover:
-            assert result.reasonCode == "NO_EVIDENCE"
+        assert result.reasonCode is None and result.candidateReferences
 
 
 def test_followup_intent_cannot_be_reclassified():
@@ -812,7 +817,7 @@ def test_no_research_when_time_budget_is_insufficient(monkeypatch):
             return EvidenceAssessment(sufficient=False, referenceCodes=[], retryQuery="다른 검색")
     retriever = Retriever()
     result = run(plan_request(), model=RetryModel(), retriever=retriever)
-    assert result.status == "UNABLE_TO_ANSWER" and result.reasonCode == "NO_EVIDENCE"
+    assert result.status == "EVIDENCE_READY"  # 재검색 없이 상위 근거로 답변 단계에 넘겨요
     assert len(retriever.queries) == 1
 
 

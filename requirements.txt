@@ -17,6 +17,10 @@ numpy>=1.26
 # 로컬 검색 임베딩(EMBED_PROVIDER=local). 리눅스 서버는 GPU용 torch가 깔리지 않게 먼저
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
 sentence-transformers>=5,<7
+# RAG_STORE=pgvector: 근거 인덱스를 PostgreSQL(pgvector)에 저장·검색
+psycopg[binary]>=3.2,<4
+psycopg-pool>=3.2,<4
+pgvector>=0.3,<1
 # 상담 assist: 상태 없는 LangGraph와 원문 없는 선택형 Langfuse 관측
 langgraph>=1.0,<2
 langsmith>=0.4,<1

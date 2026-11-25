@@ -7,7 +7,7 @@ import numpy as np
 
 from rag import config
 from rag.facts import situations_for
-from rag.index import load
+from rag.index import load, nearest
 from rag.retrieve import NON_TELECOM_TYPES, REFUND_ONLY_PREFIXES
 
 from .contracts import CandidateReference, VerifiedReference
@@ -24,6 +24,11 @@ def _overlap(query: str, ref: dict) -> float:
     q = _grams(query)
     doc = _grams(" ".join(str(ref.get(key, "")) for key in ("title", "excerpt", "text", "content")))
     return len(q & doc) / len(q) if q and doc else 0.0
+
+
+# 가산점(유형 0.04 + 상황 0.02×개수)이 e5의 좁은 유사도 차이를 뒤집을 수 있어서, 문단 전체를 거리 순으로 받아
+# 다시 줄을 세워요. 문단이 수백 개 수준이라 전부 받아도 가벼워요. 수천 개를 넘으면 이 값과 가산점 방식을 다시 정해요.
+NEAREST_POOL = 1000
 
 
 class ReferenceRetriever:
@@ -50,14 +55,11 @@ class ReferenceRetriever:
         return out
 
     async def search(self, query: str, facts: dict, k: int = 10, fraud_type: str | None = None) -> list[dict]:
-        vectors, references, _ = self._load()
-        if not references:
-            return []
         from rag.openai_client import has_embeddings
         if not has_embeddings():
             # Claude 만 쓰고 OpenAI 키가 없으면: 질문과 문단의 글자 두 개 묶음 겹침으로 순위를 매겨요
-            scores = np.asarray([_overlap(query, ref) for ref in references], dtype=np.float32)
-            return self._rank(scores, references, facts, k, fraud_type)
+            _, references, _ = self._load()
+            return self._rank([(_overlap(query, ref), ref) for ref in references], facts, k, fraud_type)
         if config.FAKE:
             from rag.openai_client import _fake_vec
             vector = _fake_vec(query, config.EMBED_DIM)
@@ -77,15 +79,19 @@ class ReferenceRetriever:
             vector = response.data[0].embedding
         q = np.asarray(vector, dtype=np.float32)
         q /= np.linalg.norm(q) + 1e-12
-        scores = vectors @ q
-        return self._rank(scores, references, facts, k, fraud_type)
+        try:
+            # 가까운 문단을 넉넉히 받아 아래에서 상황·유형 가산점과 제외 규칙으로 다시 줄을 세워요
+            pairs = await asyncio.to_thread(nearest, q, NEAREST_POOL)
+        except SystemExit:
+            raise ReferenceIndexUnavailable("reference index unavailable") from None
+        return self._rank(pairs, facts, k, fraud_type)
 
     @staticmethod
-    def _rank(scores, references: list[dict], facts: dict, k: int, fraud_type: str | None) -> list[dict]:
+    def _rank(pairs, facts: dict, k: int, fraud_type: str | None) -> list[dict]:
         wanted = set(situations_for(facts))
         candidates = []
         codes = set()
-        for score, ref in zip(scores, references, strict=True):
+        for score, ref in pairs:
             # 버전 누락을 추측해서 채우지 않는다. 빌더와 문서의 명시적 버전 체계를 사용.
             # v1.1 fraudType: 중고거래 등 환급법 대상이 아닌 유형이면 지급정지·환급 전용 문단은 빼요
             if fraud_type in NON_TELECOM_TYPES and ref["code"].startswith(REFUND_ONLY_PREFIXES):

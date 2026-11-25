@@ -4,6 +4,7 @@
 python -m rag.index            # 인덱스 만들기 (문단을 바꿀 때마다 다시 실행)
 python -m rag.index --reviewed-only   # 검토 완료(reviewed=true) 문단만
 python -m rag.index --if-stale        # 설정·문단이 바뀌었을 때만 다시 만들기 (서버 시작 때마다 실행)
+RAG_STORE=pgvector 면 파일 대신 PostgreSQL(pgvector) 테이블에 저장하고, 검색도 DB에서 거리 순으로 해요 (rag/pg_store.py).
 """
 from __future__ import annotations
 
@@ -50,14 +51,25 @@ def build(reviewed_only: bool = False) -> int:
                              + ", ".join(refs[i]["code"] for i in over))
     vecs = np.array(embed(texts, task="RETRIEVAL_DOCUMENT"), dtype=np.float32)
     vecs /= np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-12
+    if config.RAG_STORE == "pgvector":
+        from . import pg_store
+        pg_store.write(refs, vecs, _want_model(), config.embed_provider())
+        return len(refs)
     config.INDEX_DIR.mkdir(parents=True, exist_ok=True)
     np.save(config.INDEX_DIR / "vectors.npy", vecs)
-    meta = {"embed_model": "FAKE" if config.FAKE else config.EMBED_MODEL, "provider": config.embed_provider(), "dim": int(vecs.shape[1]), "refs": refs}
+    meta = {"embed_model": _want_model(), "provider": config.embed_provider(), "dim": int(vecs.shape[1]), "refs": refs}
     (config.INDEX_DIR / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
     return len(refs)
 
 
+def _want_model() -> str:
+    return "FAKE" if config.FAKE else config.EMBED_MODEL
+
+
 def load() -> tuple[np.ndarray, list[dict], str]:
+    if config.RAG_STORE == "pgvector":
+        from . import pg_store
+        return pg_store.load(_want_model(), config.embed_provider())
     p = config.INDEX_DIR / "meta.json"
     if not p.exists():
         raise SystemExit("인덱스가 없어요. `python -m rag.index` 를 먼저 실행하세요.")
@@ -69,6 +81,17 @@ def load() -> tuple[np.ndarray, list[dict], str]:
     if vectors.ndim != 2 or vectors.shape != (len(meta["refs"]), config.EMBED_DIM):
         raise SystemExit("인덱스 벡터 크기가 설정 또는 근거 목록과 달라요. 인덱스를 다시 만드세요.")
     return vectors, meta["refs"], meta["embed_model"]
+
+
+def nearest(query: np.ndarray, limit: int) -> list[tuple[float, dict]]:
+    """정규화된 질문 벡터와 가까운 문단 limit개 (유사도, 문단). pgvector면 DB가 거리 순으로 골라요."""
+    if config.RAG_STORE == "pgvector":
+        from . import pg_store
+        return pg_store.nearest(query, limit, _want_model(), config.embed_provider())
+    vectors, refs, _ = load()
+    scores = vectors @ query
+    order = np.argsort(-scores, kind="stable")[:limit]
+    return [(float(scores[i]), refs[i]) for i in order]
 
 
 if __name__ == "__main__":
@@ -83,4 +106,5 @@ if __name__ == "__main__":
             raise SystemExit(0)
         print(f"인덱스를 다시 만들어요: {reason}")
     n = build(a.reviewed_only)
-    print(f"인덱스 완료: 문단 {n}개 → {config.INDEX_DIR} ({'가짜 임베딩' if config.FAKE else config.EMBED_MODEL})")
+    where = f"DB {config.RAG_DB_SCHEMA}.reference_chunk" if config.RAG_STORE == "pgvector" else config.INDEX_DIR
+    print(f"인덱스 완료: 문단 {n}개 → {where} ({'가짜 임베딩' if config.FAKE else config.EMBED_MODEL})")

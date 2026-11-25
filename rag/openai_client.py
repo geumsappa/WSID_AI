@@ -25,7 +25,8 @@ def _options(timeout: float | None = None):
 
 def has_embeddings() -> bool:
     """실제 임베딩 검색이 가능한지 (아니면 글자 겹침 검색으로 대신해요)."""
-    return config.FAKE or settings.llm_provider != 'anthropic' or bool(settings.openai_api_key)
+    return (config.FAKE or config.EMBED_PROVIDER == 'local' or settings.llm_provider != 'anthropic'
+            or bool(settings.openai_api_key))
 
 
 def _client(timeout: float | None = None):
@@ -51,6 +52,9 @@ def embed(texts: list[str], task: str) -> list[list[float]]:
         raise ValueError('invalid retrieval task')
     if config.FAKE:
         return [_fake_vec(text, config.EMBED_DIM) for text in texts]
+    if config.EMBED_PROVIDER == 'local':
+        from .local_embed import encode
+        return encode(texts, task)
     vectors = []
     client = _client()
     try:

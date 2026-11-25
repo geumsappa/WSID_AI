@@ -1,6 +1,8 @@
 """질문·intent·facts로 후보 검색. 승인은 Spring이 수행하며 후보는 승인 표시가 아닙니다."""
 from __future__ import annotations
 
+import asyncio
+
 import numpy as np
 
 from rag import config
@@ -59,6 +61,13 @@ class ReferenceRetriever:
         if config.FAKE:
             from rag.openai_client import _fake_vec
             vector = _fake_vec(query, config.EMBED_DIM)
+        elif config.EMBED_PROVIDER == "local":
+            from rag.local_embed import encode
+            try:
+                # CPU 계산이라 이벤트 루프를 막지 않게 스레드에서 돌려요
+                vector = (await asyncio.to_thread(encode, [query], "RETRIEVAL_QUERY"))[0]
+            except Exception:
+                raise ReferenceIndexUnavailable("local embedding unavailable") from None
         else:
             from rag.openai_client import async_client
             async with async_client() as client:

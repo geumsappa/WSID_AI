@@ -26,6 +26,7 @@ def test_openai_generation_and_embedding_use_config(monkeypatch):
         def close(self):
             pass
     monkeypatch.setattr(config, 'FAKE', False)
+    monkeypatch.setattr(config, 'EMBED_PROVIDER', 'openai')  # 기본값은 local
     monkeypatch.setattr(config, 'EMBED_DIM', 2)
     monkeypatch.setattr(openai_client, '_client', Client)
     monkeypatch.setattr(openai_client, 'settings', SimpleNamespace(llm_provider='openai', llm_model='example-model'))

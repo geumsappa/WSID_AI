@@ -9,12 +9,14 @@ from app.api_errors import AiApiError, error_response, handle_ai_error, handle_v
 from app.config import settings
 from app.routers import assist, ocr, sim, solutions
 from app.services.ocr import initialize_ocr
+from rag.local_embed import warm_up as warm_up_embedding
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     initialize_ocr()
+    warm_up_embedding()
     yield
 
 

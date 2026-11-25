@@ -123,3 +123,32 @@ def test_clean_answer_is_not_retried():
     model = ScriptedModel("돈을 보낸 금융회사에 바로 지급정지를 요청하세요.")
     assert run_answer(model, fraudType="SMISHING").status == "ANSWERED"
     assert model.feedbacks == [None]
+
+
+def unable_answer():
+    return AnswerResponse(status="UNABLE_TO_ANSWER", answer=None, referenceCodes=[], reasonCode="NO_EVIDENCE")
+
+
+class FallbackModel(ScriptedModel):
+    """첫 답은 근거 부족, 다시 쓰라고 하면 주어진 답."""
+    async def answer(self, request, feedback=None):
+        self.feedbacks.append(feedback)
+        return unable_answer() if feedback is None else answered(self.answers.pop(0))
+
+
+def test_answer_no_evidence_is_rewritten_with_safe_general_steps():
+    model = FallbackModel("더 보내지 말고 대화와 송금 내역을 보관한 뒤 경찰에 상담하세요.")
+    result = run_answer(model, fraudType="MESSENGER_PHISHING")
+    assert result.status == "ANSWERED" and "NO_EVIDENCE" in model.feedbacks[1]
+
+
+def test_general_rewrite_still_goes_through_procedure_guard():
+    model = FallbackModel("은행에 지급정지를 요청하세요. 경찰에 사기로 신고하세요.")
+    result = run_answer(model, fraudType=SECONDHAND)
+    assert result.answer == "경찰에 사기로 신고하세요."
+
+
+def test_general_fallback_can_be_turned_off(monkeypatch):
+    monkeypatch.setattr(config, "ASSIST_GENERAL_FALLBACK", False)
+    model = FallbackModel("쓰이면 안 되는 답")
+    assert run_answer(model).reasonCode == "NO_EVIDENCE" and model.feedbacks == [None]

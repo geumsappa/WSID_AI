@@ -39,6 +39,9 @@ ASSIST_RETRY_MIN_SECONDS = float(os.getenv("ASSIST_RETRY_MIN_SECONDS", "7"))
 ASSIST_LLM_MODEL = os.getenv("ASSIST_LLM_MODEL", "").strip()
 ASSIST_REASONING_EFFORT = os.getenv("ASSIST_REASONING_EFFORT", "").strip().lower()
 ASSIST_LANGFUSE_ENABLED = os.getenv("ASSIST_LANGFUSE_ENABLED", "0") == "1"
+# 1(기본)이면 근거가 질문에 딱 맞지 않아도 "근거 부족"으로 끝내지 않고, 상위 근거와 안전한 일반 대응으로 답해요.
+# 0이면 예전처럼 NO_EVIDENCE로 돌려요. 위험한 절차는 어느 쪽이든 assist/procedure_guard.py가 막아요.
+ASSIST_GENERAL_FALLBACK = os.getenv("ASSIST_GENERAL_FALLBACK", "1") == "1"
 if not 0 <= ASSIST_MAX_RESEARCHES <= 2 or not 0 < ASSIST_RETRY_MIN_SECONDS < float("inf"):
     raise ValueError("invalid assist retry settings")
 if ASSIST_REASONING_EFFORT not in ("", "low"):

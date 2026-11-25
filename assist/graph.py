@@ -37,6 +37,11 @@ MAX_EVALUATION_REFERENCES = 5
 # 문단 코드를 정해 두지 않고 검색으로 찾으며, 판정에 가는 상위 5개 안에 BRANCH_SLOTS개를 끼워 넣는다.
 BRANCH_QUERY_SUFFIX = "\n이 경우 적용되는 제도와 적용 대상·제외 대상·요건"
 BRANCH_SLOTS = 2
+# 근거가 부족하다고 판정돼도 답변 단계로 넘길 상위 근거 수 (ASSIST_GENERAL_FALLBACK)
+FALLBACK_REFERENCES = 3
+GENERAL_FEEDBACK = ("근거가 질문에 직접 답하지 않아도 NO_EVIDENCE로 끝내지 않는다. 근거에서 쓸 수 있는 부분과 "
+                    "안전한 일반 대응(요구에 응하지 않기, 더 보내지 않기, 공식 경로로 직접 확인, 대화·송금 내역 보관, "
+                    "경찰·금융회사 상담)으로 질문에 답한다. 근거에 없는 기간·금액·제도 이름·환급 가능성은 쓰지 않는다.")
 MAX_EVALUATION_EXCERPT = 600
 logger = logging.getLogger("uvicorn.error.assist")
 
@@ -157,6 +162,22 @@ class AssistService:
             return "NONE"
         return assessment.clarification.factKey or "CONDITION"
 
+    def _no_evidence(self, state: AssistState, guidance: str | None = None) -> PlanResponse:
+        """근거가 질문에 딱 맞지 않을 때. 답을 포기하지 않고 상위 근거를 붙여 ANSWER로 넘겨요.
+
+        ANSWER는 그 근거와 안전한 일반 대응 범위에서 답하고, 위험한 절차는 procedure_guard가 막아요.
+        ASSIST_GENERAL_FALLBACK=0이거나 넘길 근거가 없으면 예전처럼 NO_EVIDENCE예요.
+        """
+        references = self._evaluation_references(state)[:FALLBACK_REFERENCES]
+        if not config.ASSIST_GENERAL_FALLBACK or state["intent"] is None or not references:
+            return unable(state["intent"], "NO_EVIDENCE", guidance)
+        codes = [ref["code"] for ref in references]
+        record("general_fallback", phase="PLAN", reference_codes=codes)
+        logger.info("assist request_id=%s stage=fallback phase=PLAN refs=%d", request_id.get(), len(codes))
+        return PlanResponse(status="EVIDENCE_READY", questionIntent=state["intent"], clarification=None,
+                            candidateReferences=[CandidateReference.model_validate(ref) for ref in references],
+                            reasonCode=None)
+
     @staticmethod
     def _evaluation_references(state: AssistState) -> list[dict]:
         return [{**ref, "excerpt": ref["excerpt"][:MAX_EVALUATION_EXCERPT]}
@@ -191,7 +212,7 @@ class AssistService:
         if state.get("evaluated"):
             if state["deadline"] - time.monotonic() < config.ASSIST_RETRY_MIN_SECONDS:
                 return {"clarifyKey": None, "pendingCondition": None,
-                        "result": unable(state["intent"], "NO_EVIDENCE")}
+                        "result": self._no_evidence(state)}
             return {"clarifyKey": None, "pendingCondition": None, "request": conditional, "reassessed": True}
         return {"clarifyKey": None, "pendingCondition": None, "request": conditional}
 
@@ -318,7 +339,7 @@ class AssistService:
             # 모델이 허용 목록을 무시한 예외 상황에서만, 시간이 충분하면 조건부 답변을 재평가한다.
             if (reassessed or state["searches"] > 1
                     or state["deadline"] - time.monotonic() < config.ASSIST_RETRY_MIN_SECONDS):
-                return {"retry": False, "result": unable(state["intent"], "NO_EVIDENCE")}
+                return {"retry": False, "result": self._no_evidence(state)}
             conditional = state["request"].model_copy(update={"remainingClarifications": 0})
             reassessed = True
             started = time.monotonic()
@@ -329,7 +350,7 @@ class AssistService:
                         assessment.sufficient, assessment.retryQuery is not None,
                         self._target_label(assessment))
             if assessment.clarification is not None:
-                return {"retry": False, "result": unable(state["intent"], "NO_EVIDENCE")}
+                return {"retry": False, "result": self._no_evidence(state)}
         by_code = {ref["code"]: ref for ref in references}
         if not set(assessment.referenceCodes) <= by_code.keys():
             raise ValueError("model selected unknown reference")
@@ -348,7 +369,7 @@ class AssistService:
             if state["deadline"] - time.monotonic() >= config.ASSIST_RETRY_MIN_SECONDS:
                 return {"retry": True, "query": assessment.retryQuery}
             logger.info("assist request_id=%s stage=retry decision=SKIP reason=TIME_BUDGET", request_id.get())
-        return {"retry": False, "result": unable(state["intent"], "NO_EVIDENCE", assessment.guidance)}
+        return {"retry": False, "result": self._no_evidence(state, assessment.guidance)}
 
     @staticmethod
     def _record_evaluation(references: list[dict], assessment, started: float) -> None:
@@ -365,6 +386,17 @@ class AssistService:
         request = state["request"]
         result = await self.model.answer(request)
         result.validate_for(request)
+        if (config.ASSIST_GENERAL_FALLBACK and result.reasonCode == "NO_EVIDENCE"
+                and state["deadline"] - time.monotonic() >= config.ASSIST_RETRY_MIN_SECONDS):
+            # 근거가 딱 맞지 않는다고 포기했으면, 안전한 일반 대응으로 한 번 다시 쓰게 해요.
+            try:
+                again = await self.model.answer(request, feedback=GENERAL_FEEDBACK)
+                again.validate_for(request)
+                result = again
+            except Exception:
+                logger.warning("assist answer fallback failed requestId=%s", request_id.get())
+            record("general_fallback", phase="ANSWER", status=result.status)
+            logger.info("assist request_id=%s stage=fallback phase=ANSWER status=%s", request_id.get(), result.status)
         found = violations(result, request.fraudType)
         if not found:
             return {"result": result}

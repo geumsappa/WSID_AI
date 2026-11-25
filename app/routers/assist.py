@@ -24,6 +24,7 @@ from app.dependencies import require_internal_key
 from assist.contracts import AssistFailure, AssistRequest, AssistSuccess
 from assist.graph import AssistService
 from assist.model import FakeAssistModel, OpenAIAssistModel
+from assist.observability import begin_trace, finish_trace
 from assist.retrieval import ReferenceRetriever
 from assist.upstream import error_code, request_id
 from rag import config
@@ -54,6 +55,8 @@ async def assist(body: AssistRequest, x_request_id: Annotated[UUID, Header()],
     status = "FAILED"
     reason = "NONE"
     trace_token = request_id.set(str(x_request_id))
+    observation_token = begin_trace(body, x_request_id)
+    result = None
     try:
         # 모델 호출·임베딩·재검색·재시도를 합친 요청 전체 예산.
         timeout = config.ASSIST_PLAN_TIMEOUT_SEC if body.phase == "PLAN" else config.ASSIST_ANSWER_TIMEOUT_SEC
@@ -72,6 +75,7 @@ async def assist(body: AssistRequest, x_request_id: Annotated[UUID, Header()],
         reason = error_code(error)
         return error_response(503, "ASSIST_UNAVAILABLE", "AI 상담을 지금 사용할 수 없어요.")
     finally:
+        finish_trace(observation_token, status, reason, result)
         logger.info("assist request_id=%s phase=%s status=%s reason=%s elapsed_ms=%d",
                     str(x_request_id), body.phase, status, reason,
                     round((time.monotonic() - started) * 1000))

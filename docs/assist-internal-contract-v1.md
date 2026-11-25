@@ -53,7 +53,7 @@ Python은 요청 사이 상태를 저장하지 않고, history에 없는 원문�
 | questionIntent | 허용 intent 또는 null. question과 동시에 null일 수 없음 |
 | facts | 네 사실 키 모두 포함. 사용자 추가 답변은 Spring이 반영 |
 | askedFactKeys | 이미 질문한 사실 키, 중복 없이 0~4개 |
-| remainingClarifications | 정수 0~3, boolean·문자열 숫자 불가 |
+| remainingClarifications | 정수 0~5, boolean·문자열 숫자 불가 |
 
 후속 실행 예: [assist-plan-followup.json](../examples/assist-plan-followup.json).
 
@@ -131,6 +131,10 @@ PLAN 후보에는 version이 있지만 ANSWER의 verifiedReferences에는 versio
 
 상태와 관계없이 **네 키를 모두** 포함한다. 추가 키는 무시한다.
 
+PLAN과 ANSWER의 `UNABLE_TO_ANSWER`에는 선택적으로 `guidance`가 포함된다. Spring은 `OUT_OF_SCOPE`에 상담 유도 문구를 붙이고,
+`NO_EVIDENCE`에서는 확인이 필요한 부분을 밝힌 뒤 일반 설명이나 한 가지 확인 질문을 표시한다. 이 문구에 근거 코드를 부여하지 않는다.
+AI를 먼저 배포한 뒤 Spring을 배포해야 새 상담에서 5회 확인 한도를 사용할 수 있다.
+
 | 필드 | ANSWERED | UNABLE_TO_ANSWER |
 | --- | --- | --- |
 | status | ANSWERED | UNABLE_TO_ANSWER |
@@ -184,9 +188,17 @@ sequenceDiagram
 - ANSWER는 LangGraph의 별도 경로로 실행되어 retriever를 호출하지 않는다.
 - LangGraph 체크포인터·장기 메모리·사용자 상태 캐시를 사용하지 않는다.
   모델·컴파일된 그래프 객체는 재사용하지만 매 실행의 상담 상태는 새로 생성한다.
-- LangSmith 추적은 실행 컨텍스트에서 비활성화한다. Ragas·Langfuse는 아직 연동하지 않았다(도입 검토 중).
+- LangSmith 추적은 실행 컨텍스트에서 비활성화한다. Langfuse는 선택적으로 연동한다.
 - Python은 로그에 검증한 요청 UUID·phase·상태·소요 시간과 사전 정의 오류 코드만 기록한다.
   요청 오류나 SDK 예외의 원문/traceback도 로그와 오류 응답에 넣지 않는다.
+- Langfuse를 켜려면 AI 서비스의 실행 환경(운영은 `AI_ENV`)에 `ASSIST_LANGFUSE_ENABLED=1`,
+  `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, 프로젝트 리전에 맞는 `LANGFUSE_BASE_URL`을 설정한다.
+  `LANGFUSE_TRACING_ENVIRONMENT`로 개발과 운영을 구분할 수 있다.
+- Langfuse에서 `assist.plan`은 검색 순위·규칙으로 추가한 문단·근거 판정에 전달한 문단·판정 결과를,
+  `assist.answer`는 Spring이 최종 전달한 승인 문단과 모델이 인용한 문단을 코드로 표시한다.
+  `assist.search`의 Output에는 최종 검색 후보, `assist.evaluate`에는 선택 근거, `assist.answer`에는 인용 근거의 공개 문서 제목과 출처 URL도 표시한다.
+  각 trace는 해당 HTTP 요청의 `X-Request-Id`를 메타데이터에 남긴다. PLAN과 ANSWER는 별도 HTTP 요청이라 trace도 별개다.
+  질문·검색문·대화·피해 사실 값·답변·문단 원문·SDK 예외는 전송하지 않는다.
 - API 키는 `AI_API_KEY`이며 OpenAI 키(`LLM_API_KEY`)와 별개다. 미설정 시 503, 불일치 시 401.
 - 누락·타입·코드 오류는 422, 모델 출력 계약 위반은 502,
   의존 서비스·인덱스 오류는 503, 전체 처리 시간 초과는 504다.

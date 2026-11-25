@@ -5,7 +5,7 @@ import hashlib
 import re
 from typing import Annotated, Literal, Self
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_serializer, model_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, ConfigDict, Field, model_serializer, model_validator
 
 from rag.guard import has_forbidden
 
@@ -15,6 +15,7 @@ QuestionIntent = Literal[
     "TRANSFER_RESPONSE", "DEVICE_SAFETY", "INFO_LEAK_RESPONSE", "CONTACT_RESPONSE", "GENERAL"
 ]
 ReasonCode = Literal["OUT_OF_SCOPE", "NO_EVIDENCE", "LIMIT_REACHED"]
+MAX_CLARIFICATIONS = 5
 # AI-06(/extract)이 돌려주는 fraudType과 같은 값 (계약 v1.1 선택 필드)
 FraudType = Literal["MESSENGER_PHISHING", "SMISHING", "LOAN_FRAUD", "INSTITUTION_IMPERSONATION",
                     "INVESTMENT_FRAUD", "SECONDHAND_TRADE"]
@@ -30,6 +31,16 @@ def safe_output(value: str) -> str:
     if has_forbidden(value):
         raise ValueError("forbidden output")
     return value
+
+
+def safe_guidance(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    return value if 0 < len(value) <= 240 and not has_forbidden(value) else None
+
+
+Guidance = Annotated[str | None, BeforeValidator(safe_guidance)]
 
 
 def valid_code(value: str) -> str:
@@ -136,7 +147,7 @@ class PlanRequest(ContractModel):
     questionIntent: QuestionIntent | None
     facts: Facts
     askedFactKeys: Annotated[list[FactKey], Field(max_length=4)]
-    remainingClarifications: Annotated[int, Field(ge=0, le=3)]
+    remainingClarifications: Annotated[int, Field(ge=0, le=MAX_CLARIFICATIONS)]
     history: History = None
     fraudType: FraudType | None = None
     # v1.2 선택 필드. null(생략)이면 네 사실만 묻는 v1 동작, 배열([] 포함)이면 조건 질문을 지원한다는 뜻.
@@ -203,7 +214,18 @@ class Clarification(ContractModel):
         return data
 
 
-class PlanResponse(ContractModel):
+class GuidanceResponse(ContractModel):
+    guidance: Guidance = None
+
+    @model_serializer(mode="wrap")
+    def serialize_guidance(self, handler):
+        data = handler(self)
+        if self.guidance is None:
+            data.pop("guidance", None)
+        return data
+
+
+class PlanResponse(GuidanceResponse):
     status: Literal["NEED_USER_INPUT", "EVIDENCE_READY", "UNABLE_TO_ANSWER"]
     questionIntent: QuestionIntent | None
     clarification: Clarification | None
@@ -213,6 +235,8 @@ class PlanResponse(ContractModel):
     @model_validator(mode="after")
     def check_status(self) -> Self:
         unique_codes(self.candidateReferences)
+        if self.guidance is not None and (self.status != "UNABLE_TO_ANSWER" or self.reasonCode == "LIMIT_REACHED"):
+            raise ValueError("unexpected guidance")
         if self.status == "UNABLE_TO_ANSWER":
             if self.reasonCode is None or self.clarification is not None or self.candidateReferences:
                 raise ValueError("invalid unable plan")
@@ -243,7 +267,7 @@ class PlanResponse(ContractModel):
                     raise ValueError("clarification not allowed")
 
 
-class AnswerResponse(ContractModel):
+class AnswerResponse(GuidanceResponse):
     status: Literal["ANSWERED", "UNABLE_TO_ANSWER"]
     answer: OutputText | None
     referenceCodes: Annotated[list[ReferenceCode], Field(max_length=10)]
@@ -254,7 +278,7 @@ class AnswerResponse(ContractModel):
         if len(set(self.referenceCodes)) != len(self.referenceCodes):
             raise ValueError("duplicate citation")
         if self.status == "ANSWERED":
-            if self.answer is None or not self.referenceCodes or self.reasonCode is not None:
+            if self.answer is None or not self.referenceCodes or self.reasonCode is not None or self.guidance is not None:
                 raise ValueError("invalid answered response")
         elif self.answer is not None or self.referenceCodes or self.reasonCode is None:
             raise ValueError("invalid unable answer")
@@ -284,6 +308,7 @@ class Assessment(ContractModel):
     decision: Literal["SEARCH", "NEED_USER_INPUT", "OUT_OF_SCOPE"]
     questionIntent: QuestionIntent | None
     factKey: FactKey | None
+    guidance: Guidance = None
     @model_validator(mode="after")
     def check_decision(self) -> Self:
         # NEED_USER_INPUT에서 factKey=null은 네 사실 밖의 조건이 필요하다는 뜻(근거 검색 후 정한다).
@@ -326,6 +351,7 @@ class EvidenceAssessment(ContractModel):
     referenceCodes: Annotated[list[ReferenceCode], Field(max_length=10)]
     retryQuery: Question | None
     clarification: ModelClarification | None = None
+    guidance: Guidance = None
 
     @model_validator(mode="after")
     def check_evidence(self) -> Self:

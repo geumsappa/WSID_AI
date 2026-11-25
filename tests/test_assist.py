@@ -83,6 +83,7 @@ def isolated_index(tmp_path, monkeypatch):
     # 이 파일 테스트만 빈 임시 인덱스·가짜 모드로 돌려 data/index와 다른 테스트에 영향을 주지 않는다.
     from rag import config
     monkeypatch.setattr(config, "FAKE", True)
+    monkeypatch.setattr(config, "ASSIST_LANGFUSE_ENABLED", False)
     monkeypatch.setattr(config, "INDEX_DIR", tmp_path / "index")
 
 
@@ -149,10 +150,103 @@ def test_answer_never_searches(client):
     assert not retriever.queries
 
 
+def test_langfuse_exports_public_reference_labels_without_conversation(client, monkeypatch, tmp_path):
+    import langfuse
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+    from assist import observability
+
+    exporter = InMemorySpanExporter()
+    sdk = langfuse.Langfuse
+    monkeypatch.setattr(langfuse, "Langfuse", lambda **kwargs: sdk(**kwargs, span_exporter=exporter))
+    monkeypatch.setattr(observability.config, "ASSIST_LANGFUSE_ENABLED", True)
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-lf-test-assist")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-lf-test-assist")
+    monkeypatch.setenv("LANGFUSE_SAMPLE_RATE", "1")
+    catalog = tmp_path / "references.jsonl"
+    catalog.write_text(json.dumps({"code": REFERENCE["code"], "title": "Public catalog title",
+                                  "source_url": "https://example.org/public-guide"}) + "\n")
+    monkeypatch.setattr(observability.config, "REFERENCES_PATH", catalog)
+    observability._public_reference_catalog.cache_clear()
+    observability._client.cache_clear()
+    http, _ = client
+    plan_id, answer_id = uuid4(), uuid4()
+    question = "Test private question about the 앱"
+    excerpt = "Test private excerpt for the app guide"
+    broken_payload = "Test private upstream exception"
+    try:
+        plan = post(http, plan_request(question=question, remainingClarifications=0),
+                    headers={"X-Request-Id": str(plan_id)})
+        assert plan.json()["data"] == evidence_response()
+        answer = post(http, answer_request(question=question,
+                      verifiedReferences=[{"code": REFERENCE["code"], "title": REFERENCE["title"], "excerpt": excerpt}]),
+                      headers={"X-Request-Id": str(answer_id)})
+        assert answer.json()["data"]["status"] == "ANSWERED"
+
+        class BrokenModel(FakeAssistModel):
+            async def answer(self, request):
+                raise ValueError(broken_payload)
+
+        app.dependency_overrides[get_service] = lambda: AssistService(BrokenModel(), Retriever())
+        assert post(http, answer_request()).status_code == 502
+        observability._client().flush()
+    finally:
+        observability._client().shutdown()
+        observability._client.cache_clear()
+        observability._public_reference_catalog.cache_clear()
+
+    spans = exporter.get_finished_spans()
+    plan_root = next(span for span in spans if span.name == "assist.plan")
+    assert plan_root.context.trace_id == int(sdk.create_trace_id(seed=str(plan_id)), 16)
+    assert [span.name for span in spans if span.parent and span.parent.span_id == plan_root.context.span_id] == [
+        "assist.assess", "assist.search", "assist.evaluate",
+    ]
+    attributes = {span.name: dict(span.attributes) for span in spans
+                  if span.name != "assist.answer" or span.context.trace_id == int(sdk.create_trace_id(seed=str(answer_id)), 16)}
+    assert REFERENCE["code"] in str(attributes["assist.search"])
+    assert REFERENCE["code"] in str(attributes["assist.evaluate"])
+    assert "candidate_references" in str(attributes["assist.plan"])
+    assert "verified_reference_codes" in str(attributes["assist.answer"])
+    assert "cited_reference_codes" in str(attributes["assist.answer"])
+    for stage in ("assist.search", "assist.evaluate", "assist.answer"):
+        assert "Public catalog title" in str(attributes[stage])
+        assert "https://example.org/public-guide" in str(attributes[stage])
+    exported = "\n".join(span.to_json() for span in spans)
+    assert "INVALID_AI_RESPONSE" in exported
+    for private_text in (question, excerpt, REFERENCE["title"], REFERENCE["excerpt"],
+                         answer.json()["data"]["answer"], broken_payload):
+        assert private_text not in exported
+
+
 def test_out_of_scope_is_business_result():
     result = run(plan_request(question="내일 날씨 알려줘"))
     assert result.status == "UNABLE_TO_ANSWER" and result.reasonCode == "OUT_OF_SCOPE"
     assert set(result.model_dump()) == PLAN_KEYS
+
+
+def test_out_of_scope_can_return_brief_guidance_without_search():
+    class ChitchatModel(FakeAssistModel):
+        async def assess(self, request):
+            return Assessment(decision="OUT_OF_SCOPE", questionIntent=None, factKey=None,
+                              guidance="펭귄은 새예요.")
+
+    retriever = Retriever()
+    result = run(plan_request(question="펭귄이 새야?", remainingClarifications=5), ChitchatModel(), retriever)
+    assert result.reasonCode == "OUT_OF_SCOPE" and result.guidance == "펭귄은 새예요."
+    assert not retriever.queries
+
+
+def test_no_evidence_guidance_stays_uncited():
+    class InsufficientModel(SearchModel):
+        async def evaluate(self, request, intent, references):
+            return EvidenceAssessment(sufficient=False, referenceCodes=[], retryQuery=None,
+                                      guidance="상대가 어떤 기관이라고 말했나요?")
+
+    result = run(plan_request(), InsufficientModel(), Retriever([]))
+    assert result.reasonCode == "NO_EVIDENCE" and result.guidance == "상대가 어떤 기관이라고 말했나요?"
+    assert result.candidateReferences == []
+    unsafe = AnswerResponse.model_validate(answered_response(status="UNABLE_TO_ANSWER", answer=None,
+        referenceCodes=[], reasonCode="NO_EVIDENCE", guidance="https://example.com"))
+    assert "guidance" not in unsafe.model_dump()
 
 
 @pytest.mark.parametrize("changes", [
@@ -462,7 +556,7 @@ def test_unknown_extra_response_keys_ignored():
 @pytest.mark.parametrize("changes", [
     {"phase": "plan"}, {"question": None, "questionIntent": None}, {"question": " "},
     {"question": "가" * 1001}, {"remainingClarifications": True}, {"remainingClarifications": -1},
-    {"remainingClarifications": 4}, {"askedFactKeys": ["installedApp", "installedApp"]},
+    {"remainingClarifications": 6}, {"askedFactKeys": ["installedApp", "installedApp"]},
     {"askedFactKeys": ["otherFact"]}, {"facts": {"installedApp": "UNKNOWN"}},
     {"facts": {**FACTS, "installedApp": "unknown"}},
 ])

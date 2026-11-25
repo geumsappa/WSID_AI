@@ -22,6 +22,13 @@ if EMBED_PROVIDER == "local":
 else:
     EMBED_MODEL = os.getenv("OPENAI_EMBED_MODEL", "text-embedding-3-small")
     EMBED_DIM = int(os.getenv("OPENAI_EMBED_DIM", "1536"))
+# 근거 인덱스 저장소. file(기본): data/index 의 numpy 파일 / pgvector: PostgreSQL(pgvector) 테이블에서 거리 순 검색.
+# pgvector면 RAG_DB_URL(postgresql://...)이 필요하고, 테이블은 RAG_DB_SCHEMA 스키마에 만들어요.
+RAG_STORE = (os.getenv("RAG_STORE") or "file").strip().lower()
+if RAG_STORE not in ("file", "pgvector"):
+    raise ValueError("RAG_STORE must be file or pgvector")
+RAG_DB_URL = (os.getenv("RAG_DB_URL") or "").strip()
+RAG_DB_SCHEMA = (os.getenv("RAG_DB_SCHEMA") or "rag").strip()
 # 모델 호출 대기 상한(초)
 TIMEOUT_SEC = int(os.getenv("RAG_TIMEOUT_SEC", "30"))
 # assist의 각 HTTP 단계 예산. CLI/OpenAI 기본 timeout과 독립적이다.

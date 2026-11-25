@@ -55,6 +55,22 @@ def _ensure_extension(conn) -> None:
                          f"({type(error).__name__})") from None
 
 
+def _ensure_schema(conn) -> None:
+    """스키마가 이미 있으면 만들지 않아요.
+
+    `CREATE SCHEMA IF NOT EXISTS`는 스키마가 있어도 DB 전체의 CREATE 권한을 먼저 검사해요.
+    운영 계정은 rag 스키마만 소유하고 DB CREATE 권한은 없어서, 이미 있는지 먼저 확인해야 해요.
+    """
+    if conn.execute("SELECT 1 FROM pg_namespace WHERE nspname = %s", (config.RAG_DB_SCHEMA,)).fetchone():
+        return
+    try:
+        conn.execute(_sql().SQL("CREATE SCHEMA {}").format(_schema()))
+    except Exception as error:
+        raise SystemExit(f"DB에 {config.RAG_DB_SCHEMA} 스키마가 없고 만들 권한도 없어요. DB 관리자 계정으로 "
+                         f"`CREATE SCHEMA {config.RAG_DB_SCHEMA} AUTHORIZATION <AI 계정>;`을 먼저 실행해 주세요. "
+                         f"({type(error).__name__})") from None
+
+
 def write(refs: list[dict], vectors: np.ndarray, embed_model: str, provider: str) -> None:
     sql = _sql()
     dim = int(vectors.shape[1])
@@ -64,7 +80,7 @@ def write(refs: list[dict], vectors: np.ndarray, embed_model: str, provider: str
         from pgvector.psycopg import register_vector
         register_vector(conn)
         with conn.transaction():
-            conn.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(_schema()))
+            _ensure_schema(conn)
             conn.execute(sql.SQL("DROP TABLE IF EXISTS {}.reference_chunk").format(_schema()))
             conn.execute(sql.SQL("""
                 CREATE TABLE {}.reference_chunk (

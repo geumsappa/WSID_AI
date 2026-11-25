@@ -131,3 +131,29 @@ def test_assist_search_reads_from_db(pg_store, monkeypatch):
     monkeypatch.setattr(config, "RAG_DB_URL", "postgresql://nobody:x@127.0.0.1:1/none?connect_timeout=1")
     with pytest.raises(ReferenceIndexUnavailable):
         asyncio.run(ReferenceRetriever().search("앱", {}))
+
+
+@pg
+def test_build_works_with_schema_owner_without_database_create(pg_store, monkeypatch):
+    """운영처럼 rag 스키마만 소유하고 DB CREATE 권한은 없는 계정으로도 인덱스를 만들 수 있어요."""
+    from psycopg.conninfo import make_conninfo  # 새 계정은 기본값대로 DB CREATE 권한이 없어요
+    role, password, schema = f"rag_role_{uuid.uuid4().hex[:8]}", uuid.uuid4().hex, config.RAG_DB_SCHEMA
+    with pg_store.pool().connection() as conn:
+        conn.execute(f"CREATE ROLE {role} LOGIN PASSWORD '{password}'")
+        conn.execute(f'CREATE SCHEMA "{schema}" AUTHORIZATION {role}')
+    pg_store.close()
+    try:
+        monkeypatch.setattr(config, "RAG_DB_URL", make_conninfo(DB_URL, user=role, password=password))
+        assert index.build() == 3
+        assert [r["code"] for r in index.load()[1]] == ["REF_A", "REF_B", "REF_C"]
+        monkeypatch.setattr(config, "RAG_DB_SCHEMA", f"{schema}_missing")
+        with pytest.raises(SystemExit, match="스키마가 없고 만들 권한도 없어요"):
+            index.build()
+    finally:
+        pg_store.close()
+        monkeypatch.setattr(config, "RAG_DB_SCHEMA", schema)
+        config.RAG_DB_URL = DB_URL
+        with pg_store.pool().connection() as conn:
+            conn.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+            conn.execute(f"DROP ROLE {role}")
+        pg_store.close()

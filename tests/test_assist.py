@@ -799,11 +799,11 @@ def test_eligible_clarifications_respect_intent_unknown_and_history():
     assert allowed_fact_keys(req, "INFO_LEAK_RESPONSE") == []
 
 
-def test_evaluate_receives_only_five_shortened_references():
+def test_evaluate_receives_only_eight_shortened_references():
     refs = [{**REFERENCE, "code": f"REF_{i}", "excerpt": "가" * 1000} for i in range(10)]
     class CheckModel(SearchModel):
         async def evaluate(self, request, intent, references):
-            assert len(references) == 5
+            assert len(references) == 8
             assert all(len(ref["excerpt"]) == 600 for ref in references)
             return EvidenceAssessment(sufficient=True, referenceCodes=[references[0]["code"]], retryQuery=None)
     assert run(plan_request(), model=CheckModel(), retriever=Retriever(refs)).status == "EVIDENCE_READY"
@@ -815,10 +815,17 @@ def test_no_research_when_time_budget_is_insufficient(monkeypatch):
     class RetryModel(SearchModel):
         async def evaluate(self, request, intent, references):
             return EvidenceAssessment(sufficient=False, referenceCodes=[], retryQuery="다른 검색")
-    retriever = Retriever()
+    refs = [{**REFERENCE, "code": f"REF_{i}"} for i in range(6)]
+    class QueryRetriever(Retriever):
+        async def search(self, query, facts, k=10, fraud_type=None):
+            self.queries.append((query, facts))
+            return refs[3:] if query == "다른 검색" else refs[:3]
+    retriever = QueryRetriever(refs)
     result = run(plan_request(), model=RetryModel(), retriever=retriever)
-    assert result.status == "EVIDENCE_READY"  # 재검색 없이 상위 근거로 답변 단계에 넘겨요
-    assert len(retriever.queries) == 1
+    # 재평가할 시간은 없어도 재검색어로 검색만 다시 해서(LLM 호출 없음) 새 결과를 앞에 두고 답변 단계에 넘겨요
+    assert result.status == "EVIDENCE_READY"
+    assert [q for q, _ in retriever.queries][1] == "다른 검색" and len(retriever.queries) == 2
+    assert [r.code for r in result.candidateReferences] == ["REF_3", "REF_4", "REF_5", "REF_0", "REF_1", "REF_2"]
 
 
 def test_stage_logs_exclude_private_input_and_evidence(caplog):

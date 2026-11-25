@@ -106,7 +106,7 @@ def topic_text(request: PlanRequest | AnswerRequest) -> str:
 
 
 def topic_codes(text: str, question: str = "") -> list[str]:
-    """주제별 필수 근거 code. 근거 판정에는 상위 5개만 가므로 순서가 중요해요.
+    """주제별 필수 근거 code. 근거 판정에는 상위 8개만 가므로 순서가 중요해요.
     - 이번 질문(question)에 걸린 주제를 이전 대화로만 걸린 주제보다 앞에 둬요.
     - 주제가 여러 개면 각 주제의 첫 문단부터 돌아가며 넣어요 (한 주제가 자리를 다 차지하지 않게)."""
     matched = [refs for pattern, refs in TOPIC_REFS if pattern.search(text)]

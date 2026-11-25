@@ -32,13 +32,16 @@ CONDITION_FEEDBACK = {
     "ALREADY_CONFIRMED": "이미 사용자가 답한 조건이다. 다른 조건을 고르거나 답변 가능 여부를 판정한다.",
     "DEFAULT": "조건 형식이 맞지 않는다. 문단 원문 인용과 상황 평서문으로 다시 제안한다.",
 }
-MAX_EVALUATION_REFERENCES = 5
+# 사기 유형 가산점에 주제 문단이 6~8위로 밀려도 판정에서 빠지지 않게 8개까지 보여줘요
+MAX_EVALUATION_REFERENCES = 8
 # v1.2 갈림길 검색: 질문에 '적용 제도·대상·제외·요건'을 붙여 한 번 더 검색해, 답을 가르는 조건이 적힌 문단을 찾는다.
-# 문단 코드를 정해 두지 않고 검색으로 찾으며, 판정에 가는 상위 5개 안에 BRANCH_SLOTS개를 끼워 넣는다.
+# 문단 코드를 정해 두지 않고 검색으로 찾으며, 판정에 가는 상위 문단 안에 BRANCH_SLOTS개를 끼워 넣는다.
 BRANCH_QUERY_SUFFIX = "\n이 경우 적용되는 제도와 적용 대상·제외 대상·요건"
 BRANCH_SLOTS = 2
 # 근거가 부족하다고 판정돼도 답변 단계로 넘길 상위 근거 수 (ASSIST_GENERAL_FALLBACK)
 FALLBACK_REFERENCES = 3
+# 시간이 모자라 재평가를 못 할 때, 재검색어로 검색만 다시 해서 앞에 둘 문단 수
+RESEARCH_FALLBACK_REFERENCES = 3
 GENERAL_FEEDBACK = ("근거가 질문에 직접 답하지 않아도 NO_EVIDENCE로 끝내지 않는다. 근거에서 쓸 수 있는 부분과 "
                     "안전한 일반 대응(요구에 응하지 않기, 더 보내지 않기, 공식 경로로 직접 확인, 대화·송금 내역 보관, "
                     "경찰·금융회사 상담)으로 질문에 답한다. 근거에 없는 기간·금액·제도 이름·환급 가능성은 쓰지 않는다.")
@@ -162,21 +165,46 @@ class AssistService:
             return "NONE"
         return assessment.clarification.factKey or "CONDITION"
 
-    def _no_evidence(self, state: AssistState, guidance: str | None = None) -> PlanResponse:
+    async def _no_evidence(self, state: AssistState, guidance: str | None = None,
+                           retry_query: str | None = None) -> PlanResponse:
         """근거가 질문에 딱 맞지 않을 때. 답을 포기하지 않고 상위 근거를 붙여 ANSWER로 넘겨요.
 
-        ANSWER는 그 근거와 안전한 일반 대응 범위에서 답하고, 위험한 절차는 procedure_guard가 막아요.
+        판정 모델이 재검색어를 줬는데 재평가할 시간이 없으면, 그 검색어로 검색만 다시 해서(로컬 임베딩, 1초 미만)
+        새 결과를 앞에 둬요. ANSWER는 그 근거와 안전한 일반 대응 범위에서 답하고, 위험한 절차는 procedure_guard가 막아요.
         ASSIST_GENERAL_FALLBACK=0이거나 넘길 근거가 없으면 예전처럼 NO_EVIDENCE예요.
         """
+        if not config.ASSIST_GENERAL_FALLBACK or state["intent"] is None:
+            return unable(state["intent"], "NO_EVIDENCE", guidance)
         references = self._evaluation_references(state)[:FALLBACK_REFERENCES]
-        if not config.ASSIST_GENERAL_FALLBACK or state["intent"] is None or not references:
+        researched = 0
+        if retry_query:
+            try:
+                found = await self._research_only(state, retry_query)
+            except Exception:
+                logger.warning("assist research fallback failed requestId=%s", request_id.get())
+                found = []
+            fresh = [ref for ref in found if ref["code"] not in {r["code"] for r in references}][:RESEARCH_FALLBACK_REFERENCES]
+            researched = len(fresh)
+            references = fresh + references
+        if not references:
             return unable(state["intent"], "NO_EVIDENCE", guidance)
         codes = [ref["code"] for ref in references]
-        record("general_fallback", phase="PLAN", reference_codes=codes)
-        logger.info("assist request_id=%s stage=fallback phase=PLAN refs=%d", request_id.get(), len(codes))
+        record("general_fallback", phase="PLAN", reference_codes=codes, researched=researched)
+        logger.info("assist request_id=%s stage=fallback phase=PLAN refs=%d researched=%d",
+                    request_id.get(), len(codes), researched)
         return PlanResponse(status="EVIDENCE_READY", questionIntent=state["intent"], clarification=None,
                             candidateReferences=[CandidateReference.model_validate(ref) for ref in references],
                             reasonCode=None)
+
+    async def _research_only(self, state: AssistState, query: str) -> list[dict]:
+        """재검색어로 검색만 해요. 사기 유형 가산점·중고거래 제외 규칙은 본 검색과 같아요."""
+        request = state["request"]
+        extra = {"fraud_type": request.fraudType} if request.fraudType is not None else {}
+        found = await self.retriever.search(query, request.facts.model_dump(), **extra)
+        found = drop_refund_notice(found, request.fraudType, topic_text(request))
+        record("search", document_codes=[ref["code"] for ref in found], attempt=state["searches"] + 1,
+               ranked_reference_codes=[ref["code"] for ref in found], research_only=True)
+        return [{**ref, "excerpt": ref["excerpt"][:MAX_EVALUATION_EXCERPT]} for ref in found]
 
     @staticmethod
     def _evaluation_references(state: AssistState) -> list[dict]:
@@ -212,7 +240,7 @@ class AssistService:
         if state.get("evaluated"):
             if state["deadline"] - time.monotonic() < config.ASSIST_RETRY_MIN_SECONDS:
                 return {"clarifyKey": None, "pendingCondition": None,
-                        "result": self._no_evidence(state)}
+                        "result": await self._no_evidence(state)}
             return {"clarifyKey": None, "pendingCondition": None, "request": conditional, "reassessed": True}
         return {"clarifyKey": None, "pendingCondition": None, "request": conditional}
 
@@ -339,7 +367,7 @@ class AssistService:
             # 모델이 허용 목록을 무시한 예외 상황에서만, 시간이 충분하면 조건부 답변을 재평가한다.
             if (reassessed or state["searches"] > 1
                     or state["deadline"] - time.monotonic() < config.ASSIST_RETRY_MIN_SECONDS):
-                return {"retry": False, "result": self._no_evidence(state)}
+                return {"retry": False, "result": await self._no_evidence(state)}
             conditional = state["request"].model_copy(update={"remainingClarifications": 0})
             reassessed = True
             started = time.monotonic()
@@ -350,7 +378,7 @@ class AssistService:
                         assessment.sufficient, assessment.retryQuery is not None,
                         self._target_label(assessment))
             if assessment.clarification is not None:
-                return {"retry": False, "result": self._no_evidence(state)}
+                return {"retry": False, "result": await self._no_evidence(state)}
         by_code = {ref["code"]: ref for ref in references}
         if not set(assessment.referenceCodes) <= by_code.keys():
             raise ValueError("model selected unknown reference")
@@ -368,8 +396,9 @@ class AssistService:
                 and assessment.retryQuery != state["query"]):
             if state["deadline"] - time.monotonic() >= config.ASSIST_RETRY_MIN_SECONDS:
                 return {"retry": True, "query": assessment.retryQuery}
-            logger.info("assist request_id=%s stage=retry decision=SKIP reason=TIME_BUDGET", request_id.get())
-        return {"retry": False, "result": self._no_evidence(state, assessment.guidance)}
+            logger.info("assist request_id=%s stage=retry decision=SEARCH_ONLY reason=TIME_BUDGET", request_id.get())
+            return {"retry": False, "result": await self._no_evidence(state, assessment.guidance, assessment.retryQuery)}
+        return {"retry": False, "result": await self._no_evidence(state, assessment.guidance)}
 
     @staticmethod
     def _record_evaluation(references: list[dict], assessment, started: float) -> None:

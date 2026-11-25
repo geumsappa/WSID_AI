@@ -31,6 +31,8 @@ question의 "이 계좌", "이 사람", "이 문자", "이거"처럼 가리키�
 question이 "둘 다", "그거", "아니 ~ 말고"처럼 앞 대화를 가리키거나 question=null이면 history의 최근 사용자 질문을 보고 무엇을 묻는지 판단한다.
 fraudType(있을 때)이 SECONDHAND_TRADE(중고거래 등 재화·용역 사기)면 지급정지·피해구제 신청·피해금 환급을 해야 할 일로 다루지 않는다.
 그때는 경찰 신고와 형사 배상명령·지급명령·소액소송 같은 민사 절차가 피해 회복 방법이다.
+fraudType이 INVESTMENT_FRAUD면 지급정지 요청을 안내할 때 투자 사기는 받아들여지지 않을 수 있다는 점과
+금융회사·경찰에 있는 그대로 투자 사기라고 알리라는 점을 함께 말한다. 어떤 유형이든 환급이나 피해금 회수를 장담하지 않는다.
 question이 "둘 다", "그거", "각각"처럼 앞 답변을 가리키면 history의 직전 도우미 답변에 나온 방법을 질문 대상으로 본다.
 가리키는 대상이 여러 개라 애매하면 직전 답변의 마지막 문장에 나온 방법을 우선하고, 그 방법들을 설명하는 근거가 있으면
 질문이 짧거나 애매하다는 이유만으로 근거가 부족하다고 판정하지 않는다."""
@@ -176,6 +178,7 @@ question=null이면 원문을 복원하지 말고 questionIntent와 facts에 맞
 근거 부족: {"status":"UNABLE_TO_ANSWER","answer":null,"referenceCodes":[],"reasonCode":"NO_EVIDENCE"}
 범위 밖: 같은 UNABLE_TO_ANSWER 형태에 reasonCode="OUT_OF_SCOPE".
 LIMIT_REACHED는 ANSWER에서 사용하지 않는다.
+previousAnswerRejected가 있으면 이전 답변이 그 이유로 거절된 것이다. 그 부분을 고쳐 다시 쓴다.
 NO_EVIDENCE일 때만 선택 키 guidance에 일반적인 설명이나 사용자에게 필요한 확인 질문 하나를 넣을 수 있다.
 guidance에는 환급·법적 판단, 적용 제도, 기한, 금액, 지급정지 지시, 기관명이나 연락처, 링크를 쓰지 않는다.
 이미 답한 사실을 다시 묻거나 민감정보를 요구하지 않는다.
@@ -226,7 +229,7 @@ class AssistModel(Protocol):
     async def clarify(self, request: PlanRequest, target: FactKey | ConditionSeed,
                       references: list[dict]) -> ClarificationDraft: ...
 
-    async def answer(self, request: AnswerRequest) -> AnswerResponse: ...
+    async def answer(self, request: AnswerRequest, feedback: str | None = None) -> AnswerResponse: ...
 
 
 class OpenAIAssistModel:
@@ -301,8 +304,11 @@ class OpenAIAssistModel:
             "references": [{k: ref[k] for k in ("code", "title", "excerpt")} for ref in references],
         }, ClarificationDraft)
 
-    async def answer(self, request: AnswerRequest) -> AnswerResponse:
-        return await self._generate(ANSWER_SYSTEM, self._payload(request), AnswerResponse)
+    async def answer(self, request: AnswerRequest, feedback: str | None = None) -> AnswerResponse:
+        payload = self._payload(request)
+        if feedback:
+            payload["previousAnswerRejected"] = feedback
+        return await self._generate(ANSWER_SYSTEM, payload, AnswerResponse)
 
 
 class FakeAssistModel:
@@ -348,6 +354,6 @@ class FakeAssistModel:
                                           referenceCodes=[ref["code"]])
         return ClarificationDraft(content=None, referenceCodes=[])
 
-    async def answer(self, request: AnswerRequest) -> AnswerResponse:
+    async def answer(self, request: AnswerRequest, feedback: str | None = None) -> AnswerResponse:
         return AnswerResponse(status="ANSWERED", answer="모델 대역 응답입니다. 실제 상담 답변이 아닙니다.",
                               referenceCodes=[request.verifiedReferences[0].code], reasonCode=None)

@@ -21,6 +21,7 @@ from .context import (REFERENTIAL, drop_refund_notice, photo_text, previous_ai, 
                       topic_text)
 from .model import AssistModel, INTENT_QUERIES, allowed_fact_keys
 from .observability import record
+from .procedure_guard import feedback as procedure_feedback, repair, violations
 from .upstream import request_id
 
 # 조건 제안이 검증에 걸렸을 때 모델에 돌려주는 설명. 질문·근거 원문은 담지 않는다.
@@ -361,6 +362,24 @@ class AssistService:
 
     async def _answer(self, state: AssistState) -> dict:
         # ANSWER의 그래프 경로에는 search 노드가 없다.
-        result = await self.model.answer(state["request"])
-        result.validate_for(state["request"])
+        request = state["request"]
+        result = await self.model.answer(request)
+        result.validate_for(request)
+        found = violations(result, request.fraudType)
+        if not found:
+            return {"result": result}
+        # 사기 유형에 맞지 않는 절차를 권했으면 이유를 알려 한 번 다시 쓰게 하고, 그래도 어기면 코드로 고친다.
+        kinds = sorted({v.kind for v in found})
+        retried = state["deadline"] - time.monotonic() >= config.ASSIST_RETRY_MIN_SECONDS
+        if retried:
+            try:
+                again = await self.model.answer(request, feedback=procedure_feedback(found))
+                again.validate_for(request)
+                result = again
+            except Exception:
+                logger.warning("assist answer retry failed requestId=%s", request_id.get())
+        repaired = bool(violations(result, request.fraudType))
+        if repaired:
+            result = repair(result, request.fraudType)
+        record("answer_guard", violations=kinds, retried=retried, repaired=repaired, status=result.status)
         return {"result": result}

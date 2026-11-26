@@ -1,0 +1,32 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.5
+python-dotenv>=1.0
+pyyaml>=6.0
+openai>=1.30
+anthropic>=0.30
+pytest>=8.0
+python-multipart>=0.0.18
+Pillow>=11
+paddleocr>=3.7,<4
+paddlepaddle>=3.2,<4
+httpx>=0.27
+
+# 피해 대응 RAG
+numpy>=1.26
+# 로컬 검색 임베딩(EMBED_PROVIDER=local). 리눅스 서버는 GPU용 torch가 깔리지 않게 먼저
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+sentence-transformers>=5,<7
+# RAG_STORE=pgvector: 근거 인덱스를 PostgreSQL(pgvector)에 저장·검색
+psycopg[binary]>=3.2,<4
+psycopg-pool>=3.2,<4
+pgvector>=0.3,<1
+# 상담 assist: 상태 없는 LangGraph와 원문 없는 선택형 Langfuse 관측
+langgraph>=1.0,<2
+langsmith>=0.4,<1
+langfuse>=4,<5
+# PDF 수집·파싱 (scripts/)
+requests>=2.31
+beautifulsoup4>=4.12
+pypdf>=4.0
+pdfplumber>=0.11

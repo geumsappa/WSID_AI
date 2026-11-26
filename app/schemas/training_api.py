@@ -1,0 +1,92 @@
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas.discovery import DiscoveryMessage
+
+FraudType = Literal["SECONDHAND_TRADE", "SMISHING", "MESSENGER_PHISHING",
+                    "LOAN_FRAUD", "INSTITUTION_IMPERSONATION", "INVESTMENT_FRAUD", "JOB_SCAM"]
+
+
+class ScenarioRequest(BaseModel):
+    facts: dict = Field(max_length=30)
+    fraudTypeCode: FraudType
+
+
+class ScenarioResult(BaseModel):
+    scenario: dict
+    mockPageTemplateCode: str | None
+
+
+class SimulationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scenario: dict
+    messages: list[DiscoveryMessage] = Field(max_length=60)
+    userInput: str = Field(min_length=1, max_length=1000)
+    turnCount: int = Field(ge=1, le=15)
+    currentScene: int | None = Field(default=None, ge=1, le=15)
+
+
+class MockPage(BaseModel):
+    templateCode: str
+    title: str
+    institutionName: str
+    screenCode: str
+    isSimulation: Literal[True] = True
+
+
+class SimulationResult(BaseModel):
+    reply: str
+    recognizedActions: list[str]
+    shouldFinish: bool
+    mockPage: MockPage | None
+    nextScene: int | None = Field(default=None, ge=1, le=15)
+    # 사용자 답변에서 이름·주소처럼 패턴이 없는 개인정보를 AI가 찾아 가린 문장 (예: "[이름, 주소 입력함]").
+    # 가릴 게 없으면 None. Spring은 원문 대신 이 값을 저장하고 화면에도 이 값을 보여 줘요.
+    maskedInput: str | None = Field(default=None, max_length=300)
+    # 다음 턴에 시나리오와 함께 그대로 돌려받는 훈련 상태 (확정 설정 newFacts 누적, 직전 수, 장면별 신뢰·압박 횟수)
+    trainingState: dict | None = None
+
+
+class EvaluationAction(BaseModel):
+    actionCode: str = Field(min_length=1, max_length=100)
+    # 확인 화면 제출(MOCK_LOGIN_ATTEMPT)이면 값을 채운 칸의 종류 (이름·휴대폰 번호·주소·생년월일·성별). 예전 기록에는 없어요
+    filledFields: list[str] | None = Field(default=None, max_length=10)
+
+
+class EvaluationRequest(BaseModel):
+    scenario: dict
+    conversation: list[DiscoveryMessage] = Field(max_length=100)
+    actions: list[EvaluationAction] = Field(max_length=100)
+
+
+class MockPageEvaluation(BaseModel):
+    openedPage: bool
+    attemptedMockLogin: bool
+    checkedOfficialChannel: bool
+    clickedAppLink: bool = False
+    attemptedTransfer: bool = False
+
+
+class TurnFeedback(BaseModel):
+    """리포트 타임라인 한 칸: 훈련자의 몇 번째 답변에서 무슨 일이 있었는지."""
+    turn: int = Field(ge=1, le=30)
+    outcome: Literal["safe", "risky"]
+    userAction: str = Field(min_length=1, max_length=150)
+    feedback: str = Field(min_length=1, max_length=300)
+
+
+class ReportInfoDisclosure(BaseModel):
+    """요구받은 개인정보 종류와 실제로 넘긴 종류 (서버 기록 기준, 값은 없음)"""
+    requested: list[str] = Field(default_factory=list, max_length=10)
+    provided: list[str] = Field(default_factory=list, max_length=10)
+
+
+class EvaluationResult(BaseModel):
+    overallFeedback: str = Field(min_length=1, max_length=1000)
+    strengths: list[str] = Field(max_length=10)
+    improvements: list[str] = Field(max_length=10)
+    turnFeedback: list[TurnFeedback] = Field(default_factory=list, max_length=8)
+    mockPageEvaluation: MockPageEvaluation
+    recommendations: list[str] = Field(max_length=10)
+    infoDisclosure: ReportInfoDisclosure | None = None

@@ -1,0 +1,13 @@
+{
+  "phase": "PLAN",
+  "question": "앱 관련해서 어떻게 해야 하나요?",
+  "questionIntent": null,
+  "facts": {
+    "transferredMoney": "YES",
+    "sharedInformation": "NO",
+    "installedApp": "UNKNOWN",
+    "contactContinues": "UNKNOWN"
+  },
+  "askedFactKeys": [],
+  "remainingClarifications": 3
+}

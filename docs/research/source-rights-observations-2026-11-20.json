@@ -1,0 +1,445 @@
+{
+  "checkedAt": "2026-11-20",
+  "observations": [
+    {
+      "sourceId": "S01",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/v5/common/open_type_04.png",
+          "alt": "공공누리 공공저작물 자유이용허락 4유형 출처표시, 상업적 이용금지"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S02",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S03",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S04",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S05",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/v5/common/open_type_04.png",
+          "alt": "공공누리 공공저작물 자유이용허락 4유형 출처표시, 상업적 이용금지"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S06",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/sites/moj/images/footer_open.png",
+          "alt": "OPEN 공공누리 공공저작물 자유이용 허락 출처표시"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시",
+      "note": "게시물의 4유형 표시를 우선함. 하단 공통 1유형 안내 및 숨겨진 유형별 템플릿은 허락 근거로 사용하지 않음."
+    },
+    {
+      "sourceId": "S07",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/v5/common/open_type_04.png",
+          "alt": "공공누리 공공저작물 자유이용허락 4유형 출처표시, 상업적 이용금지"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S08",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S09",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S10",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S11",
+      "status": 200,
+      "format": "PDF",
+      "markers": [],
+      "itemLicenseConclusion": "해당 게시물에 1유형과 AI유형을 병행 표시",
+      "licenseEvidenceUrl": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000&nPage=16&tag=",
+      "verifiedLicenseMarkers": [
+        "KOGL-1",
+        "KOGL-AI"
+      ],
+      "attachmentLinkVerified": true
+    },
+    {
+      "sourceId": "S12",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/v5/common/open_type_04.png",
+          "alt": "공공누리 공공저작물 자유이용허락 4유형 출처표시, 상업적 이용금지"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S13",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S14",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S15",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S16",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/v5/common/open_type_04.png",
+          "alt": "공공누리 공공저작물 자유이용허락 4유형 출처표시, 상업적 이용금지"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S17",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S18",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/v5/common/open_type_04.png",
+          "alt": "공공누리 공공저작물 자유이용허락 4유형 출처표시, 상업적 이용금지"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S19",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S20",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S21",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S22",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/v5/common/open_type_04.png",
+          "alt": "공공누리 공공저작물 자유이용허락 4유형 출처표시, 상업적 이용금지"
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S23",
+      "status": 200,
+      "format": "HTML",
+      "markers": [
+        {
+          "src": "/images/egovframework/gcall/main_new/common/img_opentype04.png",
+          "alt": "본 공공저작물은 공공누리 “출처표시+상업적이용금지+변경금지”  조건에  따라  이용할  수  있습니다."
+        }
+      ],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시"
+    },
+    {
+      "sourceId": "S24",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S25",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S26",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S27",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S28",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": "게시물에 비상업·변경금지 조건 표시",
+      "note": "게시물의 4유형 표시를 우선함. 하단 공통 1유형 안내 및 숨겨진 유형별 템플릿은 허락 근거로 사용하지 않음."
+    },
+    {
+      "sourceId": "S29",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S30",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S31",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S32",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S33",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S34",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S35",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S36",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S37",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S38",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S39",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S40",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S41",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S42",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S43",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S44",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S45",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S46",
+      "status": 200,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S47",
+      "status": 403,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    },
+    {
+      "sourceId": "S48",
+      "status": 403,
+      "format": "HTML",
+      "markers": [],
+      "itemLicenseConclusion": null
+    }
+  ],
+  "policies": [
+    {
+      "id": "KOGL",
+      "url": "https://www.kogl.or.kr/info/license.do",
+      "checkedAt": "2026-11-20",
+      "finding": "유형별 상업 이용·변경 조건을 따로 확인. 사이트 공통 표시를 개별 자료 허락으로 대체하지 않음."
+    },
+    {
+      "id": "ACRC_ITEM",
+      "url": "https://www.acrc.go.kr/board.es?act=view&bid=4A&list_no=91523&mid=a10402010000&nPage=16&tag=",
+      "checkedAt": "2026-11-20",
+      "finding": "해당 게시물의 첨부 PDF 연결과 공공누리 1유형 및 AI유형 표시를 확인. 이번에는 1유형의 출처표시 조건을 근거로 판단."
+    },
+    {
+      "id": "KOREA",
+      "url": "https://www.korea.kr/guide/copyRight.do",
+      "checkedAt": "2026-11-20",
+      "finding": "개별 이용조건 우선. 표시 없는 자료 및 이미지 이용에는 담당자 협의 필요."
+    },
+    {
+      "id": "MOEL",
+      "url": "https://moel.go.kr/site/copyright/copyrightList.do",
+      "checkedAt": "2026-11-20",
+      "finding": "1유형 표시 확인 후 자유이용. 표시 없는 자료는 사전 협의 안내."
+    },
+    {
+      "id": "FSC",
+      "url": "https://www.fsc.go.kr/ut020104",
+      "checkedAt": "2026-11-20",
+      "finding": "기관이 권리 전부를 보유한 자료와 타인 권리 자료가 혼재. 수익·혜택 목적 이용은 사전 협의 안내."
+    },
+    {
+      "id": "FTC",
+      "url": "https://www.ftc.gov/policy-notices/website-policy",
+      "checkedAt": "2026-11-20",
+      "finding": "FTC 자체 정부 저작물의 복제·이용 정책은 확인. 제3자 사진·도표·댓글·제출 자료는 제외. 미국 공공영역 지위를 한국 내 사용의 최종 허가로 자동 판정하지 않음."
+    }
+  ],
+  "summary": {
+    "sourceCounts": {
+      "PERMISSION_REQUIRED": 14,
+      "CONFIRMATION_REQUIRED": 33,
+      "ELIGIBLE_WITH_ATTRIBUTION": 1
+    },
+    "caseCounts": {
+      "PERMISSION_REQUIRED": 14,
+      "CONFIRMATION_REQUIRED": 34,
+      "ELIGIBLE_WITH_ATTRIBUTION": 2
+    },
+    "intendedUse": "원문 저장, 문단 검색, 가상 시나리오 생성에 참고, 향후 공개·상업 서비스 가능성까지 고려"
+  }
+}

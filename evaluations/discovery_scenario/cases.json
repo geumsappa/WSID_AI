@@ -1,0 +1,504 @@
+[
+  {
+    "id": "job-bank",
+    "description": "일상 채용 활동·기관명·연락 경로 보존",
+    "inputs": [
+      "기업은행 역량검사를 봤고 안내는 이메일로 받았어요. 그 외 개인정보나 송금 요구는 없었어요."
+    ],
+    "expected": {
+      "contains": [
+        "기업은행",
+        "역량검사"
+      ],
+      "code": "JOB_SCAM",
+      "ready": true,
+      "scenario_contains": [
+        "기업은행"
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "correction-bank",
+    "description": "명시적 정정 시 이전 기관명 제거",
+    "inputs": [
+      "기업은행 역량검사를 봤고 이메일로 안내를 받았어요.",
+      "기업은행이 아니라 신한은행이었어요. 은행명을 정정할게요."
+    ],
+    "expected": {
+      "contains": [
+        "신한은행"
+      ],
+      "excludes": [
+        "기업은행"
+      ],
+      "code": "JOB_SCAM",
+      "ready": true,
+      "scenario_contains": [
+        "신한은행"
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "vague-once",
+    "description": "막연한 답변은 추가 질문",
+    "inputs": [
+      "모르겠어요"
+    ],
+    "expected": {
+      "ready": false,
+      "excludes": [
+        "기업은행",
+        "송금",
+        "개인정보 제공"
+      ]
+    }
+  },
+  {
+    "id": "vague-five",
+    "description": "다섯 번 답해도 내용 없으면 생성 준비로 처리하지 않음",
+    "inputs": [
+      "모르겠어요",
+      "글쎄요",
+      "기억 안 나요",
+      "잘 모르겠어요",
+      "딱히 없어요"
+    ],
+    "turn_expectations": [
+      {
+        "ready": false
+      },
+      {
+        "ready": false
+      },
+      {
+        "ready": false
+      },
+      {
+        "ready": false
+      },
+      {
+        "ready": false
+      }
+    ],
+    "expected": {
+      "ready": false,
+      "excludes": [
+        "기업은행",
+        "신한은행"
+      ]
+    }
+  },
+  {
+    "id": "repeat-fact",
+    "description": "동일 입력 반복 시 같은 사실 중복 금지",
+    "inputs": [
+      "기업은행 역량검사를 봤고 안내는 이메일로 받았어요.",
+      "기업은행 역량검사를 봤고 안내는 이메일로 받았어요."
+    ],
+    "expected": {
+      "contains": [
+        "기업은행"
+      ],
+      "code": "JOB_SCAM",
+      "ready": true
+    }
+  },
+  {
+    "id": "ordinary-walk",
+    "description": "평범한 산책에 은행·사기 연락을 창작하지 않음",
+    "inputs": [
+      "오늘 공원에서 산책만 했어요. 연락을 받거나 누가 뭔가를 요구한 일은 없어요."
+    ],
+    "expected": {
+      "contains": [
+        "산책"
+      ],
+      "excludes": [
+        "기업은행",
+        "신한은행"
+      ]
+    }
+  },
+  {
+    "id": "parcel",
+    "description": "택배 반송 문자 상황과 경로 보존",
+    "inputs": [
+      "택배사라는 곳에서 주소가 틀려 반송된다며 문자로 링크를 눌러 주소를 고치라고 했어요."
+    ],
+    "expected": {
+      "code": "SMISHING",
+      "ready": true
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "secondhand",
+    "description": "중고거래 앱 판매 맥락 보존",
+    "inputs": [
+      "중고거래 앱 채팅으로 자전거 구매자가 연락해서 외부 안전결제 링크를 누르라고 했어요."
+    ],
+    "expected": {
+      "contains": [
+        "자전거"
+      ],
+      "code": "SECONDHAND_TRADE",
+      "ready": true
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "loan",
+    "description": "대출 권유·선입금 요구 분류",
+    "inputs": [
+      "대출 상담사라는 사람이 문자로 연락해서 저금리 대출을 받으려면 보증금을 먼저 송금하라고 했어요."
+    ],
+    "expected": {
+      "code": "LOAN_FRAUD",
+      "ready": true
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "family",
+    "description": "가족 사칭 메신저 상황 분류",
+    "inputs": [
+      "메신저로 딸이라는 사람이 휴대폰이 고장났다면서 수리비를 송금해 달라고 했어요."
+    ],
+    "expected": {
+      "code": "MESSENGER_PHISHING",
+      "ready": true
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "investment",
+    "description": "투자 리딩방과 메신저 경로 보존",
+    "inputs": [
+      "투자 리딩방 운영자가 메신저로 연락해서 고수익을 보장한다며 투자금을 송금하라고 했어요."
+    ],
+    "expected": {
+      "code": "INVESTMENT_FRAUD",
+      "ready": true
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "public-office",
+    "description": "공공기관 사칭 문자 분류",
+    "inputs": [
+      "공공기관 민원 담당자라는 사람이 문자로 연락해서 민원 처리에 필요하다며 개인정보를 보내라고 했어요."
+    ],
+    "expected": {
+      "code": "INSTITUTION_IMPERSONATION",
+      "ready": true
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "followup-memory",
+    "description": "추가 답변에서도 이전 활동과 기관명 유지",
+    "inputs": [
+      "기업은행 역량검사를 봤어요.",
+      "안내를 받은 경로는 이메일이었어요. 다른 요구는 없었어요."
+    ],
+    "expected": {
+      "contains": [
+        "기업은행",
+        "역량검사"
+      ],
+      "code": "JOB_SCAM",
+      "ready": true,
+      "scenario_contains": [
+        "기업은행"
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "plain-no",
+    "description": "단순 부정은 기존 사실 삭제로 해석하지 않음",
+    "inputs": [
+      "기업은행 역량검사를 봤고 안내는 이메일로 받았어요.",
+      "아니요. 추가 요구는 없었어요."
+    ],
+    "expected": {
+      "contains": [
+        "기업은행",
+        "역량검사"
+      ],
+      "code": "JOB_SCAM",
+      "ready": true
+    }
+  },
+  {
+    "id": "social-meal",
+    "description": "지인과의 식사를 거래로 바꾸지 않고 지인 사칭으로 연결",
+    "inputs": [
+      "지인들이랑 순두부찌개를 먹었어요",
+      "훈련에 쓸 이름은 수진이에요"
+    ],
+    "expected": {
+      "contains": [
+        "순두부찌개",
+        "수진"
+      ],
+      "ready": true,
+      "acceptableCodes": [
+        "SMISHING",
+        "MESSENGER_PHISHING"
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "meal-payment",
+    "description": "식당 결제에서 친구 이름 없이 결제·환불 사칭으로 연결",
+    "inputs": [
+      "지인들이랑 순두부찌개를 먹었어요",
+      "식당에서 제가 카드로 결제했어요"
+    ],
+    "expected": {
+      "contains": [
+        "순두부찌개",
+        "카드"
+      ],
+      "ready": true,
+      "acceptableCodes": [
+        "SMISHING",
+        "MESSENGER_PHISHING"
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "actor-peer-payment",
+    "description": "동행인의 결제를 사용자 결제로 바꾸지 않음",
+    "inputs": [
+      "지인들이랑 순두부찌개를 먹었고 식당에서 지인이 카드로 계산했어요"
+    ],
+    "expected": {
+      "ready": true,
+      "events": [
+        {
+          "actionAny": [
+            "계산",
+            "결제",
+            "지불",
+            "지급"
+          ],
+          "evidenceContains": "지인",
+          "actorIsUser": false
+        }
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "actor-self-payment",
+    "description": "같은 식사에서 사용자 본인의 결제는 사용자에게 귀속",
+    "inputs": [
+      "지인들이랑 순두부찌개를 먹었고 식당에서 제가 카드로 계산했어요"
+    ],
+    "expected": {
+      "ready": true,
+      "events": [
+        {
+          "actionAny": [
+            "계산",
+            "결제",
+            "지불",
+            "지급"
+          ],
+          "evidenceContains": "제가",
+          "actorIsUser": true
+        }
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "actor-peer-booking",
+    "description": "식사가 아닌 예약에서도 같은 주체 보존 기준 적용",
+    "inputs": [
+      "동료가 숙소를 예약했고 저는 그 동료와 함께 여행을 갔어요"
+    ],
+    "expected": {
+      "ready": true,
+      "events": [
+        {
+          "actionAny": [
+            "예약"
+          ],
+          "evidenceContains": "동료",
+          "actorIsUser": false
+        }
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "terse-coffee",
+    "description": "품목과 구매 활동만으로는 바로 준비 완료하지 않음",
+    "inputs": [
+      "아까 카페가서 아아 사왔어"
+    ],
+    "expected": {
+      "ready": false
+    }
+  },
+  {
+    "id": "terse-job",
+    "description": "활동명만 있는 구직 이야기에는 관련 맥락을 질문",
+    "inputs": [
+      "요즘 구직하고 있어"
+    ],
+    "expected": {
+      "ready": false
+    }
+  },
+  {
+    "id": "coffee-details-flow",
+    "description": "짧은 활동에는 질문하고 답변으로 맥락이 생기면 준비",
+    "inputs": [
+      "아까 카페가서 아아 사왔어",
+      "회사 동료 지수랑 같이 갔고 지수가 쿠폰으로 내 커피까지 주문해줬어"
+    ],
+    "expected": {
+      "ready": true,
+      "scenario_contains": [
+        "커피"
+      ]
+    },
+    "turn_expectations": [
+      {
+        "ready": false
+      },
+      {
+        "ready": true
+      }
+    ],
+    "generate_scenario": true
+  },
+  {
+    "id": "cafe-missing-identity",
+    "description": "업체명·방문 시점 없는 카페 상호작용은 준비 미완료",
+    "inputs": [
+      "혼자 카페에서 코딩하다 직원에게 충전기를 빌려달라고 했는데 못 빌렸어요."
+    ],
+    "expected": {
+      "ready": false
+    },
+    "generate_scenario": false
+  },
+  {
+    "id": "cafe-rich-contact",
+    "description": "업체·시점·요청·앱 이용이 충분한 카페 사례의 개인화 생성",
+    "inputs": [
+      "어제 이디야에서 혼자 코딩했어요. 직원에게 충전기를 빌려달라고 했는데 없다고 했어요. 주문은 이디야 멤버십 앱으로 했어요."
+    ],
+    "expected": {
+      "ready": true,
+      "scenario_contains": [
+        "이디야",
+        "어제"
+      ]
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "friend-nickname-flow",
+    "description": "친구 접점에서 별명 확인 후 표시 이름과 첫 대사에 재사용",
+    "inputs": [
+      "어제 별빛포차에서 친구랑 둘이 닭발과 술을 먹었어요. 제가 계산했고 친구가 자기 몫을 나중에 보내기로 했어요.",
+      "친구 별명은 도토리예요."
+    ],
+    "turn_expectations": [
+      {
+        "ready": false,
+        "next_topic": "PERSON_NAME"
+      },
+      {
+        "ready": true,
+        "name": "도토리",
+        "mode": "PERSONALIZED"
+      }
+    ],
+    "expected": {
+      "ready": true,
+      "mode": "PERSONALIZED",
+      "persona_name": "도토리",
+      "scenario_contains": [
+        "별빛포차"
+      ],
+      "min_scenes": 3
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "explicit-basic-choice",
+    "description": "더 설명하지 않겠다는 답변 뒤 명시적 동의로만 사례 기반 기본 훈련 생성",
+    "inputs": [
+      "지금은 더 이야기하고 싶지 않아요.",
+      "기본 훈련 시작"
+    ],
+    "turn_expectations": [
+      {
+        "ready": false,
+        "basic_offered": true
+      },
+      {
+        "ready": true,
+        "mode": "BASIC"
+      }
+    ],
+    "expected": {
+      "ready": true,
+      "mode": "BASIC",
+      "min_scenes": 3
+    },
+    "generate_scenario": true
+  },
+  {
+    "id": "decline-basic-choice",
+    "description": "기본 훈련 제안을 거절하면 생성 준비로 처리하지 않음",
+    "inputs": [
+      "지금은 더 이야기하고 싶지 않아요.",
+      "아니요"
+    ],
+    "turn_expectations": [
+      {
+        "ready": false,
+        "basic_offered": true
+      },
+      {
+        "ready": false,
+        "mode": "PERSONALIZED"
+      }
+    ],
+    "expected": {
+      "ready": false
+    },
+    "generate_scenario": false
+  },
+  {
+    "id": "solo-coding-purpose",
+    "description": "구체적인 단독 작업은 지인 이름 없이 활동 맥락으로 준비 가능",
+    "inputs": [
+      "어제 혼자 카페에서 코덱스를 이용해 제주 러닝 여행 웹 서비스를 만들었어요. 러닝 코스를 기록하고 추천하는 기능의 백엔드와 AI 검색을 담당했어요."
+    ],
+    "turn_expectations": [
+      {
+        "ready": true,
+        "mode": "PERSONALIZED"
+      }
+    ],
+    "expected": {
+      "ready": true,
+      "mode": "PERSONALIZED",
+      "min_scenes": 3
+    },
+    "generate_scenario": true
+  }
+]

@@ -1,0 +1,394 @@
+# 금융사기 사례 DB (SIM-005 시나리오 근거 / SIM-006 검증에 사용)
+#
+# - 금융감독원·KISA·정부 부처·지자체가 공개한 주의 안내를 찾아 "우리 말로 짧게 요약"한 것입니다. (원문 문장을 옮기지 않음)
+# - sourceUrl 은 실제로 내용을 확인한 페이지입니다. 일부는 발표 기관 원문이 아니라
+#   금융회사가 게시한 사본이나 언론 보도입니다 (sourceHost 에 표시).
+# - 사례를 추가·수정하면 checkedAt 과 reviewStatus 를 같이 고치세요.
+# - 실존 기관·서비스 이름은 title/source* 칸에만 쓰고, summary·tactics 에는 쓰지 않습니다 (LLM 프롬프트에 들어가기 때문).
+meta:
+  checkedAt: "2026-11-16"
+  reviewStatus: "AI가 공개 자료를 찾아 요약함 - 팀 검토 전"
+
+cases:
+  - id: FC-01
+    riskType: 메신저피싱
+    subtype: 지인·가족 사칭
+    title: 자녀를 사칭해 휴대폰 고장을 핑계로 개인정보·송금을 요구
+    issuer: 금융감독원
+    alertNo: null
+    sourceTitle: "[긴급] 문자 또는 카카오톡 등 메신저를 통해 가족.친구를 사칭하는 보이스피싱에 유의하세요!"
+    sourceHost: 하나은행 보안센터 공지 (금융감독원 안내 내용 게시)
+    sourceDate: "2020-11-18"
+    sourceUrl: "https://www.kebhana.com/cont/prevent/prevent01/1471464_136447.jsp"
+    channel: 문자·메신저
+    impersonated: 자녀 등 가족
+    summary: 자녀인 척 연락해 휴대폰이 고장 나 통화가 안 된다고 하고, 결제나 회원 인증을 대신 해달라며 신분증 사진과 카드 정보를 요구하거나 급한 송금을 부탁한다.
+    tactics: [통화 회피, 급하다는 재촉, 가족에 대한 신뢰 이용, 인증이 안 된다며 원격 앱 설치 유도]
+    requestedActions: [개인정보 제공, 송금, 앱 설치]
+    requestedInfo: [신분증 사진, 카드번호, 비밀번호]
+    redFlags: [휴대폰 고장·분실을 이유로 통화를 피함, 평소와 다른 말투, 가족이 아닌 제3자 계좌로 송금 요청]
+    correctResponse: [원래 알던 번호로 직접 통화해 본인인지 확인한다, 출처를 모르는 앱 설치 요구는 거절한다]
+
+  - id: FC-02
+    riskType: 스미싱
+    subtype: 부고·청첩장 사칭
+    title: 지인을 사칭한 부고·청첩장 문자의 링크로 악성 앱 설치
+    issuer: 금융위원회·금융감독원
+    alertNo: "소비자경보 2024-2호"
+    sourceTitle: 정부부처·유관기관 직원을 사칭한 스미싱 소비자 경보 발령
+    sourceHost: 삼성화재 소비자 안내 (금융당국 보도참고자료 사본 PDF)
+    sourceDate: "2024-01-12"
+    sourceUrl: "https://m.samsungfire.com/download/consumer/ca_d47.pdf"
+    channel: 문자·메신저
+    impersonated: 직장 동료·지인
+    summary: 아는 사람 이름으로 부고나 결혼 소식을 알리는 문자가 오고, 링크를 누르면 악성 앱이 깔려 연락처와 개인정보가 빠져나가 주변 사람에게 같은 문자가 다시 퍼진다.
+    tactics: [지인 이름 도용, 경조사 소식으로 확인 심리 자극]
+    requestedActions: [링크 클릭, 앱 설치]
+    requestedInfo: []
+    redFlags: [출처가 불분명한 링크, 장례식장·예식장 정보를 링크로만 안내]
+    correctResponse: [링크를 누르지 않고 당사자에게 직접 확인한다, 앱은 정식 앱마켓에서만 설치한다]
+
+  - id: FC-03
+    riskType: 스미싱
+    subtype: 택배 사칭
+    title: 명절 전후 택배 배송을 사칭한 문자
+    issuer: 과학기술정보통신부·방송통신위원회·금융위원회·경찰청·KISA·금융감독원
+    alertNo: null
+    sourceTitle: 추석 명절, 스마트폰 해킹(악성앱) 스미싱 문자 주의!
+    sourceHost: 하나은행 게시 (관계부처 합동 보도자료 사본 PDF)
+    sourceDate: "2023-09-21"
+    sourceUrl: "https://image.kebhana.com/cont/download/menu/menu08/notice_1494531.pdf"
+    channel: 문자
+    impersonated: 택배사
+    summary: 선물 배송이 늘어나는 명절 전후에 택배 배송 안내인 척 링크가 든 문자를 보내 악성 앱 설치나 정보 입력으로 이어지게 한다. 정부 집계에서 택배 사칭은 스미싱 신고·탐지에서 가장 큰 비중을 차지한 유형이었다.
+    tactics: [배송 조회 심리 이용, 명절 시기 노림]
+    requestedActions: [링크 클릭, 앱 설치, 개인정보 제공]
+    requestedInfo: [이름, 전화번호]
+    redFlags: [문자 속 인터넷 주소, 모르는 번호로 온 배송 안내]
+    correctResponse: [문자 속 주소나 전화번호를 누르지 않는다, 개인정보·금융정보를 요구하면 상대를 먼저 확인한다]
+
+  - id: FC-04
+    riskType: 스미싱
+    subtype: 택배 사칭
+    title: 배송 지연·주소 재입력을 요구하는 택배 사칭 문자
+    issuer: 방송미디어통신위원회·KISA
+    alertNo: null
+    sourceTitle: 추석 앞두고 미끼문자 주의 당부 (언론 보도)
+    sourceHost: 경북매일 보도
+    sourceDate: "2026-09-17"
+    sourceUrl: "https://kbmaeil.com/article/20260917500185"
+    channel: 문자
+    impersonated: 택배사
+    summary: 배송이 늦어졌다거나 주소를 다시 입력해 달라는 내용으로 링크 접속을 유도한다.
+    tactics: [배송 차질에 대한 불안, 주소 재입력 요구]
+    requestedActions: [링크 클릭, 개인정보 제공]
+    requestedInfo: [이름, 전화번호, 주소]
+    redFlags: [주소를 다시 입력하라는 링크, 배송 문제를 문자 링크로만 해결하라고 함]
+    correctResponse: [문자 링크 대신 택배사 공식 홈페이지나 앱에서 배송 상태를 직접 확인한다]
+
+  - id: FC-05
+    riskType: 대출빙자
+    subtype: 대출 사기
+    title: 저금리 대출 광고로 유인한 뒤 선입금 요구
+    issuer: 금융감독원
+    alertNo: null
+    sourceTitle: 저금리 대출의 유혹, 최근 보이스피싱 피해자 10명중 4명은 대출빙자 사기에 당한다!
+    sourceHost: KDI 경제교육·정보센터 (금융감독원 자료 게시)
+    sourceDate: "2025-05-21"
+    sourceUrl: "https://eiec.kdi.re.kr/policy/materialView.do?num=266809"
+    channel: 인터넷 광고·메신저
+    impersonated: 금융회사 대출 상담원
+    summary: 낮은 금리 대출 광고로 연락처를 남기게 한 뒤 실제 대출처럼 상담과 서류를 진행하고, 신용점수를 올리거나 기존 대출을 갚아야 한다며 먼저 돈을 보내게 한다.
+    tactics: [저금리 미끼, 진짜 같은 상담 절차, 기존 대출 계약 위반이라는 압박]
+    requestedActions: [개인정보 제공, 송금, 앱 설치]
+    requestedInfo: [주민등록번호, 계좌번호]
+    redFlags: [대출 전에 돈을 먼저 보내라고 함, 기존 대출 상환을 개인 계좌로 요구]
+    correctResponse: [선입금 요구는 사기로 보고 중단한다, 금융회사 대표번호로 직접 확인한다]
+
+  - id: FC-06
+    riskType: 대출빙자
+    subtype: 대출 사기
+    title: 이자환급·대환대출 신청을 빙자한 개인정보·상환 요구
+    issuer: 금융감독원
+    alertNo: "소비자경보 2024-9호"
+    sourceTitle: "[소비자경보] 이자환급 대환대출을 미끼로 한 보이스피싱 소비자경보 발령!!!"
+    sourceHost: 하나은행 보안센터 공지 (금융감독원 보도자료 안내)
+    sourceDate: "2024-03-06"
+    sourceUrl: "https://www.kebhana.com/cont/prevent/prevent01/1497717_136447.jsp"
+    channel: 문자
+    impersonated: 금융회사
+    summary: 금융회사를 사칭해 이자를 돌려준다며 신청을 권하고, 신청 과정이라며 개인정보를 요구하거나 기존 대출 상환·추가 대출을 요구한다.
+    tactics: [정책 지원 시기 악용, 환급 혜택 미끼]
+    requestedActions: [개인정보 제공, 송금]
+    requestedInfo: [주민등록번호, 계좌번호]
+    redFlags: [환급을 받으려면 신청하라고 함, 수수료나 기존 대출 상환을 먼저 요구]
+    correctResponse: [별도 신청이 필요한 제도인지 거래 금융회사에 직접 확인한다, 선입금·상환 요구에 응하지 않는다]
+
+  - id: FC-07
+    riskType: 대출빙자
+    subtype: 대출 사기
+    title: 상품권 구매 실적을 쌓으면 대출이 된다며 카드·통장 요구
+    issuer: 금융감독원
+    alertNo: null
+    sourceTitle: "[소비자 경보] “상품권을 사면 대출이 된다?” 100% 보이스피싱 입니다!"
+    sourceHost: 하나은행 보안센터 공지 (금융감독원 보도자료 안내)
+    sourceDate: "2026-09-17"
+    sourceUrl: "https://www.kebhana.com/cont/prevent/prevent01/1528752_136447.jsp"
+    channel: 문자·메신저
+    impersonated: 대출 상담원
+    summary: 신용이 낮은 사람에게 구매 실적을 만들면 대출이 나온다고 속여 체크카드와 통장을 넘겨받는다. 넘겨준 사람은 피해자가 아니라 처벌 대상이 될 수 있다.
+    tactics: [대출이 급한 사정 이용, 실적을 쌓으면 한도가 나온다는 거짓 설명]
+    requestedActions: [개인정보 제공]
+    requestedInfo: [계좌번호, 카드번호, 비밀번호]
+    redFlags: [대출 심사에 물품 구매 실적을 요구, 카드·통장을 맡기라고 함]
+    correctResponse: [카드·통장·비밀번호를 남에게 넘기지 않는다, 이미 넘겼다면 즉시 신고한다]
+
+  - id: FC-08
+    riskType: 기관사칭
+    subtype: 공공기관 사칭
+    title: 정부 지원금(소비쿠폰) 신청 안내를 사칭한 문자
+    issuer: KISA(한국인터넷진흥원)
+    alertNo: null
+    sourceTitle: “민생회복 소비쿠폰 안내 문자에 URL 없어요”…KISA, 디지털 범죄 차단 나선다
+    sourceHost: 보안뉴스 보도
+    sourceDate: "2025-07-17"
+    sourceUrl: "https://m.boannews.com/html/detail.html?idx=138220"
+    channel: 문자
+    impersonated: 정부·지자체·카드사
+    summary: 전 국민 대상 지원금 지급 시기에 맞춰 정부나 카드사인 척 신청 방법과 링크를 담은 문자를 보낸다. 공식 안내 문자에는 인터넷 주소가 들어가지 않는다.
+    tactics: [지원금 지급 시기 노림, 공식 안내처럼 꾸밈]
+    requestedActions: [링크 클릭, 개인정보 제공]
+    requestedInfo: [이름, 주민등록번호, 카드번호]
+    redFlags: [지원금 안내 문자에 링크가 있음, 국외 발신 표시]
+    correctResponse: [링크를 누르지 않고 공식 누리집·앱에서 직접 신청한다, 의심 문자는 스미싱 확인 서비스로 확인한다]
+
+  - id: FC-09
+    riskType: 기관사칭
+    subtype: 공공기관 사칭
+    title: 대학 합격 조회·연말정산 조회를 빙자한 기관 사칭 문자
+    issuer: 금융감독원
+    alertNo: "소비자경보 2022-16호"
+    sourceTitle: 대학입시·연말정산 빙자 보이스피싱 소비자경보
+    sourceHost: 삼성화재 소비자 안내 (금융감독원 자료 사본 PDF)
+    sourceDate: null
+    sourceUrl: "https://www.samsungfire.com/download/consumer/ca_d17.pdf"
+    channel: 문자
+    impersonated: 대학·세무 당국
+    summary: 입시와 연말정산 일정이 몰린 시기에 대학이나 세무 당국인 척 조회·납부 안내 문자를 보내 개인정보를 입력하게 하거나 돈을 이체하게 한다.
+    tactics: [합격·환급에 대한 기대 심리 이용, 기관 명의 사칭]
+    requestedActions: [링크 클릭, 개인정보 제공, 송금]
+    requestedInfo: [주민등록번호, 전화번호]
+    redFlags: [조회하려면 주민등록번호를 입력하라고 함, 등록금·예치금을 문자 안내 계좌로 내라고 함]
+    correctResponse: [기관 공식 누리집에서 직접 조회한다, 문자 링크에 개인정보를 입력하지 않는다]
+
+  - id: FC-10
+    riskType: 투자·가상자산
+    subtype: 투자 리딩방
+    title: 증권사 직원을 사칭한 불법 리딩방과 가짜 주식거래 앱
+    issuer: 금융감독원
+    alertNo: "소비자경보 2026-3호"
+    sourceTitle: 코스피 및 코스닥 열풍 속 불법 리딩방 주의
+    sourceHost: 한국투자증권 게시 (금융감독원 보도자료 사본 PDF)
+    sourceDate: "2026-01-26"
+    sourceUrl: "https://file.koreainvestment.com/updata/namo/코스피및코스닥열풍속불법리딩방기승.pdf"
+    altUrl: "https://www.hankyung.com/article/202601263694i"
+    channel: SNS·단체 채팅방
+    impersonated: 증권사 직원·투자 전문가
+    summary: SNS에서 증권사 직원이나 전문가인 척 고급 정보를 준다며 단체 채팅방으로 끌어들이고, 가짜 주식거래 앱 설치와 입금을 권한다. 처음엔 수익이 난 것처럼 보여 주고 더 큰 돈을 넣게 한 뒤 돌려주지 않는다.
+    tactics: [전문가 사칭, 초기 수익 연출, 고수익·원금 보장 강조]
+    requestedActions: [링크 클릭, 앱 설치, 송금, 개인정보 제공]
+    requestedInfo: [이름, 전화번호, 계좌번호]
+    redFlags: [원금 보장·고수익 강조, 별도 주식거래 앱 설치 요구, 채팅방에서의 투자 권유]
+    correctResponse: [제도권 금융회사인지 공식 조회 서비스로 확인한다, 금융회사 고객센터에 재직 여부를 확인한다]
+
+  - id: FC-11
+    riskType: 투자·가상자산
+    subtype: 투자 리딩방
+    title: 가짜 가상자산 거래소로 유도하는 코인 리딩방
+    issuer: 금융감독원
+    alertNo: "소비자경보 2024-12호"
+    sourceTitle: 가짜 거래소를 이용한 가상자산 투자사기를 조심하세요!
+    sourceHost: 삼성화재 소비자 안내 (금융감독원 보도자료 사본 PDF)
+    sourceDate: "2024-03-20"
+    sourceUrl: "https://m.samsungfire.com/download/consumer/ca_d57.pdf"
+    channel: 메신저 투자방
+    impersonated: 투자방 운영자
+    summary: 투자방에 초대해 조언이나 이벤트를 내세우며 신고되지 않은 가짜 거래소 가입을 권한다. 처음에는 소액 수익이 나는 것처럼 보이게 해 믿게 만든다.
+    tactics: [투자방 초대, 초기 소액 수익 연출, 손실 만회 약속]
+    requestedActions: [링크 클릭, 송금, 개인정보 제공]
+    requestedInfo: [이름, 전화번호, 계좌번호]
+    redFlags: [처음 듣는 거래소 가입 권유, 수익을 보장한다는 말]
+    correctResponse: [신고된 사업자인지 확인하고 아니면 거래하지 않는다, 의심되면 금융당국 신고센터에 알린다]
+
+  - id: FC-12
+    riskType: 투자·가상자산
+    subtype: 투자 리딩방
+    title: 풍수·사주 콘텐츠로 접근한 뒤 가짜 앱으로 투자금 편취
+    issuer: 금융감독원
+    alertNo: null
+    sourceTitle: "[소비자 경보] 풍수‧사주를 미끼로 당신의 재산을 노리는 투자 사기를 주의하세요!"
+    sourceHost: 하나은행 보안센터 공지 (금융감독원 보도자료 안내)
+    sourceDate: "2026-02-23"
+    sourceUrl: "https://www.kebhana.com/cont/prevent/prevent01/1524004_136447.jsp"
+    altUrl: "https://www.fnnews.com/news/202602111853344017"
+    channel: SNS·채팅방
+    impersonated: 운세 상담가·투자 안내자
+    summary: 운세 같은 친숙한 주제로 먼저 가까워진 뒤 자체 제작한 가짜 거래 앱에 소액을 넣게 하고, 수익과 일부 출금을 보여 주며 믿음을 쌓아 큰돈을 넣게 한다.
+    tactics: [친숙한 주제로 접근, 소액 성공 경험 제공, 단계적 증액 유도]
+    requestedActions: [앱 설치, 송금]
+    requestedInfo: [이름, 전화번호]
+    redFlags: [운세·재테크를 엮은 투자 권유, 1대1 채팅방 투자 권유, 출금하려면 수수료·세금을 더 내라고 함]
+    correctResponse: [앱 설치와 입금 권유를 거절한다, 제도권 금융회사인지 확인한다]
+
+  - id: FC-13
+    riskType: 기타
+    subtype: 중고거래 사기
+    title: 안전결제 사이트를 사칭한 가짜 결제 링크
+    issuer: 서울특별시
+    alertNo: null
+    sourceTitle: 안전결제사이트 사칭 사기피해 발생…소비자주의 필요
+    sourceHost: 서울특별시 경제분야 누리집
+    sourceDate: "2017-08-14"
+    sourceUrl: "https://news.seoul.go.kr/economy/?p=83800"
+    altUrl: "https://www.imaeil.com/page/view/2026101600140401394"
+    channel: 중고거래 게시글·메신저·이메일
+    impersonated: 중고거래 상대방
+    summary: 개인 간 거래에서 멀리 있어 직접 만나기 어렵다며 안전거래를 제안하고, 실제 안전결제 사이트와 거의 똑같이 만든 가짜 주소를 보내 돈과 개인정보를 가로챈다.
+    tactics: [직거래 회피, 안전결제라는 말로 안심시킴, 공식 사이트와 닮은 화면]
+    requestedActions: [링크 클릭, 송금, 개인정보 제공]
+    requestedInfo: [이름, 전화번호, 계좌번호]
+    redFlags: [상대가 보낸 결제 링크, 연락처 없이 메신저 아이디만 공개, 플랫폼 밖 대화 유도]
+    correctResponse: [상대가 보낸 링크가 아니라 플랫폼 안의 공식 결제 기능을 쓴다, 결제 전 주소가 공식 도메인인지 확인한다]
+
+  - id: FC-14
+    riskType: 기타
+    subtype: 채용·아르바이트 사기
+    title: 가짜 채용공고 후 화상면접을 핑계로 악성 앱 설치
+    issuer: 금융감독원
+    alertNo: null
+    sourceTitle: "[소비자경보] 2030 청년 구직자 대상 신종 보이스피싱에 주의하세요!!!"
+    sourceHost: 하나은행 새소식 (금융감독원 보도자료 안내)
+    sourceDate: "2024-12-19"
+    sourceUrl: "https://kebhana.com/cont/news/news01/news0101/1505479_118324.jsp"
+    channel: 구인·구직 사이트·메신저
+    impersonated: 채용 담당자
+    summary: 구직 사이트에 가짜 공고를 올리고 지원한 사람에게 화상면접에 필요하다며 앱을 설치하게 한 뒤, 휴대폰을 원격으로 조종해 개인정보와 돈을 빼낸다.
+    tactics: [채용 절차로 위장, 면접 준비라는 명목]
+    requestedActions: [링크 클릭, 앱 설치, 개인정보 제공]
+    requestedInfo: [이름, 전화번호, 신분증 사진]
+    redFlags: [면접용이라며 링크로 앱 설치 요구, 일반적인 채용 절차와 다름]
+    correctResponse: [출처를 알 수 없는 앱은 설치하지 않는다, 회사 공식 연락처로 채용 여부를 확인한다]
+
+  - id: FC-15
+    riskType: 기타
+    subtype: 채용·아르바이트 사기
+    title: 아르바이트를 미끼로 신분증·계좌번호를 받아 범죄에 이용
+    issuer: 금융감독원
+    alertNo: null
+    sourceTitle: “내가 대포통장 주인이라니”…금감원, 소비자경보 발령 (언론 보도)
+    sourceHost: 경기일보 보도
+    sourceDate: "2020-07-06"
+    sourceUrl: "https://kyeonggi.com/article/202007061131162"
+    channel: 아르바이트 사이트·메신저
+    impersonated: 고용주
+    summary: 구매대행이나 환전 같은 일이라고 소개하며 채용 전에 신분증과 계좌번호를 요구하고, 그 계좌로 들어온 돈을 다른 곳으로 보내거나 찾아서 전달하라고 시킨다. 응하면 본인이 처벌받을 수 있다.
+    tactics: [쉬운 고수익 일자리 제안, 채용 절차인 척 정보 요구]
+    requestedActions: [개인정보 제공, 송금]
+    requestedInfo: [신분증 사진, 계좌번호]
+    redFlags: [정식 채용 전에 신분증·계좌번호 요구, 내 계좌로 받은 돈을 옮겨 달라는 업무]
+    correctResponse: [정식 채용 전 신분증·계좌번호 요구는 거절한다, 모르는 돈이 들어오면 옮기지 말고 은행에 알린다]
+
+  - id: FC-16
+    riskType: 기관사칭
+    subtype: 카드 배송 사칭(기관 릴레이 사칭)
+    title: 신청하지 않은 카드 배송 연락으로 시작해 금융당국·수사기관을 차례로 사칭
+    issuer: 금융감독원
+    alertNo: "소비자경보 2025-1호"
+    sourceTitle: 카드배송 사칭 보이스피싱 증가, 소비자경보 상향 (주의 → 경고)
+    sourceHost: 삼성화재 소비자 안내 (금융감독원 보도자료 사본 PDF)
+    sourceDate: "2025-02-13"
+    sourceUrl: "https://www.samsungfire.com/download/consumer/ca_d84.pdf"
+    channel: 문자·메신저 (원래 수법은 전화)
+    impersonated: 카드 배송원 → 가짜 고객센터 → 금융당국·수사기관 직원
+    summary: 신청한 적 없는 카드가 배송 중이라며 연락해 알려준 번호의 가짜 고객센터로 연결하고, 명의가 도용됐다며 보안 점검을 핑계로 앱을 깔게 한 뒤 다른 사람이 수사기관이라며 이어받아 자산 보호 명목으로 돈을 옮기게 한다.
+    tactics: [신청하지 않은 카드라는 불안 자극, 사기범이 알려준 번호로 확인 유도, 담당자를 바꿔 가며 신뢰 형성, 범죄 연루 공포, 보안 점검 앱 설치, 비밀 유지 요구]
+    requestedActions: [대화 지속, 앱 설치, 개인정보 제공, 송금]
+    requestedInfo: [이름, 생년월일, 계좌번호]
+    redFlags: [신청하지 않은 카드 배송 연락, 상대가 알려준 번호로만 확인하게 함, 기관이 앱 설치나 자금 이체를 요구함, 누구에게도 알리지 말라고 함]
+    correctResponse: [카드사 대표번호를 직접 찾아 확인한다, 공공기관과 금융회사는 앱 설치나 이체를 요구하지 않는다는 것을 기억한다, 대화를 끊고 가족에게 알린다]
+
+  - id: FC-17
+    riskType: 스미싱
+    subtype: 보상금·환급 안내 사칭
+    title: 대형 개인정보 유출 사고를 악용한 피해보상·환급 신청 문자
+    issuer: 한국인터넷진흥원·과학기술정보통신부
+    alertNo: null
+    sourceTitle: 개인정보 유출 사고 이슈를 악용한 피해보상 사칭 전자금융사기(피싱) 주의
+    sourceHost: 한국인터넷진흥원 보도자료
+    sourceDate: "2025-12-10"
+    sourceUrl: "https://www.kisa.or.kr/402/form?postSeq=2563"
+    channel: 문자·메신저
+    impersonated: 유출 사고 업체·보상 담당 기관
+    summary: 최근 뉴스가 된 개인정보 유출 사고를 언급하며 당신 정보도 유출됐다고 알리고, 정부 지침에 따른 피해보상금이 정해졌다며 기한 안에 링크에서 신청하라고 한 뒤 비밀 대화방으로 옮겨 앱 설치와 개인정보 입력을 유도한다.
+    tactics: [실제 뉴스 이슈 편승, 정부 지침을 내세운 권위, 구체적인 보상금 액수로 이득 자극, 신청 기한 압박, 별도 대화방으로 유도]
+    requestedActions: [링크 클릭, 개인정보 제공, 앱 설치]
+    requestedInfo: [이름, 휴대폰 번호, 계좌번호]
+    redFlags: [문자 링크로 보상 신청을 받음, 보상금 액수를 먼저 제시, 메신저 비밀 대화로 신청하라고 함]
+    correctResponse: [링크를 누르지 않고 해당 업체 공식 앱·홈페이지 공지를 직접 확인한다, 보상을 이유로 계좌번호나 앱 설치를 요구하면 대화를 끊는다]
+
+  - id: FC-18
+    riskType: 스미싱
+    subtype: 금융앱 업데이트·본인인증 사칭
+    title: 전산 장애를 핑계로 금융앱 재설치·임시 본인확인을 요구하는 문자
+    issuer: 금융위원회·금융감독원
+    alertNo: "소비자경보 (주의)"
+    sourceTitle: 정부 행정정보시스템 장애와 관련한 금융회사 사칭 스미싱을 주의하세요
+    sourceHost: 금융위원회 보도자료
+    sourceDate: "2025-09-30"
+    sourceUrl: "https://www.fsc.go.kr/po010101/85418"
+    channel: 문자
+    impersonated: 은행 고객센터
+    summary: 큰 전산 장애로 은행 앱을 쓸 수 없다며 최신 앱을 내려받으라는 파일 링크나 임시 본인확인 링크를 보내고, 신분증 사진과 금융정보를 입력하게 한다.
+    tactics: [실제 장애 뉴스 편승, 은행 사칭 권위, 앱을 못 쓴다는 불편 자극, 임시 절차라는 핑계]
+    requestedActions: [앱 설치, 링크 클릭, 개인정보 제공]
+    requestedInfo: [이름, 주민등록번호, 신분증 사진]
+    redFlags: [문자 링크로 금융앱 설치 파일을 보냄, 임시 홈페이지에서 정보 입력을 요구]
+    correctResponse: [앱은 정식 앱 마켓에서만 설치한다, 금융회사 공식 앱·대표번호로 장애 여부를 직접 확인한다]
+
+  - id: FC-19
+    riskType: 대출빙자
+    subtype: 대출 사기
+    title: 금융권 개인정보 유출 사고를 틈탄 피해보상·대출 안내 사기
+    issuer: 금융위원회·금융감독원
+    alertNo: "소비자경보 (주의)"
+    sourceTitle: 최근 금융권 개인정보 유출사고에 따른 보이스피싱·스미싱 등 피해에 주의하세요
+    sourceHost: KDI 경제교육·정보센터 (금융위원회 보도자료 게시)
+    sourceDate: "2026-10-06"
+    sourceUrl: "https://eiec.kdi.re.kr/policy/materialView.do?num=287844"
+    channel: 문자·메신저
+    impersonated: 금융회사 상담원·보상 담당자
+    summary: 금융권 개인정보 유출 사고를 언급하며 피해보상이나 맞춤 대출 상담을 해 주겠다고 접근하고, 상대의 이름이나 대출 정보를 알고 있는 척하며 선입금·앱 설치·기존 대출 상환을 요구한다.
+    tactics: [실제 유출 사고 편승, 개인정보를 알고 있는 척하며 신뢰 형성, 피해보상·저금리 대출 미끼, 선입금 요구, 앱 설치 유도]
+    requestedActions: [대화 지속, 개인정보 제공, 앱 설치, 송금]
+    requestedInfo: [이름, 소득, 계좌번호]
+    redFlags: [보상이나 대출을 이유로 먼저 돈을 보내라고 함, 기존 대출을 특정 계좌로 상환하라고 함, 문자 링크로 앱 설치를 요구]
+    correctResponse: [해당 금융회사 공식 앱이나 대표번호로 직접 확인한다, 선입금이나 앱 설치 요구는 거절한다]
+
+  - id: FC-20
+    riskType: 스미싱
+    subtype: 보상금·환급 안내 사칭
+    title: 가상자산 거래소 오지급 사고 보상 안내를 사칭한 문자
+    issuer: 금융위원회·금융감독원
+    alertNo: "소비자경보 2026-7호"
+    sourceTitle: 오지급 보상 안내의 URL링크는 사기입니다 (오지급 사고 관련 스미싱 소비자경보 발령)
+    sourceHost: 금융위원회 보도참고자료
+    sourceDate: "2026-02-12"
+    sourceUrl: "https://www.fsc.go.kr/no010101/86271"
+    channel: 문자
+    impersonated: 가상자산 거래소 고객센터
+    summary: 거래소 전산 사고로 보상금이 지급된다며 링크를 보내 악성 앱을 깔게 하고, 이후 고객센터 번호로 위장해 전화를 걸거나 피해자가 신고하려는 전화까지 가로챈다.
+    tactics: [화제가 된 사고 편승, 보상금 미끼, 고객센터 사칭, 링크로 악성 앱 설치]
+    requestedActions: [링크 클릭, 앱 설치, 개인정보 제공]
+    requestedInfo: [이름, 휴대폰 번호]
+    redFlags: [보상 안내 문자에 링크가 있음, 보상이나 피해사실 조회 같은 단어, 문자에 적힌 고객센터 번호로 연락하라고 함]
+    correctResponse: [링크를 누르지 않는다, 공식 앱이나 공식 홈페이지의 대표번호로만 확인한다]

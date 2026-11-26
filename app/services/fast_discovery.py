@@ -1,0 +1,537 @@
+"""Discover context, verify readiness before completion, then reuse the approved plan."""
+import json
+import logging
+import time
+from pathlib import Path
+
+from pydantic import TypeAdapter, ValidationError
+
+from app import fallback
+from app.api_errors import AiApiError
+from app.config import settings
+from app.guard.sensitive import mask_sensitive
+from app.llm.llm_client import LLMError, generation_budget
+from app.llm.discovery_client import generate_json
+from app.schemas.fast_discovery import ConversationDecision, FactUpdate, EvidenceMessage
+from app.services.scenario_planner import mask_input
+from app.services import scenario_planner
+from app.services import prepared_scenario
+from app.services.prompt_templates import load_prompt
+from app.services.readiness import CONTEXT_TOPICS, basis_supports_context, interaction_candidate
+
+logger = logging.getLogger(__name__)
+PROMPT = Path(__file__).resolve().parents[1] / "prompts" / "discovery_brief.md"
+REVIEW_PROMPT = PROMPT.with_name("discovery_question_review.md")
+MAX_MESSAGES = 20
+MAX_EVIDENCE_CHARS = 9000
+
+# General question purposes, not activity-specific scenario branches.
+QUESTIONS = {
+    "ACTIVITY_DETAIL": "말씀하신 활동에서 구체적으로 어떤 일을 하고 계셨어요?",
+    "TIME": "그 일이 있었던 건 언제쯤인가요? 대략적인 시점이면 괜찮아요.",
+    "ACTIVITY": "그때 어떤 일을 하셨어요?",
+    "PERSON_NAME": "그분은 뭐라고 부르면 될까요? 이름이나 별명으로 알려 주세요.",
+    "PEOPLE": "혼자 하셨나요, 다른 사람과 함께하셨나요?",
+    "PURPOSE": "그 활동이나 작업으로 하려던 일은 무엇이었나요?",
+    "ACCESS": "그 서비스는 어떤 경로로 이용하셨어요?",
+    "INTERACTION": "직원이나 다른 사람과 주고받은 이야기가 있었나요?",
+    "TRANSACTION": "결제나 예약은 직접 하셨나요?",
+    "SERVICE": "어떤 서비스나 업체를 이용하셨어요?",
+    "SETTING": "어느 장소나 상황에서 있었던 일인가요?",
+    "ROLE": "그 일에서 본인이나 상대가 맡은 일은 무엇이었나요?",
+}
+CLARIFICATIONS = {
+    "ACTIVITY_DETAIL": "그때 하던 일의 내용이나 목적을 조금 더 알려주실 수 있나요?",
+    "TIME": "방문하거나 이용한 시점을 대략 기억하시나요?",
+    "ACTIVITY": "그곳에서 실제로 어떤 일을 했는지 알려 주시겠어요?",
+    "SETTING": "그 일이 있었던 장소나 상황을 조금 더 알려 주시겠어요?",
+    "ROLE": "말씀하신 작업에서 직접 맡으신 부분을 알려 주시겠어요?",
+    "PEOPLE": "그분과는 어떤 관계인가요?",
+    "PERSON_NAME": "그분을 부르는 호칭이나 별명이 있나요?",
+    "PURPOSE": "그 일정이나 일을 시작하게 된 계기가 있었나요?",
+    "ACCESS": "이용 신청이나 계정 관리는 누가 하셨나요?",
+    "INTERACTION": "상대와 정하거나 부탁받은 일이 있었나요?",
+    "TRANSACTION": "누가 계산했고, 나중에 정산하기로 한 약속이 있었나요?",
+    "SERVICE": "이용한 서비스나 업체 이름은 무엇인가요?",
+}
+
+
+def _supported(update, messages):
+    source = next((message["text"] for message in messages if message["turn"] == update.turn), "")
+    return " ".join(update.quote.split()) in " ".join(source.split())
+
+
+def load_topics(raw, messages):
+    if not isinstance(raw, dict) or len(raw) > len(QUESTIONS):
+        raise ValueError("Invalid known topics")
+    result = {}
+    for topic, value in raw.items():
+        if not isinstance(value, dict):
+            raise ValueError("Invalid topic value")
+        fact = FactUpdate.model_validate({**value, "topic": topic})
+        if _supported(fact, messages):
+            result[topic] = fact.model_dump(exclude={"topic"})
+    return result
+
+
+
+def load_evidence(raw):
+    if not isinstance(raw, list) or not 1 <= len(raw) <= MAX_MESSAGES:
+        raise ValueError("Invalid discovery evidence")
+    messages = TypeAdapter(list[EvidenceMessage]).validate_python(raw)
+    if len({message.turn for message in messages}) != len(messages):
+        raise ValueError("Duplicate evidence turn")
+    result = [{"turn": message.turn, "text": mask_input(message.text)} for message in messages]
+    if len(json.dumps(result, ensure_ascii=False)) > MAX_EVIDENCE_CHARS:
+        raise ValueError("Discovery evidence too large")
+    return sorted(result, key=lambda message: message["turn"])
+
+
+def _journal(history, known):
+    users = [message for message in history if message["role"] == "user"]
+    previous = known.get("intakeTurn", 0)
+    previous = previous if type(previous) is int and 0 <= previous < 1000000 else 0
+    turn = max(previous + 1, len(users))
+    prior = load_evidence(known["discoveryEvidence"]) if known.get("discoveryEvidence") else []
+    # Migration: retain previously verified quotations when starting from an older state.
+    if not prior and isinstance(known.get("contextGraph"), dict):
+        prior = [{"turn": item["sourceTurn"], "text": mask_input(item["quote"])}
+                 for item in known["contextGraph"].get("evidence", [])]
+    merged = {item["turn"]: item for item in prior}
+    for index, message in enumerate(users):
+        number = turn - len(users) + index + 1
+        merged[number] = {"turn": number, "text": mask_input(message["text"])}
+    messages = sorted(merged.values(), key=lambda item: item["turn"])
+    # Preserve the sources of active facts when the raw conversation is compacted.
+    raw_topics = known.get("knownTopics", {})
+    protected = ({value.get("turn") for value in raw_topics.values() if isinstance(value, dict)} if isinstance(raw_topics, dict) else set()) | {turn}
+    while len(messages) > MAX_MESSAGES or (len(messages) > 1 and len(json.dumps(messages, ensure_ascii=False)) > MAX_EVIDENCE_CHARS):
+        victim = next((index for index, item in enumerate(messages) if item["turn"] not in protected), 0)
+        messages.pop(victim)
+    return load_evidence(messages), turn
+
+
+def scenario_question(text):
+    from app.guard.scenario_guard import PHONE_PATTERN, URL_PATTERN
+    text = " ".join(text.split())
+    if URL_PATTERN.search(text) or PHONE_PATTERN.search(text) or text.count("?") > 1:
+        return ""
+    return mask_input(text)
+
+
+def _available_topics(topics, question_history):
+    """One initial question and at most one clarification for a partial answer."""
+    available = []
+    for topic in QUESTIONS:
+        fact = topics.get(topic, {})
+        count = sum(item["topic"] == topic for item in question_history)
+        if (not fact and count == 0) or (fact.get("status") == "PARTIAL" and count < 2):
+            available.append(topic)
+    if topics.get("ACTIVITY", {}).get("status") != "KNOWN":
+        return ["ACTIVITY"] if "ACTIVITY" in available else []
+    # Names are asked only when a person is the chosen source of personalization.
+    return available
+
+
+def _exploration(topics, question_history):
+    """Expose open context routes; a declined social route closes only that route."""
+    available = _available_topics(topics, question_history)
+    routes = {"ACTIVITY_DETAIL", "SETTING", "SERVICE", "TIME", "ACCESS", "PURPOSE", "INTERACTION", "TRANSACTION", "ROLE"}
+    return {"humanInteractionRequired": False,
+            "activityDetailKnown": topics.get("ACTIVITY_DETAIL", {}).get("status") == "KNOWN",
+            "openContextTopics": [topic for topic in available if topic in routes],
+            "closedTopics": [topic for topic, value in topics.items()
+                             if value.get("status") in {"DECLINED", "NOT_APPLICABLE"}],
+            "knownTopics": [topic for topic, value in topics.items() if value.get("status") == "KNOWN"]}
+
+
+def _requirements(decision, topics=None):
+    satisfied = {item.topic for item in decision.questionAssessments if item.status in {"ANSWERED", "UNNECESSARY"} or item.necessity == "OPTIONAL"}
+    required = [topic for topic in dict.fromkeys(decision.requiredTopics) if topic not in satisfied]
+    # An identity already marked incomplete cannot disappear behind OTHER readiness.
+    if decision.personalizationTarget == "OTHER" and (topics or {}).get("PERSON_NAME", {}).get("status") == "PARTIAL":
+        required = list(dict.fromkeys(["PERSON_NAME", *required]))
+    if decision.personalizationTarget == "PERSON":
+        required = ["PERSON_NAME", "PEOPLE", *[topic for topic in required if topic not in {"PERSON_NAME", "PEOPLE"}]]
+    if decision.personalizationTarget == "SERVICE" and "SERVICE" not in required:
+        required.append("SERVICE")
+    return required
+
+
+def _is_resolved(topic, topics):
+    status = topics.get(topic, {}).get("status")
+    return status == "KNOWN" or topic in {"PERSON_NAME", "SERVICE", "TIME", "ACCESS"} and status == "DECLINED"
+
+
+def _ready(topics, decision):
+    details = [value for topic, value in topics.items() if topic in CONTEXT_TOPICS and value["status"] == "KNOWN"]
+    basis = decision.readinessBasis
+    anchored = basis_supports_context(basis, topics)
+    ready = (anchored and decision.personalizationTarget != "UNDECIDED"
+             and topics.get("ACTIVITY", {}).get("status") == "KNOWN" and bool(details)
+             and all(_is_resolved(topic, topics) for topic in _requirements(decision, topics)))
+    return bool(ready), details
+
+
+
+def _can_offer_basic(topics, question_history, *, stop_requested=False, recovery_count=0):
+    if stop_requested or topics.get("ACTIVITY", {}).get("status") == "DECLINED":
+        return True
+    followups = [item for item in question_history if item.get("topic") != "ACTIVITY"]
+    struggled = any(topics.get(item.get("topic"), {}).get("status") in
+                    {"PARTIAL", "DECLINED", "NOT_APPLICABLE"} for item in followups)
+    # Running out of model suggestions is not evidence that the user cannot explain.
+    exhausted = bool(question_history) and not _available_topics(topics, question_history)
+    return exhausted or len(followups) >= 2 and struggled or recovery_count >= 2
+
+
+def _recover_context_question(previous_questions):
+    """Invite context without manufacturing an unanswered fact or domain requirement."""
+    questions = (
+        "말씀하신 일에서 기억나는 상황을 조금 더 이야기해 주시겠어요?",
+        "그때 직접 하신 일이나 기억에 남는 점 중 편한 내용을 더 알려주시겠어요?",
+    )
+    return next((question for question in questions if question not in previous_questions), None)
+
+
+def _select_question(topics, question_history, decision, history):
+    """Allow a factual opening question; check necessity for later detail questions."""
+    if decision.stopRequested:
+        return None
+    target = decision.nextTopic
+    available = _available_topics(topics, question_history)
+    if topics.get("ACTIVITY", {}).get("status") != "KNOWN" and "ACTIVITY" in available:
+        # A topic preference is not an experience. Elicit the first fact without
+        # requiring a scenario-specific rationale or another model call.
+        previous = {item.get("question") for item in question_history}
+        previous.update(message["text"] for message in history if message["role"] == "ai")
+        proposed = scenario_question(decision.nextQuestion) if target == "ACTIVITY" and decision.nextQuestion.strip() else ""
+        default = (CLARIFICATIONS["ACTIVITY"] if topics.get("ACTIVITY") else
+                   QUESTIONS["ACTIVITY"] if topics else "그 주제와 관련해 최근에 어떤 일이 있었나요?")
+        question = proposed or default
+        if question in previous:
+            return None
+        decision.requiredTopics = ["ACTIVITY"]
+        decision.personalizationTarget = "UNDECIDED"
+        decision.contextSufficient = False
+        decision.readinessBasis = None
+        return "ACTIVITY", question
+    # A readiness claim must not skip an explicitly required, still answerable gap.
+    if decision.contextSufficient and target is None:
+        target = next((topic for topic in _requirements(decision, topics) if topic in available and not _is_resolved(topic, topics)), target)
+    if target not in available or target not in _requirements(decision, topics):
+        return None
+    if (target == "PERSON_NAME" and decision.personalizationTarget != "PERSON"
+            and not (decision.personalizationTarget == "OTHER" and topics.get("PERSON_NAME", {}).get("status") == "PARTIAL")):
+        return None
+    assessment = next((item for item in decision.questionAssessments if item.topic == target), None)
+    if assessment is None or assessment.status != "MISSING":
+        return None
+    previous = {item.get("question") for item in question_history}
+    previous.update(message["text"] for message in history if message["role"] == "ai")
+    proposed = scenario_question(decision.nextQuestion) if target == decision.nextTopic and decision.nextQuestion.strip() else ""
+    question = proposed or (CLARIFICATIONS[target] if topics.get(target, {}).get("status") == "PARTIAL" else QUESTIONS[target])
+    if question in previous:
+        return None
+    return target, question
+
+
+def _apply_updates(topics, decision, messages):
+    for update in decision.updates:
+        if not _supported(update, messages):
+            raise ValueError("Unstated contextual detail")
+        topics[update.topic] = update.model_dump(exclude={"topic"})
+    # A name gap explicitly selects a person; do not drop it behind UNDECIDED.
+    if (decision.personalizationTarget == "UNDECIDED" and "PERSON_NAME" in decision.requiredTopics
+            and any(item.topic == "PERSON_NAME" and item.status == "MISSING" for item in decision.questionAssessments)):
+        decision.personalizationTarget = "PERSON"
+
+
+def run_discovery_turn(session_id, history, known_facts=None):
+    # Counts are decision requests, not provider transport retries. No user text/IDs.
+    stats = {"decision_calls": 0, "question_review_calls": 0, "plan_ms": 0}
+    started = time.perf_counter()
+    try:
+        with generation_budget(settings.discovery_total_timeout_seconds):
+            return _run_discovery_turn(session_id, history, known_facts, stats=stats)
+    finally:
+        logger.info("Discovery timing: elapsed_ms=%d decision_calls=%d question_review_calls=%d plan_ms=%d",
+                    round((time.perf_counter() - started) * 1000), stats["decision_calls"],
+                    stats["question_review_calls"], stats["plan_ms"])
+
+
+def _run_discovery_turn(session_id, history, known_facts=None, *, stats=None):
+    stats = stats if stats is not None else {"decision_calls": 0, "question_review_calls": 0, "plan_ms": 0}
+    if not history:
+        return {"state": {}, "next_question": fallback.FIRST_QUESTION, "done": False, "fallback_used": False}
+    if history[-1]["role"] != "user":
+        raise ValueError("Last message must be a user answer")
+    try:
+        known = known_facts or {}
+        messages, turn = _journal(history, known)
+        topics = load_topics(known.get("knownTopics", {}), messages)
+        question_history = known.get("questionHistory", [])
+        if not isinstance(question_history, list):
+            raise ValueError("Invalid question history")
+        question_history = [item for item in question_history if isinstance(item, dict)
+                            and item.get("topic") in QUESTIONS and type(item.get("afterTurn")) is int][-20:]
+        from app.services.basic_training import OFFER, REMINDER, MORE, READY, choice
+        if known.get("basicScenarioOffered") is True or known.get("intakePaused") is True:
+            selected_choice = choice(history[-1]["text"], allow_affirmative=known.get("basicConsentPending") is True)
+            if selected_choice in {"BASIC", "MORE", "DECLINE"}:
+                state = {key: value for key, value in known.items() if key not in
+                         {"canGenerateScenario", "readinessEvidence", "basicScenarioSelection", "scenarioMode"}}
+                state.update(intakeTurn=turn, discoveryEvidence=messages, discoveryReady=False,
+                             basicScenarioOffered=True, basicConsentPending=False, intakePaused=True,
+                             scenarioMode="PERSONALIZED", basicScenarioSelection=None, readinessEvidence=None,
+                             questionAssessments=[], questionNeedReview={"performed": False})
+                if selected_choice == "BASIC":
+                    from app.services.scenario_retrieval import basic_pattern_selection
+                    trace = basic_pattern_selection(" ".join(item["text"] for item in messages[:-1]))
+                    state.update(discoveryReady=True, scenarioMode="BASIC", basicScenarioOffered=False,
+                        intakePaused=False, basicScenarioSelection={"caseId": trace["patterns"][0]["id"],
+                            "consentTurn": turn, "selectionReason": trace["status"], "corpusHash": trace["corpusHash"]})
+                return {"state": state, "next_question": READY if selected_choice == "BASIC" else MORE,
+                        "done": selected_choice == "BASIC", "fallback_used": False}
+        recovery_questions = known.get("contextRecoveryQuestions", [])
+        recovery_questions = [item for item in recovery_questions if isinstance(item, str)][:2] if isinstance(recovery_questions, list) else []
+        targets = _available_topics(topics, question_history)
+        previous_topics = json.dumps(topics, sort_keys=True, ensure_ascii=False)
+        prompt = load_prompt(PROMPT)
+        payload = {"messages": messages, "knownTopics": topics, "exploration": _exploration(topics, question_history),
+                   "questionHistory": question_history, "questionTargets": targets,
+                   "previousRequirements": known.get("intakeRequirements", {}),
+                   "basicOfferAllowed": _can_offer_basic(topics, question_history, recovery_count=len(recovery_questions)),
+                   "previousQuestions": [mask_input(message["text"]) for message in history if message["role"] == "ai"][-5:]}
+
+        corrections_left = 1
+        question_review_performed = False
+        def decide(content, *, review=False):
+            nonlocal corrections_left, question_review_performed
+            content = dict(content)
+            retained_updates = {}
+            retained_focus_change = False
+            last_valid_decision = None
+            while True:
+                try:
+                    stats["decision_calls"] += 1
+                    if review:
+                        question_review_performed = True
+                        stats["question_review_calls"] += 1
+                    raw = generate_json(load_prompt(REVIEW_PROMPT) if review else prompt,
+                                        json.dumps(content, ensure_ascii=False, separators=(",", ":")), max_tokens=1600, timeout=settings.discovery_timeout_seconds, attempts=2,
+                                        reasoning_effort=settings.discovery_reasoning_effort or None, reuse_connection=True,
+                                        model=getattr(settings, "discovery_model", "") or None, cache=True)
+                    updates = raw.get("updates", [])
+                    has_activity = (topics.get("ACTIVITY", {}).get("status") == "KNOWN"
+                                    or "ACTIVITY" in retained_updates and retained_updates["ACTIVITY"].status == "KNOWN") or any(
+                        isinstance(item, dict) and item.get("topic") == "ACTIVITY" and item.get("status", "KNOWN") == "KNOWN"
+                        for item in (updates if isinstance(updates, list) else []))
+                    if not has_activity:
+                        # Initial factual exploration has no plan-specific question
+                        # justification yet. Do not require or persist that metadata.
+                        raw = {**raw, "questionAssessments": []}
+                    result = ConversationDecision.model_validate(raw)
+                    if "questionCorrection" in content:
+                        if review and result.focusChanged:
+                            raise ValueError("Question review cannot reset the user's focus")
+                        result.updates = list({**retained_updates, **{item.topic: item for item in result.updates}}.values())
+                        if result.focusChanged and not retained_focus_change:
+                            logger.warning("Ignored focus reset during question correction")
+                        result.focusChanged = retained_focus_change
+                    if any(not _supported(update, messages) for update in result.updates):
+                        raise ValueError("Unstated contextual detail")
+                    if result.readinessBasis and any(not _supported(quote, messages) for quote in result.readinessBasis.evidence):
+                        raise ValueError("Unstated readiness basis")
+                    assessment_topics = [item.topic for item in result.questionAssessments]
+                    if len(assessment_topics) != len(set(assessment_topics)):
+                        raise ValueError("Duplicate question assessment")
+                    if any(not _supported(quote, messages) for item in result.questionAssessments for quote in item.evidence):
+                        raise ValueError("Unstated question justification")
+                    prospective = {} if result.focusChanged else dict(topics)
+                    prospective_history = [] if result.focusChanged else question_history
+                    _apply_updates(prospective, result, messages)
+                    # Reuse confirmed interaction/identity before spending a repair call.
+                    # This is only a candidate; independent plan verification still follows.
+                    if (not result.stopRequested and result.readinessBasis is None
+                            and content.get("mode") != "PLAN_CLARIFICATION"):
+                        candidate = interaction_candidate(prospective, result.personalizationTarget)
+                        gaps = [topic for topic in _requirements(result, prospective)
+                                if not _is_resolved(topic, prospective)]
+                        if candidate and all(topic == "ACCESS" for topic in gaps):
+                            result.readinessBasis = candidate
+                            result.requiredTopics = [topic for topic in _requirements(result, prospective)
+                                                     if _is_resolved(topic, prospective)]
+                    will_be_ready, _ = _ready(prospective, result)
+                    if content.get("mode") == "PLAN_CLARIFICATION" and any(
+                            item.get("code") == "INSUFFICIENT_CONTEXT" for item in content.get("planningIssues", [])):
+                        will_be_ready = False
+                    already_paused = (known.get("intakePaused") is True and not result.focusChanged
+                                      and json.dumps(prospective, sort_keys=True, ensure_ascii=False) == previous_topics)
+                    can_end = _can_offer_basic(prospective, prospective_history,
+                        stop_requested=result.stopRequested, recovery_count=len(recovery_questions))
+                    requires_question = not will_be_ready and not can_end and not already_paused
+                    selected_question = None if will_be_ready else _select_question(prospective, prospective_history, result, history)
+                    has_question = bool(result.nextTopic and result.nextQuestion.strip() and selected_question
+                                        and selected_question[0] == result.nextTopic)
+                    needs_reassessment = (not will_be_ready and selected_question is None
+                        and not result.stopRequested and not already_paused
+                        and prospective.get("ACTIVITY", {}).get("status") == "KNOWN"
+                        and content.get("mode") not in {"PLAN_CLARIFICATION", "REVIEW_QUESTION_NEED"})
+                    if (requires_question and not has_question) or needs_reassessment:
+                        if corrections_left:
+                            corrections_left -= 1
+                            retained_updates = {item.topic: item for item in result.updates}
+                            retained_focus_change = result.focusChanged
+                            last_valid_decision = result.model_copy(deep=True)
+                            previous_required = known.get("intakeRequirements", {}).get("topics", [])
+                            previous_resolved = bool(previous_required) and all(
+                                _is_resolved(topic, prospective) for topic in previous_required)
+                            # Correct and independently review a newly introduced need in
+                            # one request. Do not run the same review again after this.
+                            if (previous_resolved and not result.focusChanged
+                                    and content.get("mode") != "PLAN_CLARIFICATION"):
+                                review = True
+                                content.update(mode="REVIEW_QUESTION_NEED", proposedDecision=result.model_dump(),
+                                               proposedQuestion=result.nextQuestion)
+                            elif content.get("mode") not in {"PLAN_CLARIFICATION", "REVIEW_QUESTION_NEED"}:
+                                content["mode"] = "REASSESS"
+                            content.update(knownTopics=prospective,
+                                exploration=_exploration(prospective, prospective_history),
+                                questionHistory=prospective_history,
+                                questionTargets=_available_topics(prospective, prospective_history))
+                            content["questionRequired"] = requires_question
+                            content["questionCorrection"] = {
+                                "reason": "NEXT_QUESTION_REQUIRED" if requires_question else "REASSESS_EXISTING_CONTEXT",
+                                "allowedTopics": _available_topics(prospective, prospective_history),
+                                "proposedDecision": result.model_dump(),
+                                "instruction": "미확인 정보 하나를 질문하세요. 기존 답·거절은 다시 묻지 말고 nextTopic을 requiredTopics에 넣어 nextQuestion과 MISSING 사유를 출력하세요. 충분하면 원문 근거의 readinessBasis를 반환하세요. 검증된 updates는 유지하세요."}
+                            continue
+                        # An uncooperative model is not the user's inability to explain.
+                        # Keep validated facts and let the bounded conversation fallback ask.
+                    return result
+                except (ValidationError, ValueError) as error:
+                    if isinstance(error, ValidationError):
+                        fields = [".".join(map(str, item["loc"])) + ":" + item["type"]
+                                  for item in error.errors(include_input=False)][:6]
+                        logger.warning("Discovery decision validation rejected: fields=%s", fields)
+                    if not corrections_left:
+                        if "questionCorrection" in content and last_valid_decision is not None and not review:
+                            return last_valid_decision
+                        raise
+                    corrections_left -= 1
+                    content["schemaErrors"] = ([{"path": ".".join(map(str, item["loc"])), "type": item["type"]} for item in error.errors()] if isinstance(error, ValidationError) else [{"path": "questionAssessments" if "question" in str(error).lower() else "updates.quote",
+                        "type": "source_or_question_contract_mismatch"}])
+                    content["formatCorrection"] = "schemaErrors의 각 오류를 수정하세요. updates는 최대 12개, quote는 180자 이하입니다. 이미 knownTopics에 있는 사실을 반복 출력하지 마세요. 사용자 원문에서 연속된 짧은 부분을 그대로 quote에 복사하고 해당 turn을 사용하세요. 어미·조사·띄어쓰기를 고치거나 인용 안에 생략표시를 넣지 마세요. 이름/호칭도 인용 안의 값이어야 합니다. name은 PERSON_NAME=KNOWN일 때만 쓰고 다른 updates에는 넣지 마세요. 사실을 추가하지 마세요. questionAssessments의 MISSING에는 missingDetail과 scenarioImpact가 필요하고 ANSWERED에는 정확한 기존 사용자 인용 evidence가 필요합니다. 중복 topic을 넣지 마세요."
+
+
+        decision = decide(payload)
+        if decision.focusChanged:
+            topics, question_history, recovery_questions = {}, [], []
+        _apply_updates(topics, decision, messages)
+        payload["basicOfferAllowed"] = _can_offer_basic(topics, question_history, stop_requested=decision.stopRequested, recovery_count=len(recovery_questions))
+        ready, details = _ready(topics, decision)
+        selected = None if ready else _select_question(topics, question_history, decision, history)
+        unchanged_pause = (known.get("intakePaused") is True and not decision.focusChanged
+                           and json.dumps(topics, sort_keys=True, ensure_ascii=False) == previous_topics)
+        previous_required = known.get("intakeRequirements", {}).get("topics", [])
+        previous_resolved = bool(previous_required) and all(_is_resolved(topic, topics) for topic in previous_required)
+        needs_question_review = bool(selected and previous_resolved and selected[0] not in previous_required
+                                    and not decision.focusChanged and not question_review_performed)
+        if needs_question_review:
+            # A newly introduced requirement must be checked against all existing facts,
+            # including facts stored under another topic. At most one independent review.
+            reviewed = decide({**payload, "mode": "REVIEW_QUESTION_NEED", "knownTopics": topics,
+                "proposedDecision": decision.model_dump(), "proposedQuestion": selected[1],
+                "questionTargets": _available_topics(topics, question_history)}, review=True)
+            if reviewed.focusChanged:
+                raise ValueError("Question review cannot reset the user's focus")
+            _apply_updates(topics, reviewed, messages)
+            decision = reviewed
+            ready, details = _ready(topics, decision)
+            selected = None if ready else _select_question(topics, question_history, decision, history)
+        state = {"pipelineVersion": 3, "intakeTurn": turn, "discoveryEvidence": messages,
+                 "knownTopics": topics, "questionHistory": question_history,
+                 "discoveryReady": ready, "extractedFacts": [], "stopRequested": decision.stopRequested,
+                 "scenarioMode": "PERSONALIZED", "basicScenarioSelection": None,
+                 "basicScenarioOffered": False, "basicConsentPending": False, "intakePaused": False, "readinessEvidence": None,
+                 "intakeRequirements": {"target": decision.personalizationTarget, "topics": _requirements(decision, topics)},
+                 "readinessBasis": decision.readinessBasis.model_dump() if decision.readinessBasis else None,
+                 "questionAssessments": [item.model_dump() for item in decision.questionAssessments],
+                 "questionNeedReview": {"performed": question_review_performed}}
+        if ready:
+            plan_started = time.perf_counter()
+            try:
+                graph, plan, verdict = scenario_planner.verify_intake_plan(messages,
+                    confirmed_topics=topics, requirements=state["intakeRequirements"], basis=state["readinessBasis"])
+            finally:
+                stats["plan_ms"] += round((time.perf_counter() - plan_started) * 1000)
+            if verdict.accepts() and (not plan.referenceUses or verdict.referencesSupported):
+                state["preparedScenario"] = prepared_scenario.seal(graph, plan, verdict,
+                    messages=messages, topics=topics, requirements=state["intakeRequirements"], basis=state["readinessBasis"])
+            else:
+                # Generator/reviewer defects are not evidence of missing user facts.
+                # The planner already used its bounded internal repair opportunity.
+                missing_context = (not verdict.checks.sufficientContext
+                    and any(issue.code == "INSUFFICIENT_CONTEXT" for issue in verdict.issues)
+                    and bool(verdict.followupQuestion.strip()))
+                if not missing_context:
+                    logger.warning("Intake plan failed without a user-information gap: codes=%s",
+                                   [issue.code for issue in verdict.issues])
+                    raise AiApiError(503, "AI_SERVICE_UNAVAILABLE",
+                        "훈련 계획을 준비하지 못했어요. 입력한 내용은 유지되니 다시 시도해 주세요.")
+                decision = decide({**payload, "mode": "PLAN_CLARIFICATION", "knownTopics": topics,
+                    "planningIssues": [issue.model_dump() for issue in verdict.issues],
+                    "suggestedQuestion": verdict.followupQuestion,
+                    "questionTargets": _available_topics(topics, question_history),
+                    "previousRequirements": state["intakeRequirements"]})
+                if decision.focusChanged:
+                    raise ValueError("Plan clarification cannot change the user's experience")
+                _apply_updates(topics, decision, messages)
+                ready = False
+                selected = _select_question(topics, question_history, decision, history)
+                if selected is None:
+                    logger.warning("Intake review supplied no answerable missing fact")
+                    raise AiApiError(503, "AI_SERVICE_UNAVAILABLE",
+                        "훈련 계획을 준비하지 못했어요. 입력한 내용은 유지되니 다시 시도해 주세요.")
+                state.update(discoveryReady=False, readinessBasis=None,
+                    intakeRequirements={"target": decision.personalizationTarget, "topics": _requirements(decision, topics)},
+                    verificationIssues=[issue.code for issue in verdict.issues])
+        recovery_question = None
+        if not ready and selected is None and not unchanged_pause and not _can_offer_basic(
+                topics, question_history, stop_requested=decision.stopRequested, recovery_count=len(recovery_questions)):
+            recovery_question = _recover_context_question(recovery_questions)
+            if recovery_question:
+                recovery_questions.append(recovery_question)
+                state["questionSelectionRecovered"] = True
+        state["contextRecoveryQuestions"] = recovery_questions
+        if ready:
+            detail = decision.readinessBasis.evidence[0].model_dump()
+            state["readinessEvidence"] = {"turn": detail["turn"], "quote": mask_input(detail["quote"])}
+            question = fallback.DONE_MESSAGE
+        elif recovery_question is not None:
+            question = recovery_question
+        elif selected is not None:
+            target, question = selected
+            state["questionHistory"] = [*question_history, {"topic": target, "afterTurn": turn, "question": question}][-20:]
+        else:
+            state["intakePaused"] = True
+            state["basicScenarioOffered"] = True
+            state["basicConsentPending"] = True
+            # Spring persists every AI reply and rejects blank generated text.
+            # Keep waiting without repeating a question or manufacturing readiness.
+            question = REMINDER if known.get("basicScenarioOffered") is True else OFFER
+        return {"state": state, "next_question": question,
+                "done": ready, "fallback_used": False,
+                "masked_text": mask_input(history[-1]["text"]),
+                "sensitive_types": mask_sensitive(history[-1]["text"])[1]}
+    except (LLMError, ValidationError, ValueError, KeyError, TypeError) as error:
+        from app.services.context_graph import ContextIntegrityError
+        if isinstance(error, ContextIntegrityError):
+            import re
+            check = str(error)
+            logger.warning("Brief discovery failed: type=ContextIntegrityError check=%s",
+                           check if re.fullmatch(r"[a-z_]{1,90}", check) else "context_validation")
+        else:
+            logger.warning("Brief discovery failed: type=%s", type(error).__name__)
+        raise AiApiError(503, "AI_SERVICE_UNAVAILABLE", "상황을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.") from None
